@@ -27,5 +27,4 @@ jobs:
       # Run Valgrind memory check
       - name: Run Valgrind
         run: |
-          # Change './your_binary' to your program executable
-          valgrind --leak-check=full --error-exitcode=1 ./your_binary
+          valgrind --leak-check=full --error-exitcode=1 ./webserv
