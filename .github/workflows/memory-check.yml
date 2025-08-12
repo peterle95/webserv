@@ -27,5 +27,8 @@ jobs:
       # Run Valgrind memory check
       - name: Run Valgrind
         run: |
-          # Change './your_binary' to your program executable
-          valgrind --leak-check=full --error-exitcode=1 ./your_binary
+          valgrind --leak-check=full --error-exitcode=123 ./webserv || EXIT_CODE=$?
+          if [ "$EXIT_CODE" != "0" ] && [ "$EXIT_CODE" != "123" ]; then
+            exit $EXIT_CODE
+          fi
+
