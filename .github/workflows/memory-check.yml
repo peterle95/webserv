@@ -27,8 +27,5 @@ jobs:
       # Run Valgrind memory check
       - name: Run Valgrind
         run: |
-          valgrind --leak-check=full --error-exitcode=123 ./webserv || EXIT_CODE=$?
-          if [ "$EXIT_CODE" != "0" ] && [ "$EXIT_CODE" != "123" ]; then
-            exit $EXIT_CODE
-          fi
+          valgrind --leak-check=full --error-exitcode=123 ./webserv conf/default.conf || EXIT_CODE=$?
 
