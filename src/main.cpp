@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "../include/Common.hpp"
+#include "../include/HttpServer.hpp"
 
 // implement later try...catch blocks
 int main(int argc, char **argv)
@@ -35,5 +36,6 @@ int main(int argc, char **argv)
     std::cout << "root:   " << parser.getRoot() << std::endl;
     std::cout << "index:  " << parser.getIndex() << std::endl;
 
-    return 0;
+    HttpServer server(parser.getListenPort(), parser.getRoot(), parser.getIndex());
+    return server.start();
 }
