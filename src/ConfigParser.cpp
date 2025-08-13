@@ -1,25 +1,17 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Common.hpp                                         :+:      :+:    :+:   */
+/*   ConfigParser.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/08/13 13:21:03 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/13 13:21:03 by pmolzer          ###   ########.fr       */
+/*   Created: 2025/08/13 13:21:29 by pmolzer           #+#    #+#             */
+/*   Updated: 2025/08/13 13:21:29 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#include "Common.hpp"
 
-/*A header file that includes common standard library headers and defines shared constants or 
-macros used throughout the project.*/
+ConfigParser::ConfigParser() {}
+ConfigParser::~ConfigParser() {}
 
-#include <iostream>
-#include <poll.h> // poll()
-#include <sys/socket.h> // socket(), bind(), listen(), accept()
-#include <unistd.h> // close()
-#include "ConfigParser.hpp"
-
-#endif
