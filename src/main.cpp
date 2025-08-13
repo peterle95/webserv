@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/12 12:44:17 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/12 12:44:17 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/13 14:30:20 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@ int main(int argc, char **argv)
         configPath = argv[1];
     else if (argc > 2)
     {
-        std::cerr << "Usage: " << argv[0] << " [config_file]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " conf/[config_file].conf" << std::endl;
         return 1;
     }
 
