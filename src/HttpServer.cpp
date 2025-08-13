@@ -6,18 +6,11 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 14:20:00 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/13 15:05:11 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/13 15:14:03 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../include/HttpServer.hpp"
 #include "../include/Common.hpp"
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <cstring>
-#include <fstream>
-#include <sstream>
 
 HttpServer::HttpServer(int port, const std::string &root, const std::string &index)
 : _port(port), _root(root), _index(index) {}

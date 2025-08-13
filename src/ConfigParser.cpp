@@ -11,10 +11,6 @@
 /* ************************************************************************** */
 
 #include "../include/Common.hpp"
-#include <fstream>
-#include <sstream>
-#include <cctype>
-#include <cstdlib>
 
 // constructor
 ConfigParser::ConfigParser() : _configFile(""), _listenPort(8080), _root("html"), _index("index.html") {}
@@ -25,7 +21,8 @@ ConfigParser::~ConfigParser() {}
 static std::string ltrim(const std::string &s)
 {
     std::string::size_type i = 0;
-    while (i < s.size() && (s[i] == ' ' || s[i] == '\t' || s[i] == '\r')) i++;
+    while (i < s.size() && (s[i] == ' ' || s[i] == '\t' || s[i] == '\r')) 
+        i++;
     return s.substr(i);
 }
 
