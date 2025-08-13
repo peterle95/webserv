@@ -89,7 +89,9 @@ bool ConfigParser::parse(const std::string &path)
         line = trim(line);
         if (line.empty()) continue;
 
-        // tolerate braces and unknown directives
+        // Tolerate braces and unknown block starts. We don't implement nested
+        // blocks yet, but ignoring these lines allows NGINX-like structure:
+        //   server { ... }
         if (line == "server{" || line == "server {" || line == "{" || line == "}")
             continue;
 
