@@ -31,17 +31,30 @@ jobs:
           # Start under Valgrind in background
           WEBSERV_ONCE=1 valgrind --leak-check=full --error-exitcode=123 ./webserv conf/default.conf &
           VG_PID=$!
-          # Wait for server to be ready and hit it once
-          for i in {1..20}; do
-            if curl -sSf http://localhost:8080/ >/dev/null; then
+          # Wait for server to be ready (up to ~10s) and hit it once
+          ready=0
+          for i in {1..50}; do
+            if curl -sSf http://127.0.0.1:8080/ >/dev/null; then
+              ready=1
               break
             fi
             sleep 0.2
           done
-          # Ensure we actually reach it (fail if not)
-          curl -sSf http://localhost:8080/ >/dev/null
-          # Ask server to stop
-          kill -INT $VG_PID || true
+          if [ "$ready" -ne 1 ]; then
+            echo "Server did not become ready in time"
+            # Show process info for debugging
+            ps -p $VG_PID -o pid,ppid,cmd || true
+            # Cleanup
+            kill -TERM $VG_PID 2>/dev/null || true
+            sleep 1
+            kill -KILL $VG_PID 2>/dev/null || true
+            wait $VG_PID || true
+            exit 1
+          fi
+          # If still running, ask server to stop (in case single-shot didn't exit)
+          if kill -0 $VG_PID 2>/dev/null; then
+            kill -INT $VG_PID || true
+          fi
           # Give it time to exit cleanly
           for i in {1..10}; do
             if ! kill -0 $VG_PID 2>/dev/null; then
