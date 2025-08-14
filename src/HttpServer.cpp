@@ -11,6 +11,8 @@
 /* ************************************************************************** */
 
 #include "../include/Common.hpp"
+#include <csignal>
+#include <cerrno>
 
 HttpServer::HttpServer(int port, const std::string &root, const std::string &index)
 : _port(port), _root(root), _index(index) {}
@@ -46,6 +48,14 @@ static void sendAll(int fd, const char *data, size_t len)
 // start the server, return 0 on success, non-zero on error. Blocks until server is stopped.
 // This is a very simple blocking server for demo purposes.
 // TODO: make this non-blocking. Achieve this by using poll() to wait for connections.
+// Global stop flag set by signal handlers
+static volatile sig_atomic_t g_stop = 0;
+
+static void handle_stop_signal(int)
+{
+    g_stop = 1;
+}
+
 int HttpServer::start()
 {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -87,6 +97,10 @@ int HttpServer::start()
 
     std::cout << "Serving " << _root << "/" << _index << " on http://localhost:" << _port << "/" << std::endl;
 
+    // Install simple signal handlers to allow graceful shutdown in CI
+    std::signal(SIGINT, handle_stop_signal);
+    std::signal(SIGTERM, handle_stop_signal);
+
     // we need infinite loop to keep the server running
     while(true)
     {
@@ -94,7 +108,11 @@ int HttpServer::start()
         socklen_t clilen = sizeof(cli); 
         int cfd = accept(server_fd, (struct sockaddr*)&cli, &clilen); // accept the connection
         if (cfd < 0)
+        {
+            if (errno == EINTR && g_stop)
+                break; // interrupted by signal, time to stop
             continue;
+        }
 
         char buf[4096]; // buffer to store the request
         std::memset(buf, 0, sizeof(buf));

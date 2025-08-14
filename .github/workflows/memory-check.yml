@@ -18,14 +18,41 @@ jobs:
 
       # Install required packages
       - name: Install Valgrind
-        run: sudo apt-get update && sudo apt-get install -y build-essential valgrind
+        run: sudo apt-get update && sudo apt-get install -y build-essential valgrind curl
 
       # Build project
       - name: Build project
         run: make
 
       # Run Valgrind memory check
-      - name: Run Valgrind
+      - name: Run Valgrind (serve one request, then exit)
         run: |
-          valgrind --leak-check=full --error-exitcode=123 ./webserv conf/default.conf || EXIT_CODE=$?
+          set -euo pipefail
+          # Start under Valgrind in background
+          valgrind --leak-check=full --error-exitcode=123 ./webserv conf/default.conf &
+          VG_PID=$!
+          # Wait for server to be ready and hit it once
+          for i in {1..20}; do
+            if curl -sSf http://localhost:8080/ >/dev/null; then
+              break
+            fi
+            sleep 0.2
+          done
+          # Ensure we actually reach it (fail if not)
+          curl -sSf http://localhost:8080/ >/dev/null
+          # Ask server to stop
+          kill -INT $VG_PID || true
+          # Give it time to exit cleanly
+          for i in {1..10}; do
+            if ! kill -0 $VG_PID 2>/dev/null; then
+              break
+            fi
+            sleep 0.2
+          done
+          # Force kill if still running (should still preserve Valgrind's leak check result)
+          if kill -0 $VG_PID 2>/dev/null; then
+            kill -KILL $VG_PID || true
+          fi
+          # Propagate Valgrind exit status (will be 123 if leaks were found)
+          wait $VG_PID
 
