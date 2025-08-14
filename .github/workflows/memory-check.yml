@@ -26,20 +26,23 @@ jobs:
 
       # Run Valgrind memory check
       - name: Run Valgrind (serve one request, then exit)
+        shell: bash
         run: |
           set -euo pipefail
           # Start under Valgrind in background
           WEBSERV_ONCE=1 valgrind --leak-check=full --error-exitcode=123 ./webserv conf/default.conf &
           VG_PID=$!
-          # Wait for server to be ready (up to ~10s) and hit it once
+          # Give Valgrind+binary a moment to initialize before probing
+          sleep 1.5
+          # Wait for server to be ready (up to ~30s)
           ready=0
-          for i in {1..50}; do
+          for i in $(seq 1 300); do
             if curl -sSf http://127.0.0.1:8080/ >/dev/null; then
               ready=1
               break
             fi
-            sleep 0.2
-          done
+            sleep 0.1
+            done
           if [ "$ready" -ne 1 ]; then
             echo "Server did not become ready in time"
             # Show process info for debugging
@@ -56,11 +59,11 @@ jobs:
             kill -INT $VG_PID || true
           fi
           # Give it time to exit cleanly
-          for i in {1..10}; do
+          for i in $(seq 1 40); do
             if ! kill -0 $VG_PID 2>/dev/null; then
               break
             fi
-            sleep 0.2
+            sleep 0.1
           done
           # Force kill if still running (should still preserve Valgrind's leak check result)
           if kill -0 $VG_PID 2>/dev/null; then
