@@ -101,6 +101,11 @@ int HttpServer::start()
     std::signal(SIGINT, handle_stop_signal);
     std::signal(SIGTERM, handle_stop_signal);
 
+    // Single-request mode for CI when WEBSERV_ONCE=1
+    const char* onceEnv = std::getenv("WEBSERV_ONCE");
+    bool serveOnce = (onceEnv && std::string(onceEnv) == "1");
+    size_t servedCount = 0;
+
     // we need infinite loop to keep the server running
     while(true)
     {
@@ -171,6 +176,14 @@ int HttpServer::start()
         std::string respStr = resp.str();
         sendAll(cfd, respStr.c_str(), respStr.size());
         close(cfd);
+
+        // In CI single-request mode, exit after first served request
+        if (serveOnce)
+        {
+            ++servedCount;
+            if (servedCount >= 1)
+                break;
+        }
     }
 
     close(server_fd);
