@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Common.hpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/08/13 13:21:03 by pmolzer           #+#    #+#             */
+/*   Updated: 2025/08/13 15:15:35 by pmolzer          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
@@ -8,5 +20,16 @@ macros used throughout the project.*/
 #include <poll.h> // poll()
 #include <sys/socket.h> // socket(), bind(), listen(), accept()
 #include <unistd.h> // close()
+#include <string> 
+#include <fstream> // file stream: readFileToString()
+#include <sstream> // string stream: sendAll()
+#include <cctype> // character classification: isdigit()
+#include <cstdlib> // standard library: exit()
+#include <netinet/in.h> // internet address: struct sockaddr_in
+#include <arpa/inet.h> // internet address: inet_addr()
+#include <fcntl.h> // file control: O_RDONLY
+#include <cstring> // string operations: memset()
+#include "ConfigParser.hpp" // configuration parser 
+#include "HttpServer.hpp" // HTTP server
 
 #endif
