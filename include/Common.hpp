@@ -31,5 +31,6 @@ macros used throughout the project.*/
 #include <cstring> // string operations: memset()
 #include "ConfigParser.hpp" // configuration parser 
 #include "HttpServer.hpp" // HTTP server
+#include "ErrorHandler.hpp" // error handling
 
 #endif

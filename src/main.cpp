@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*   By: pmolzer <pmolzer@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/12 12:44:17 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/13 14:30:20 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/15 13:34:12 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,11 +25,16 @@ int main(int argc, char **argv)
         std::cerr << "Usage: " << argv[0] << " conf/[config_file].conf" << std::endl;
         return 1;
     }
-
     ConfigParser parser;
-    if (!parser.parse(configPath))
+    try
+    {
+        parser.parse(configPath);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "Error: " << e.what() << std::endl;
         return 1;
-
+    }
     // For now, just show parsed values to verify the minimal parser works
     std::cout << "Config loaded from: " << configPath << std::endl;
     std::cout << "listen: " << parser.getListenPort() << std::endl;
