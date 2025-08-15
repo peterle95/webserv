@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/12 12:44:17 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/15 13:34:12 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/15 13:35:59 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     {
         parser.parse(configPath);
     }
-    catch(const std::exception& e)
+    catch(const ErrorHandler::ErrorMessage& e)
     {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;

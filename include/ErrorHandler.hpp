@@ -10,14 +10,8 @@ class ErrorHandler
         static void fatalError(const std::string &message);
         class ErrorMessage : public std::exception
         {
-            private:
-                std::string message;
             public:
-                ErrorMessage(const std::string &msg) : message(msg) {}
-                virtual const char* what() const throw() {
-                    return message.c_str();
-                }
-                virtual ~ErrorMessage() throw() { }     
+                virtual const char* what() const throw();
         };
 };
 
