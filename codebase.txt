@@ -1,0 +1,952 @@
+--- FILE: ./include/ConfigParser.hpp ---
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ConfigParser.hpp                                   :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/08/13 13:20:54 by pmolzer           #+#    #+#             */
+/*   Updated: 2025/08/13 15:14:49 by pmolzer          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#ifndef CONFIGPARSER_HPP
+#define CONFIGPARSER_HPP
+
+class ConfigParser
+{
+    private:
+        std::string _configFile;
+        int         _listenPort;
+        std::string _root;
+        std::string _index;
+    public:
+        ConfigParser();
+        ~ConfigParser();
+
+        // Parse minimal NGINX-like config supporting: listen, root, index
+        // Returns true on success, false on failure.
+        bool        parse(const std::string &path);
+
+        // Accessors
+        int                 getListenPort() const;
+        const std::string&  getRoot() const;
+        const std::string&  getIndex() const;
+
+        // TODO: implement error handling
+        // TODO: implement parsing more directives (directives are the lines in the config file)
+};
+
+#endif
+--- FILE: ./include/Common.hpp ---
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Common.hpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/08/13 13:21:03 by pmolzer           #+#    #+#             */
+/*   Updated: 2025/08/13 15:15:35 by pmolzer          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#ifndef COMMON_HPP
+#define COMMON_HPP
+
+/*A header file that includes common standard library headers and defines shared constants or 
+macros used throughout the project.*/
+
+#include <iostream>
+#include <poll.h> // poll()
+#include <sys/socket.h> // socket(), bind(), listen(), accept()
+#include <unistd.h> // close()
+#include <string> 
+#include <fstream> // file stream: readFileToString()
+#include <sstream> // string stream: sendAll()
+#include <cctype> // character classification: isdigit()
+#include <cstdlib> // standard library: exit()
+#include <netinet/in.h> // internet address: struct sockaddr_in
+#include <arpa/inet.h> // internet address: inet_addr()
+#include <fcntl.h> // file control: O_RDONLY
+#include <cstring> // string operations: memset()
+#include "ConfigParser.hpp" // configuration parser 
+#include "HttpServer.hpp" // HTTP server
+
+#endif
+
+--- FILE: ./include/HttpServer.hpp ---
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   HttpServer.hpp                                     :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/08/13 14:20:00 by pmolzer           #+#    #+#             */
+/*   Updated: 2025/08/13 15:15:00 by pmolzer          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#ifndef HTTPSERVER_HPP
+#define HTTPSERVER_HPP
+
+class HttpServer
+{
+private:
+    int         _port;
+    std::string _root;
+    std::string _index;
+
+public:
+    HttpServer(int port, const std::string &root, const std::string &index);
+    ~HttpServer();
+
+    // Start a very simple blocking server for demo purposes
+    // Returns 0 on normal exit, non-zero on error
+    // TODO: make this non-blocking. Achieve this by using poll() to wait for connections.
+    int start();
+};
+
+#endif
+
+--- FILE: ./CODE_EXPLANATION.md ---
+# Webserv: Codebase Explanation
+
+This document explains the current state of the codebase, the key concepts behind it, and how each part works step by step. It ends with concrete next steps.
+
+## High-level Overview
+
+The project is a minimal HTTP/1.1 server written in C++98. It currently:
+
+- Serves a static index page (`html/index.html`) on a configured port (observed: 8080).
+- Parses a small configuration file format for three directives: `listen`, `root`, `index`.
+- Handles a simple request/response lifecycle and returns `200 OK` with the index file contents.
+
+## Repository Structure
+
+- `include/`
+  - `Common.hpp`: Centralized standard/system includes shared across the project.
+  - `ConfigParser.hpp`: Interface for parsing the minimal config file.
+  - `HttpServer.hpp`: Interface for the HTTP server class.
+- `src/`
+  - `ConfigParser.cpp`: Implementation of the config file parser utilities and logic.
+  - `HttpServer.cpp`: Implementation of the simple blocking HTTP server.
+  - `main.cpp`: Entry point that constructs components and starts the server.
+- `html/`
+  - `index.html`: Static page served for the root path `/`.
+- `.gitignore`: Ignores PDFs and Markdown files.
+
+## Key Concepts
+
+- HTTP/1.1 basics: request line, headers, body, and server response with status line, headers (e.g., `Content-Type`, `Content-Length`), and body. The server currently replies with a fixed `200 OK` for `/`.
+- Blocking I/O: the server accepts connections and serves them sequentially (one at a time). Non-blocking/poll-based I/O is planned.
+- Minimal configuration: the server reads three directives: `listen <port>;`, `root <path>;`, `index <filename>;`.
+
+## Component-by-Component
+
+### 1) `include/Common.hpp`
+
+Purpose: provide a single header with standard and system includes to keep other files clean. It currently pulls in, among others:
+
+- C++/C standard: `<iostream>`, `<string>`, `<fstream>`, `<sstream>`, `<cctype>`, `<cstdlib>`
+- Sockets/POSIX: `<poll.h>`, `<sys/socket.h>`, `<unistd.h>`, `<netinet/in.h>`, `<arpa/inet.h>`, `<fcntl.h>`, `<cstring>`
+- Project headers: `ConfigParser.hpp`, `HttpServer.hpp`
+
+This avoids scattering includes across all translation units and makes it easy to adjust portability later.
+
+### 2) `include/ConfigParser.hpp` and `src/ConfigParser.cpp`
+
+Purpose: parse a very small, NGINX-like config file to populate:
+
+- `int _listenPort` — TCP port to listen on
+- `std::string _root` — document root directory (e.g., `html`)
+- `std::string _index` — default file to serve (e.g., `index.html`)
+
+Notable elements in the implementation:
+
+- Helper functions like `ltrim()` and `rtrim()` to sanitize each line before processing.
+- `parse(const std::string& path)`: reads the file, tokenizes lines, and assigns values to the three fields. Returns success/failure.
+- Accessors: `getListenPort()`, `getRoot()`, `getIndex()`.
+
+Current scope and behavior:
+
+- Focused only on `listen`, `root`, and `index` directives.
+- Assumes basic well-formedness; robust error reporting is marked as a TODO.
+
+### 3) `include/HttpServer.hpp` and `src/HttpServer.cpp`
+
+Purpose: provide a minimal HTTP server implementation sufficient to respond with a static file.
+
+Key private members:
+
+- `_port`, `_root`, `_index`: initialized from the parsed configuration.
+
+Key behaviors in the implementation:
+
+- Creates a TCP socket, binds to the configured port, and listens.
+- Accepts a client connection, reads the incoming request (at least the request line), and responds with a basic HTTP/1.1 message.
+- Reads the file at `root/index` and builds an HTTP response:
+  - Status line: `HTTP/1.1 200 OK`
+  - Headers: `Content-Type: text/html; charset=utf-8`, `Content-Length: <bytes>`, `Connection: close`
+  - Body: contents of `index.html`
+- Uses a helper to read a file into a string safely in binary mode to preserve bytes.
+
+Observed behavior (via `curl -v http://localhost:8080/`):
+
+- Connection established, request sent by curl, server replies with `200 OK` and the HTML body from `html/index.html`, then closes the connection as indicated by `Connection: close`.
+
+Limitations (known and documented in code comments):
+
+- The server is currently blocking and single-connection at a time. A TODO notes to use `poll()` for non-blocking/multiplexed I/O.
+- No full HTTP parsing yet (e.g., headers, methods beyond happy-path GET for `/`).
+- No error page handling, directory traversal prevention, or MIME type mapping yet.
+
+### 4) `html/index.html`
+
+Simple HTML page confirming the server is working.
+
+## End-to-End Flow
+
+1. Startup: `main.cpp` constructs a `ConfigParser`, parses the config file, then constructs `HttpServer` with the resulting `port`, `root`, and `index`.
+2. Listen: `HttpServer::start()` creates the socket, binds, and listens on the configured port.
+3. Accept: it accepts an incoming client connection.
+4. Respond: it builds a minimal HTTP/1.1 response using the file `root/index` and writes it to the socket.
+5. Close: it closes the connection (and eventually the listening socket on shutdown).
+
+## Testing
+
+- From the host (or within WSL), run: `curl -v http://localhost:8080/`.
+- Expected: `HTTP/1.1 200 OK` with `Content-Type: text/html; charset=utf-8`, a `Content-Length` matching the file, and the HTML body printed.
+
+## Current Constraints and TODOs
+
+- Non-blocking server loop using `poll()` (already noted as a code TODO).
+- Robust config error handling and validation (also marked as TODO in headers).
+- Proper HTTP request parsing (request line, headers, method checks, path normalization).
+- Method support beyond a simple GET for `/`.
+- 4xx/5xx error handling and default error pages.
+- Logging, basic metrics, and graceful shutdown.
+
+## Next Steps
+
+Short-term tasks to further the project:
+
+- Implement non-blocking I/O with `poll()`:
+  - Keep a listening socket and a set of client sockets.
+  - Handle readable/writable events and serve multiple clients.
+- Build a minimal HTTP request parser:
+  - Parse request line (method, path, version) and headers.
+  - Validate method and version (only HTTP/1.1 for now).
+  - Map path to files under `root` while preventing directory traversal.
+- Add routing for static files beyond `/`:
+  - Serve `/foo` -> `<root>/foo` (file or directory index).
+  - Derive `Content-Type` from file extension (basic table).
+- Introduce simple error handling:
+  - Return `400`, `404`, `405`, `500` as appropriate with small HTML error pages.
+- Strengthen config parser:
+  - Better error messages and detection for invalid directives/values.
+  - Optional: support more directives incrementally.
+
+These steps align with moving from a single-connection demo server to a basic, usable HTTP server that supports concurrent clients and the essential parts of HTTP/1.1.
+
+
+--- FILE: ./SUBJECT.md ---
+Program name webserv
+Turn in files Makefile, *.{h, hpp}, *.cpp, *.tpp, *.ipp,
+configuration files
+Makefile NAME, all, clean, fclean, re
+Arguments [A configuration file]
+External functs. All functionality must be implemented in C++ 98.
+execve, pipe, strerror, gai_strerror, errno, dup,
+dup2, fork, socketpair, htons, htonl, ntohs, ntohl,
+select, poll, epoll (epoll_create, epoll_ctl,
+epoll_wait), kqueue (kqueue, kevent), socket,
+accept, listen, send, recv, chdir, bind, connect,
+getaddrinfo, freeaddrinfo, setsockopt, getsockname,
+getprotobyname, fcntl, close, read, write, waitpid,
+kill, signal, access, stat, open, opendir, readdir
+and closedir.
+Libft authorized n/a
+Description An HTTP server in C++ 98
+You must write an HTTP server in C++ 98.
+Your executable should be executed as follows:
+./webserv [configuration file]
+Even though poll() is mentioned in the subject and evaluation sheet,
+you can use any equivalent function such as select(), kqueue(), or
+epoll().
+6
+IV.1 Requirements
+•Your program must use a configuration file, provided as an argument on the com-
+mand line, or available in a default path.
+•You cannot execve another web server.
+•Your server must remain non-blocking at all times and properly handle client dis-
+connections when necessary.
+•It must be non-blocking and use only 1 poll() (or equivalent) for all the I/O
+operations between the clients and the server (listen included).
+•poll() (or equivalent) must monitor both reading and writing simultaneously.
+•You must never do a read or a write operation without going through poll() (or
+equivalent).
+•Checking the value of errno to adjust the server behaviour is strictly forbidden
+after performing a read or write operation.
+•You are not required to use poll() (or equivalent) before read() to retrieve your
+configuration file.
+Because you have to use non-blocking file descriptors, it is
+possible to use read/recv or write/send functions with no poll()
+(or equivalent), and your server wouldn’t be blocking.
+But it would consume more system resources.
+Thus, if you attempt to read/recv or write/send on any file
+descriptor without using poll() (or equivalent), your grade will
+be 0.
+•When using poll() or any equivalent call, you can use every associated macro or
+helper function (e.g., FD_SET for select()).
+•A request to your server should never hang indefinitely.
+•Your server must be compatible with standard web browsers of your choice.
+•NGINX may be used to compare headers and answer behaviours (pay attention to
+differences between HTTP versions).
+•Your HTTP response status codes must be accurate.
+•Your server must have default error pages if none are provided.
+•You can’t use fork for anything other than CGI (like PHP, or Python, and so forth).
+•You must be able to serve a fully static website.
+•Clients must be able to upload files.
+8
+•You need at least the GET, POST, and DELETE methods.
+•Stress test your server to ensure it remains available at all times.
+•Your server must be able to listen to multiple ports to deliver different content (see
+Configuration file).
+We deliberately chose to offer only a subset of the HTTP RFC. In this
+context, the virtual host feature is considered out of scope. But
+you are allowed to implement it if you want.
+9
+IV.3 Configuration file
+You can take inspiration from the ’server’ section of the NGINX
+configuration file.
+In the configuration file, you should be able to:
+•Define all the interface:port pairs on which your server will listen to (defining mul-
+tiple websites served by your program).
+•Set up default error pages.
+•Set the maximum allowed size for client request bodies.
+•Specify rules or configurations on a URL/route (no regex required here), for a
+website, among the following:
+◦List of accepted HTTP methods for the route.
+◦HTTP redirection.
+◦Directory where the requested file should be located (e.g., if URL /kapouet
+is rooted to /tmp/www, URL /kapouet/pouic/toto/pouet will search for
+/tmp/www/pouic/toto/pouet).
+◦Enabling or disabling directory listing.
+◦Default file to serve when the requested resource is a directory.
+◦Uploading files from the clients to the server is authorized, and storage location
+is provided.
+Execution of CGI, based on file extension (for example .php). Here are some
+specific remarks regarding CGIs:
+∗Do you wonder what a CGI is?
+∗Have a careful look at the environment variables involved in the web
+server-CGI communication. The full request and arguments provided by
+the client must be available to the CGI.
+∗Just remember that, for chunked requests, your server needs to un-chunk
+them, the CGI will expect EOF as the end of the body.
+∗The same applies to the output of the CGI. If no content_length is
+returned from the CGI, EOF will mark the end of the returned data.
+∗The CGI should be run in the correct directory for relative path file access.
+∗Your server should support at least one CGI (php-CGI, Python, and so
+forth).
+You must provide configuration files and default files to test and demonstrate that
+every feature works during the evaluation.
+You can have other rules or configuration information in your file (e.g., a server name
+for a website if you plan to implement virtual hosts).
+If you have a question about a specific behaviour, you can compare
+your program’s behaviour with NGINX’s.
+We have provided a small tester. Using it is not mandatory if
+everything works fine with your browser and tests, but it can help
+you find and fix bugs.
+Resilience is key. Your server must remain operational at all times.
+Do not test with only one program. Write your tests in a more
+suitable language, such as Python or Golang, among others, even
+in C or C++ if you prefer.
+--- FILE: ./PROJECT_STRUCTURE.md ---
+Here is a repository tree for your HTTP server project, drawing on the information about building a server from scratch and the Webserv project requirements:
+websrv/
+├── conf/
+│   ├── default.conf
+│   └── example.conf
+├── html/
+│   ├── index.html
+│   ├── info.html
+│   ├── 404.html
+│   └── uploads/
+├── src/
+│   ├── main.cpp
+│   ├── Server.cpp
+│   ├── Client.cpp
+│   ├── HttpRequest.cpp
+│   ├── HttpResponse.cpp
+│   ├── ConfigParser.cpp
+│   ├── FileManager.cpp
+│   ├── CgiHandler.cpp
+│   └── Utils.cpp
+├── include/
+│   ├── common.hpp
+│   ├── Server.hpp
+│   ├── Client.hpp
+│   ├── HttpRequest.hpp
+│   ├── HttpResponse.hpp
+│   ├── ConfigParser.hpp
+│   ├── FileManager.hpp
+│   ├── CgiHandler.hpp
+│   └── Utils.hpp
+├── tests/
+│   ├── test_client.py
+│   ├── stress_test.py
+│   └── README.md
+├── Makefile
+└── README.md
+Repository Tree Explanation:
+• websrv/: This is the root directory of your project.
+• conf/: This directory holds configuration files for your web server.
+    ◦ default.conf: An example of a default server configuration file. It should define basic settings like listening ports, default error pages, and accepted HTTP methods for routes.
+    ◦ example.conf: Another example configuration file to demonstrate various features, such as multiple interface:port pairs, maximum client request body size, URL/route rules (including HTTP redirection, root directories, directory listing, default files for directories, and file upload locations).
+• html/ (or www/): This directory contains the static web content to be served by your HTTP server.
+    ◦ index.html: The default page to serve when a client visits the root directory or a folder without a specified file.
+    ◦ info.html: An example HTML file that can be requested by a client.
+    ◦ 404.html: A custom error page for "Not Found" (404) errors. You should have default error pages if none are provided in the configuration.
+    ◦ uploads/: A directory designated for storing files uploaded by clients, as the server must support file uploads.
+• src/: This directory contains the source code files (.cpp) for your HTTP server, written in C++98.
+    ◦ main.cpp: The entry point of your server application. It will parse the command-line arguments (including the configuration file), initialize the server components, and start the main server loop.
+    ◦ Server.cpp: Implements the core server logic, including setting up the listening sockets using socket(), bind(), and listen(). It manages non-blocking I/O operations for all clients using a single poll() (or select(), epoll(), kqueue()) call to monitor both reading and writing simultaneously.
+    ◦ Client.cpp: Manages individual client connections. It handles accepting new connections via accept() and orchestrates the reading of requests and sending of responses.
+    ◦ HttpRequest.cpp: Responsible for parsing incoming HTTP requests from clients. This includes extracting the request-line (method, URI, HTTP version), request headers (e.g., Host, User-Agent, Content-Length, Content-Type), and the message body. It should also handle unchunking requests if necessary for CGI.
+    ◦ HttpResponse.cpp: Responsible for constructing HTTP responses to be sent back to clients. This involves setting the status-line (HTTP version, status code, reason phrase), response headers (e.g., Content-Type, Content-Length), and the response body.
+    ◦ ConfigParser.cpp: Parses the server configuration file (.conf files) to extract settings such as port numbers, error page paths, allowed methods, redirection rules, and client body size limits.
+    ◦ FileManager.cpp: Handles file system operations, such as reading static web pages (read()), handling directory listings, and managing file uploads (write()).
+    ◦ CgiHandler.cpp: Manages the execution of CGI scripts (e.g., PHP, Python). This module will use fork(), execve(), pipe(), waitpid(), and related system calls to communicate with external programs. It ensures the correct environment variables are available to CGI scripts and handles input/output between the server and CGI process.
+    ◦ Utils.cpp: Contains general utility functions that can be used across different parts of the server, such as error reporting (strerror, gai_strerror), network byte order conversions (htons, htonl, ntohs, ntohl), and other helper functions.
+• include/: This directory contains the header files (.hpp) for the corresponding .cpp files in src/.
+    ◦ common.hpp: A header file that includes common standard library headers and defines shared constants or macros used throughout the project.
+    ◦ Server.hpp: Declares the Server class and its member functions.
+    ◦ Client.hpp: Declares the Client class.
+    ◦ HttpRequest.hpp: Declares the HttpRequest class.
+    ◦ HttpResponse.hpp: Declares the HttpResponse class.
+    ◦ ConfigParser.hpp: Declares the ConfigParser class.
+    ◦ FileManager.hpp: Declares the FileManager class.
+    ◦ CgiHandler.hpp: Declares the CgiHandler class.
+    ◦ Utils.hpp: Declares utility functions.
+• tests/: This directory holds testing scripts for verifying server functionality and robustness.
+    ◦ test_client.py: A Python script (or other language) to act as a basic HTTP client to send requests and verify responses from your server, simulating web browser behavior.
+    ◦ stress_test.py: A script to stress test the server, ensuring it remains available and does not crash under heavy load or client disconnections.
+    ◦ README.md: Provides instructions on how to run the tests and interpret their results.
+• Makefile: This file defines the build process for your project, including rules for compiling ($(NAME), all), cleaning (clean, fclean), and recompiling (re). It must compile with c++ and the flags -Wall, -Wextra, -Werror, and -std=c++98.
+• README.md: A project overview document, explaining what the server does, how to compile and run it, how to use the configuration files, and any important design decisions or limitations.
+--- FILE: ./src/main.cpp ---
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   main.cpp                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/08/12 12:44:17 by pmolzer           #+#    #+#             */
+/*   Updated: 2025/08/13 14:30:20 by pmolzer          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "../include/Common.hpp"
+#include "../include/HttpServer.hpp"
+
+// implement later try...catch blocks
+int main(int argc, char **argv)
+{
+    // Accept 0 or 1 argument. If none, use default config path.
+    std::string configPath = "conf/default.conf";
+    if (argc == 2)
+        configPath = argv[1];
+    else if (argc > 2)
+    {
+        std::cerr << "Usage: " << argv[0] << " conf/[config_file].conf" << std::endl;
+        return 1;
+    }
+
+    ConfigParser parser;
+    if (!parser.parse(configPath))
+        return 1;
+
+    // For now, just show parsed values to verify the minimal parser works
+    std::cout << "Config loaded from: " << configPath << std::endl;
+    std::cout << "listen: " << parser.getListenPort() << std::endl;
+    std::cout << "root:   " << parser.getRoot() << std::endl;
+    std::cout << "index:  " << parser.getIndex() << std::endl;
+
+    HttpServer server(parser.getListenPort(), parser.getRoot(), parser.getIndex());
+    return server.start();
+}
+
+--- FILE: ./src/HttpServer.cpp ---
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   HttpServer.cpp                                     :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/08/13 14:20:00 by pmolzer           #+#    #+#             */
+/*   Updated: 2025/08/13 15:14:03 by pmolzer          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "../include/Common.hpp"
+#include <csignal>
+#include <cerrno>
+
+HttpServer::HttpServer(int port, const std::string &root, const std::string &index)
+: _port(port), _root(root), _index(index) {}
+
+HttpServer::~HttpServer() {}
+
+// read file to string, return empty string on error. Uses binary mode to preserve file contents.
+static std::string readFileToString(const std::string &path)
+{
+    std::ifstream ifs(path.c_str(), std::ios::in | std::ios::binary);
+    if (!ifs.good()) 
+    {
+        std::cerr << "Failed to open file: " << path << std::endl;
+        return std::string();
+    }
+    std::ostringstream ss;
+    ss << ifs.rdbuf();
+    return ss.str();
+}
+
+// send all data to socket, continue until all data is sent or error occurs
+static void sendAll(int fd, const char *data, size_t len)
+{
+    size_t sent = 0;
+    while (sent < len)
+    {
+        ssize_t n = send(fd, data + sent, len - sent, 0);
+        if (n <= 0) break;
+        sent += (size_t)n;
+    }
+}
+
+// start the server, return 0 on success, non-zero on error. Blocks until server is stopped.
+// This is a very simple blocking server for demo purposes.
+// TODO: make this non-blocking. Achieve this by using poll() to wait for connections.
+// Global stop flag set by signal handlers
+static volatile sig_atomic_t g_stop = 0;
+
+static void handle_stop_signal(int)
+{
+    g_stop = 1;
+}
+
+int HttpServer::start()
+{
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd < 0)
+    {
+        std::cerr << "socket() failed" << std::endl;
+        return 1;
+    }
+
+    // this is to allow the server to be restarted quickly without waiting for the port to be released
+    // it works by allowing the socket to be bound to an address that is already in use
+    int opt = 1;
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    // this struct is defined in <netinet/in.h>
+    struct sockaddr_in addr;
+    // this block of code is to initialize the struct to 0, because it is not initialized by default
+    std::memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET; // AF_INET is the address family for IPv4
+    addr.sin_addr.s_addr = htonl(INADDR_ANY); // INADDR_ANY is a special address that means "any address"
+    addr.sin_port = htons((uint16_t)_port); // htons() converts the port number to network byte order
+
+    // bind the socket to the address, we need to bind the socket to the address because 
+    // we want to listen on a specific port
+    if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+    {
+        std::cerr << "bind() failed on port " << _port << std::endl;
+        close(server_fd);
+        return 1;
+    }
+
+    // listen for connections, we need to listen for connections because we want to accept connections
+    if (listen(server_fd, 10) < 0)
+    {
+        std::cerr << "listen() failed" << std::endl;
+        close(server_fd);
+        return 1;
+    }
+
+    std::cout << "Serving " << _root << "/" << _index << " on http://localhost:" << _port << "/" << std::endl;
+
+    // Install simple signal handlers to allow graceful shutdown in CI
+    std::signal(SIGINT, handle_stop_signal);
+    std::signal(SIGTERM, handle_stop_signal);
+
+    // Single-request mode for CI when WEBSERV_ONCE=1
+    const char* onceEnv = std::getenv("WEBSERV_ONCE");
+    bool serveOnce = (onceEnv && std::string(onceEnv) == "1");
+    size_t servedCount = 0;
+
+    // we need infinite loop to keep the server running
+    while(true)
+    {
+        struct sockaddr_in cli; // client address that is connecting to the server
+        socklen_t clilen = sizeof(cli); 
+        int cfd = accept(server_fd, (struct sockaddr*)&cli, &clilen); // accept the connection
+        if (cfd < 0)
+        {
+            if (errno == EINTR && g_stop)
+                break; // interrupted by signal, time to stop
+            continue;
+        }
+
+        char buf[4096]; // buffer to store the request
+        std::memset(buf, 0, sizeof(buf));
+        ssize_t n = recv(cfd, buf, sizeof(buf)-1, 0);
+        if (n <= 0)
+        {
+            close(cfd);
+            continue;
+        }
+
+        // Very basic request parsing (GET only)
+        std::string req(buf, (size_t)n);
+        std::string path = "/";
+        if (req.compare(0, 4, "GET ") == 0)
+        {
+            std::string::size_type sp = req.find(' ');
+            if (sp != std::string::npos)
+            {
+                std::string::size_type sp2 = req.find(' ', sp + 1);
+                if (sp2 != std::string::npos)
+                    path = req.substr(sp + 1, sp2 - (sp + 1));
+            }
+        }
+
+        std::string filePath;
+        if (path == "/" || path.empty())
+            filePath = _root + "/" + _index;
+        else
+        {
+            if (path.size() > 0 && path[0] == '/')
+                filePath = _root + path; // maps "/foo" -> "root/foo"
+            else
+                filePath = _root + "/" + path;
+        }
+
+        std::string body = readFileToString(filePath);
+        std::ostringstream resp;
+        if (!body.empty())
+        {
+            resp << "HTTP/1.1 200 OK\r\n";
+            resp << "Content-Type: text/html; charset=utf-8\r\n";
+            resp << "Content-Length: " << body.size() << "\r\n";
+            resp << "Connection: close\r\n\r\n";
+            resp << body;
+        }
+        else
+        {
+            std::string notFound = "<h1>404 Not Found</h1>";
+            resp << "HTTP/1.1 404 Not Found\r\n";
+            resp << "Content-Type: text/html; charset=utf-8\r\n";
+            resp << "Content-Length: " << notFound.size() << "\r\n";
+            resp << "Connection: close\r\n\r\n";
+            resp << notFound;
+        }
+
+        std::string respStr = resp.str();
+        sendAll(cfd, respStr.c_str(), respStr.size());
+        close(cfd);
+
+        // In CI single-request mode, exit after first served request
+        if (serveOnce)
+        {
+            ++servedCount;
+            if (servedCount >= 1)
+                break;
+        }
+    }
+
+    close(server_fd);
+    return 0;
+}
+
+--- FILE: ./src/ConfigParser.cpp ---
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ConfigParser.cpp                                   :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/08/13 13:21:29 by pmolzer           #+#    #+#             */
+/*   Updated: 2025/08/13 13:21:29 by pmolzer          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "../include/Common.hpp"
+
+// constructor
+ConfigParser::ConfigParser() : _configFile(""), _listenPort(8080), _root("html"), _index("index.html") {}
+// destructor
+ConfigParser::~ConfigParser() {}
+
+// static helper functions, trim whitespace from left
+static std::string ltrim(const std::string &s)
+{
+    std::string::size_type i = 0;
+    while (i < s.size() && (s[i] == ' ' || s[i] == '\t' || s[i] == '\r')) 
+        i++;
+    return s.substr(i);
+}
+
+// static helper functions, trim whitespace from right
+static std::string rtrim(const std::string &s)
+{
+    if (s.empty())
+        return s;
+    std::string::size_type i = s.size();
+    while (i > 0 && (s[i-1] == ' ' || s[i-1] == '\t' || s[i-1] == '\r'))
+        i--;
+    return s.substr(0, i);
+}
+
+// static helper functions, trim whitespace from both sides
+static std::string trim(const std::string &s)
+{ 
+    return rtrim(ltrim(s)); 
+}
+
+// static helper functions, strip comments
+static std::string strip_comment(const std::string &s)
+{
+    std::string::size_type pos = s.find('#');
+    if (pos == std::string::npos)
+        return s;
+    return s.substr(0, pos);
+}
+
+// getters
+int ConfigParser::getListenPort() const 
+{ 
+    return _listenPort; 
+}
+
+// getters
+const std::string& ConfigParser::getRoot() const 
+{ 
+    return _root; 
+}
+
+// getters
+const std::string& ConfigParser::getIndex() const 
+{ 
+    return _index; 
+}
+
+// parse config file
+bool ConfigParser::parse(const std::string &path)
+{
+    _configFile = path;
+
+    std::ifstream in(path.c_str());
+    if (!in.good())
+    {
+        std::cerr << "Failed to open config file: " << path << std::endl;
+        return false;
+    }
+
+    std::string line;
+    while (std::getline(in, line))
+    {
+        line = strip_comment(line);
+        line = trim(line);
+        if (line.empty()) continue;
+
+        // Tolerate braces and unknown block starts. We don't implement nested
+        // blocks yet, but ignoring these lines allows NGINX-like structure:
+        //   server { ... }
+        if (line == "server{" || line == "server {" || line == "{" || line == "}")
+            continue;
+
+        // expect directives ending with ';'
+        if (line[line.size() - 1] != ';')
+            continue; // ignore malformed for now (keep it simple)
+
+        // remove trailing ';'
+        line.erase(line.size() - 1);
+
+        // split into key and value (first space)
+        std::string::size_type sp = line.find(' ');
+        if (sp == std::string::npos) continue;
+        std::string key = trim(line.substr(0, sp));
+        std::string val = trim(line.substr(sp + 1));
+
+        if (key == "listen")
+        {
+            // allow formats like "8080" or "127.0.0.1:8080" (we grab the last part)
+            std::string::size_type colon = val.rfind(':');
+            std::string portStr = (colon == std::string::npos) ? val : val.substr(colon + 1);
+            _listenPort = std::atoi(portStr.c_str()); // switch to a c++98-style conversion
+            if (_listenPort <= 0) _listenPort = 8080; // fallback
+        }
+        else if (key == "root")
+        {
+            _root = val;
+        }
+        else if (key == "index")
+        {
+            _index = val;
+        }
+        // ignore unknown keys (e.g., location, allowed_methods, autoindex)
+        // TODO: implement error handling
+    }
+
+    return true;
+}
+
+
+--- FILE: ./README.md ---
+# webserv
+
+<p align="center">
+  <img src="https://github.com/mcombeau/mcombeau/blob/main/42_badges/webserve.png" alt="Webserv 42 project badge"/>
+</p>
+
+Here is a `README.md` file for your GitHub project, drawing on the information from the provided sources:
+
+```markdown
+# Webserv: A Non-Blocking HTTP Server from Scratch
+
+## Project Overview
+
+**Webserv** is a custom HTTP server implemented in **C++98**. This project aims to provide a deep understanding of how HTTP servers operate, focusing on core network aspects and **non-blocking behavior** to handle multiple concurrent connections efficiently. It demonstrates how to build a web server without external libraries (except standard C/C++ libraries).
+
+The server's primary function is to **receive HTTP requests from clients (like web browsers), process these requests, and send appropriate HTTP responses back**.
+
+## Features
+
+The `webserv` project supports a variety of essential web server functionalities and adheres to the HTTP/1.1 protocol, with compatibility for standard web browsers.
+
+### Core HTTP Functionality
+*   **HTTP/1.1 Compliance**: The server generates responses in the format expected by web browsers, following rules specified in RFC documents (e.g., RFC 7230-7235, RFC 9110, RFC 9112).
+*   **Supported HTTP Methods**: Implements the mandatory **GET**, **POST**, and **DELETE** methods.
+    *   **GET**: Retrieves a representation of the target resource.
+    *   **POST**: Processes enclosed content according to the resource's semantics, commonly used for sending form data or creating new resources.
+    *   **DELETE**: Requests the removal of the association between the target resource and its current functionality.
+*   **HTTP Response Status Codes**: Provides accurate HTTP status codes (e.g., 200 OK, 404 Not Found, 501 Not Implemented) in responses.
+*   **Serving Static Websites**: Capable of serving fully static web pages.
+*   **File Uploads**: Clients can upload files to the server, with configurable storage locations.
+*   **Default Error Pages**: If no custom error page is provided, the server will display its own default error pages.
+
+### Network and Performance
+*   **Non-Blocking I/O**: The server is designed to be non-blocking at all times, preventing it from freezing or stalling when waiting for I/O operations.
+*   **Single `poll()` (or Equivalent) for I/O**: Utilizes a single call to `poll()` (or `select()`, `epoll()`, `kqueue()`) to monitor all I/O operations between clients and the server simultaneously, including listening for new connections. This enables a single thread to manage multiple connections concurrently.
+*   **TCP/IP Socket Programming**: Built on TCP sockets, ensuring reliable, ordered, and error-checked delivery of data.
+    *   Covers socket creation, binding, listening for connections, accepting new connections, and sending/receiving messages.
+*   **Handling Large Data (Chunking)**: Employs chunking to process large amounts of data in specified lengths, preventing the server from freezing.
+
+### Configuration
+The server's behavior is defined through a configuration file, inspired by NGINX server configuration format.
+*   **Interface and Port Listening**: Define multiple `interface:port` pairs, allowing the server to listen on various ports and serve different content.
+*   **Root Directory**: Set the root directory for requests.
+*   **Index Files**: Specify default files to serve when a requested resource is a directory (e.g., `index.html`).
+*   **Custom Error Pages**: Define specific error pages for different HTTP status codes (e.g., 404.html for 404 Not Found).
+*   **Directory Listing (`autoindex`)**: Enable or disable automatic generation of directory listings.
+*   **Allowed HTTP Methods**: Configure the list of accepted HTTP methods for specific URL routes.
+*   **HTTP Redirection**: Define rules for HTTP redirection.
+*   **Client Max Body Size**: Set the maximum allowed size for client request bodies.
+*   **CGI Execution**: Support for Common Gateway Interface (CGI) execution based on file extensions (e.g., PHP, Python scripts).
+    *   Handles environment variables, un-chunking requests, and processing CGI output.
+
+## Getting Started
+
+To get a copy of this project up and running on your local machine for development and testing, follow these steps.
+
+### Prerequisites
+
+*   A **Unix-based system** (macOS or Linux).
+*   **`make`** utility for compilation.
+*   **C++98 compiler** (e.g., `g++`).
+
+### Installation
+
+1.  **Clone the repository**:
+    ```bash
+    git clone <repository_url> # Placeholder: Replace <repository_url> with the actual URL of your repository.
+    cd webserv # Change to the project directory
+    ```
+2.  **Compile the source code**:
+    Use the provided `Makefile` to compile the server.
+    ```bash
+    make
+    ```
+    This will create the `webserv` executable in the project directory.
+
+### Running the Server
+
+The server requires a configuration file as an argument. You will need to create a configuration file (e.g., `config.nginx`) based on the supported directives mentioned above.
+
+Example `config.nginx`:
+```nginx
+server {
+    listen 8080;
+    root html;
+    index index.html;
+    error_page 404 404.html;
+    client_max_body_size 1MB;
+
+    location / {
+        allowed_methods GET POST DELETE;
+        autoindex on;
+    }
+    location /upload {
+        allowed_methods POST;
+        upload_store /var/www/uploads; # Example: set your desired upload directory
+    }
+    location /cgi-bin {
+        allowed_methods GET POST;
+        cgi_extension .php .py; # Example: for PHP and Python CGI
+    }
+    location /redirect {
+        return https://www.google.com;
+    }
+}
+```
+**To run the server**:
+```bash
+./webserv path/to/your/config.nginx
+```
+
+### Testing the Server
+
+After running the server, you can test it using a web browser or tools like `curl` or `telnet`.
+
+1.  **Open your web browser** and navigate to `localhost:8080` (or the port you configured in your `config.nginx`).
+2.  Try accessing specific files like `localhost:8080/index.html`.
+3.  Observe the server's output in the terminal where it's running. For instance, when visiting `localhost:8080/index.html` with the TCP server code, you might see the incoming GET request headers.
+4.  If the server is configured with the example `char* hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!"` for its response, navigating to `localhost:8080` will display "Hello world!" in your browser.
+
+For more advanced testing and debugging, you can compare your server's headers and behavior with those of NGINX. Stress testing is also recommended to ensure resilience.
+
+## Technical Details
+
+*   **Language**: C++98.
+*   **Operating Systems**: Primarily developed for UNIX-based systems like macOS and Linux. TCP implementation may differ slightly on Windows, but the HTTP server logic remains language-independent.
+*   **I/O Multiplexing**: The project demonstrates the use of `select()`, `poll()`, `epoll()` (Linux-specific), and `kqueue()` (macOS-specific) for handling multiple client connections concurrently and in a non-blocking manner. While `select()` is more portable, `poll()` and `epoll()` are often considered more efficient for a large number of file descriptors.
+*   **RFC References**: The implementation is guided by HTTP RFCs, notably HTTP/1.1 specifications (RFC 7230-7235), which were later replaced by RFC 9110, RFC 9111, RFC 9112, RFC 9113, and RFC 9114. HTTP/1.0 (RFC 1945) is also a foundational reference.
+
+## Acknowledgments
+
+- Based on the 42 School curriculum project specifications in collaboration with [Shruti Gangal](https://github.com/shrutigangal) and [Alvin Varghese](https://github.com/Alvinvarghese)
+
+
+--- FILE: ./RULES.md ---
+Standard: C++98
+Namespaces are not allowed
+Do not use structs, classes are preferred
+In header files go classes and methods in the cpp files with same name as header files
+
+--> Look at SUBJECT.md for more details and which methods/functions are allowed
