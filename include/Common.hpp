@@ -29,6 +29,8 @@ macros used throughout the project.*/
 #include <arpa/inet.h> // internet address: inet_addr()
 #include <fcntl.h> // file control: O_RDONLY
 #include <cstring> // string operations: memset()
+#include <csignal> // signal handling: SIGINT, SIGTERM
+#include <cerrno> // error handling: errno
 #include "ConfigParser.hpp" // configuration parser 
 #include "HttpServer.hpp" // HTTP server
 

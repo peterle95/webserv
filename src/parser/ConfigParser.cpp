@@ -13,6 +13,7 @@
 
 // constructor
 ConfigParser::ConfigParser() : _configFile(""), _listenPort(8080), _root("html"), _index("index.html"), _lines() {}
+
 // construct from lines
 ConfigParser::ConfigParser(const std::vector<std::string>& lines) : _configFile(""), _listenPort(8080), _root("html"), _index("index.html"), _lines()
 {
@@ -22,6 +23,7 @@ ConfigParser::ConfigParser(const std::vector<std::string>& lines) : _configFile(
 ConfigParser::~ConfigParser() {}
 
 // helper: parse from given lines
+// refactor this functiton
 void ConfigParser::parseLines(const std::vector<std::string>& lines)
 {
     this->_lines.clear();

@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 13:20:54 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/16 16:19:52 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/16 17:36:07 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,5 +50,10 @@ class ConfigParser
         // TODO: implement error handling
         // TODO: implement parsing more directives (directives are the lines in the config file)
 };
+
+std::string ltrim(const std::string &s);
+std::string rtrim(const std::string &s);
+std::string trim(const std::string &s);
+std::string strip_comment(const std::string &s);
 
 #endif
