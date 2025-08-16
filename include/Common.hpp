@@ -34,7 +34,7 @@ macros used throughout the project.*/
 
 // create a DEBUG macro so that if it's true the debugging mode in the code will print stuff
 #ifndef DEBUG
-#define DEBUG false
+#define DEBUG true
 #endif
 #if DEBUG
 #define DEBUG_PRINT(x) std::cout << x << std::endl

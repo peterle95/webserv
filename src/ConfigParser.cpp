@@ -86,20 +86,29 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
 
     for (size_t i = 0; i < lines.size(); ++i)
     {
-        std::string line = strip_comment(lines[i]);
+        const std::string raw = lines[i];
+        DEBUG_PRINT("Line " << i << " raw: '" << raw << "'");
+        std::string line = strip_comment(raw);
         line = trim(line);
+        DEBUG_PRINT("Line " << i << " trimmed: '" << line << "'");
 
         if (!line.empty())
             this->_lines.push_back(line);
 
-        if (line.empty())
+        if (line.empty()) {
+            DEBUG_PRINT("Line " << i << " skipped: empty after trim/comment");
             continue;
+        }
 
-        if (line == "server{" || line == "server {" || line == "{" || line == "}")
+        if (line == "server{" || line == "server {" || line == "{" || line == "}") {
+            DEBUG_PRINT("Line " << i << " skipped: brace/block marker");
             continue;
+        }
 
-        if (line[line.size() - 1] != ';')
+        if (line[line.size() - 1] != ';') {
+            DEBUG_PRINT("Line " << i << " skipped: missing ';'");
             continue;
+        }
 
         line.erase(line.size() - 1);
 
@@ -107,6 +116,7 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
         if (sp == std::string::npos) continue;
         std::string key = trim(line.substr(0, sp));
         std::string val = trim(line.substr(sp + 1));
+        DEBUG_PRINT("Directive key='" << key << "' val='" << val << "'");
 
         if (key == "listen")
         {
@@ -118,23 +128,31 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
                 std::cerr << "Invalid port number: " << portStr << std::endl;
                 this->_listenPort = 8080;
             }
+            DEBUG_PRINT("Applied listen -> " << this->_listenPort);
         }
         else if (key == "root")
         {
             this->_root = val;
+            DEBUG_PRINT("Applied root -> '" << this->_root << "'");
         }
         else if (key == "index")
         {
             this->_index = val;
+            DEBUG_PRINT("Applied index -> '" << this->_index << "'");
+        }
+        else {
+            DEBUG_PRINT("Unknown directive '" << key << "' (ignored)");
         }
         // TODO: add for more directives
     }
+    DEBUG_PRINT("parseLines complete: listen=" << this->_listenPort << ", root='" << this->_root << "', index='" << this->_index << "'");
 }
 
 // parse config file
 bool ConfigParser::parse(const std::string &path)
 {
     this->_configFile = path;
+    DEBUG_PRINT("Opening config file: '" << path << "'");
 
     std::ifstream in(path.c_str());
     if (!in.good())
@@ -147,8 +165,10 @@ bool ConfigParser::parse(const std::string &path)
     std::string line;
     while (std::getline(in, line))
         rawLines.push_back(line);
+    DEBUG_PRINT("Read " << rawLines.size() << " lines from file");
 
     parseLines(rawLines);
+    DEBUG_PRINT("Finished parsing file: '" << path << "'");
 
     return true;
 }
