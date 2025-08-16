@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 13:20:54 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/16 15:23:22 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/16 15:29:02 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@ class ConfigParser
         int         _listenPort;
         std::string _root;
         std::string _index;
-        // add more directories
+        // add more directives
         std::vector<std::string> _lines;
 
         // Parse from a set of lines (expects raw lines; will trim/comment-strip internally)

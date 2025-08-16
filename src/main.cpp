@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/12 12:44:17 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/16 15:15:08 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/16 15:51:40 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,7 @@ int main(int argc, char **argv)
     if (!parser.parse(configPath))
         return 1;
 
+    if(DEBUG){
     // For now, just show parsed values to verify the minimal parser works
     std::cout << "Config loaded from: " << configPath << std::endl;
     std::cout << "listen: " << parser.getListenPort() << std::endl;
@@ -40,7 +41,9 @@ int main(int argc, char **argv)
     const std::vector<std::string>& lines = parser.getLines();
     for (size_t i = 0; i < lines.size(); ++i)
         std::cout << "CFG[" << i << "]: " << lines[i] << std::endl;
-
+    }
+    std::string example = "print test";
+    DEBUG_PRINT("DEBUG_PRINT: " << example << std::endl);
     HttpServer server(parser.getListenPort(), parser.getRoot(), parser.getIndex());
     return server.start();
 }

@@ -127,6 +127,7 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
         {
             this->_index = val;
         }
+        // TODO: add for more directives
     }
 }
 

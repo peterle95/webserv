@@ -6,13 +6,14 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 14:20:00 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/13 15:14:03 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/16 15:47:04 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../include/Common.hpp"
 #include <csignal>
 #include <cerrno>
+#include <poll.h>
 
 HttpServer::HttpServer(int port, const std::string &root, const std::string &index)
 : _port(port), _root(root), _index(index) {}
@@ -106,18 +107,33 @@ int HttpServer::start()
     bool serveOnce = (onceEnv && std::string(onceEnv) == "1");
     size_t servedCount = 0;
 
-    // we need infinite loop to keep the server running
-    while(true)
+    // Use poll to avoid blocking indefinitely in accept(), enabling fast Ctrl+C
+    while (!g_stop)
     {
+        struct pollfd pfd;
+        pfd.fd = server_fd;
+        pfd.events = POLLIN;
+        pfd.revents = 0;
+
+        int pr = poll(&pfd, 1, 500); // 500ms tick to check g_stop
+        if (pr < 0)
+        {
+            if (errno == EINTR)
+                continue; // interrupted by signal, re-check g_stop
+            std::cerr << "poll() failed" << std::endl;
+            break;
+        }
+        if (pr == 0)
+            continue; // timeout, loop back and check g_stop
+
+        if (!(pfd.revents & POLLIN))
+            continue;
+
         struct sockaddr_in cli; // client address that is connecting to the server
         socklen_t clilen = sizeof(cli); 
         int cfd = accept(server_fd, (struct sockaddr*)&cli, &clilen); // accept the connection
         if (cfd < 0)
-        {
-            if (errno == EINTR && g_stop)
-                break; // interrupted by signal, time to stop
             continue;
-        }
 
         char buf[4096]; // buffer to store the request
         std::memset(buf, 0, sizeof(buf));

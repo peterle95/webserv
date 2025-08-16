@@ -32,4 +32,14 @@ macros used throughout the project.*/
 #include "ConfigParser.hpp" // configuration parser 
 #include "HttpServer.hpp" // HTTP server
 
+// create a DEBUG macro so that if it's true the debugging mode in the code will print stuff
+#ifndef DEBUG
+#define DEBUG false
+#endif
+#if DEBUG
+#define DEBUG_PRINT(x) std::cout << x << std::endl
+#else
+#define DEBUG_PRINT(x)
+#endif
+
 #endif
