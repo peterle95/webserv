@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 13:20:54 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/16 15:17:51 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/16 15:23:22 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,8 +24,13 @@ class ConfigParser
         std::string _index;
         // add more directories
         std::vector<std::string> _lines;
+
+        // Parse from a set of lines (expects raw lines; will trim/comment-strip internally)
+        void        parseLines(const std::vector<std::string>& lines);
     public:
         ConfigParser();
+        // Construct directly from lines (e.g., read elsewhere)
+        ConfigParser(const std::vector<std::string>& lines);
         ~ConfigParser();
 
         // Parse minimal NGINX-like config supporting: listen, root, index

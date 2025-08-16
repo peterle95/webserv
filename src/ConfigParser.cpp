@@ -13,6 +13,11 @@
 
 // constructor
 ConfigParser::ConfigParser() : _configFile(""), _listenPort(8080), _root("html"), _index("index.html"), _lines() {}
+// construct from lines
+ConfigParser::ConfigParser(const std::vector<std::string>& lines) : _configFile(""), _listenPort(8080), _root("html"), _index("index.html"), _lines()
+{
+    parseLines(lines);
+}
 // destructor
 ConfigParser::~ConfigParser() {}
 
@@ -74,10 +79,61 @@ const std::vector<std::string>& ConfigParser::getLines() const
     return _lines;
 }
 
+// helper: parse from given lines
+void ConfigParser::parseLines(const std::vector<std::string>& lines)
+{
+    this->_lines.clear();
+
+    for (size_t i = 0; i < lines.size(); ++i)
+    {
+        std::string line = strip_comment(lines[i]);
+        line = trim(line);
+
+        if (!line.empty())
+            this->_lines.push_back(line);
+
+        if (line.empty())
+            continue;
+
+        if (line == "server{" || line == "server {" || line == "{" || line == "}")
+            continue;
+
+        if (line[line.size() - 1] != ';')
+            continue;
+
+        line.erase(line.size() - 1);
+
+        std::string::size_type sp = line.find(' ');
+        if (sp == std::string::npos) continue;
+        std::string key = trim(line.substr(0, sp));
+        std::string val = trim(line.substr(sp + 1));
+
+        if (key == "listen")
+        {
+            std::string::size_type colon = val.rfind(':');
+            std::string portStr = (colon == std::string::npos) ? val : val.substr(colon + 1);
+            this->_listenPort = std::atoi(portStr.c_str());
+            if (this->_listenPort <= 0) 
+            {
+                std::cerr << "Invalid port number: " << portStr << std::endl;
+                this->_listenPort = 8080;
+            }
+        }
+        else if (key == "root")
+        {
+            this->_root = val;
+        }
+        else if (key == "index")
+        {
+            this->_index = val;
+        }
+    }
+}
+
 // parse config file
 bool ConfigParser::parse(const std::string &path)
 {
-    _configFile = path;
+    this->_configFile = path;
 
     std::ifstream in(path.c_str());
     if (!in.good())
@@ -86,58 +142,12 @@ bool ConfigParser::parse(const std::string &path)
         return false;
     }
 
-    _lines.clear();
+    std::vector<std::string> rawLines;
     std::string line;
     while (std::getline(in, line))
-    {
-        // strip comments and trim before storing and parsing
-        line = strip_comment(line);
-        line = trim(line);
+        rawLines.push_back(line);
 
-        // store trimmed line if not empty
-        if (!line.empty())
-            _lines.push_back(line);
-
-        if (line.empty()) continue;
-
-        // Tolerate braces and unknown block starts. We don't implement nested
-        // blocks yet, but ignoring these lines allows NGINX-like structure:
-        //   server { ... }
-        if (line == "server{" || line == "server {" || line == "{" || line == "}")
-            continue;
-
-        // expect directives ending with ';'
-        if (line[line.size() - 1] != ';')
-            continue; // ignore malformed for now (keep it simple)
-
-        // remove trailing ';'
-        line.erase(line.size() - 1);
-
-        // split into key and value (first space)
-        std::string::size_type sp = line.find(' ');
-        if (sp == std::string::npos) continue;
-        std::string key = trim(line.substr(0, sp));
-        std::string val = trim(line.substr(sp + 1));
-
-        if (key == "listen")
-        {
-            // allow formats like "8080" or "127.0.0.1:8080" (we grab the last part)
-            std::string::size_type colon = val.rfind(':');
-            std::string portStr = (colon == std::string::npos) ? val : val.substr(colon + 1);
-            _listenPort = std::atoi(portStr.c_str());
-            if (_listenPort <= 0) _listenPort = 8080; // fallback
-        }
-        else if (key == "root")
-        {
-            _root = val;
-        }
-        else if (key == "index")
-        {
-            _index = val;
-        }
-        // ignore unknown keys (e.g., location, allowed_methods, autoindex)
-        // TODO: implement error handling
-    }
+    parseLines(rawLines);
 
     return true;
 }
