@@ -44,7 +44,8 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
             continue;
         }
 
-        if (line == "server{" || line == "server {" || line == "{" || line == "}") {
+        // Skip block markers (e.g., 'server {', 'location / {', '{', or closing '}')
+        if (line == "}" || line.find('{') != std::string::npos) {
             DEBUG_PRINT("Line " << i << " skipped: brace/block marker");
             continue;
         }

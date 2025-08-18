@@ -66,10 +66,4 @@ class ErrorHandler
      */
 };
 
-// Prototypes
-
-int ErrorHandler::Exception::code() const;
-int ErrorHandler::Exception::line() const;
-const std::string& ErrorHandler::Exception::file() const;
-
 #endif
