@@ -33,6 +33,7 @@ macros used throughout the project.*/
 #include <cerrno> // error handling: errno
 #include "ConfigParser.hpp" // configuration parser 
 #include "HttpServer.hpp" // HTTP server
+#include "ErrorHandler.hpp"
 
 // create a DEBUG macro so that if it's true the debugging mode in the code will print stuff
 #ifndef DEBUG
