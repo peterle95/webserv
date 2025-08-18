@@ -23,7 +23,7 @@ ConfigParser::ConfigParser(const std::vector<std::string>& lines) : _configFile(
 ConfigParser::~ConfigParser() {}
 
 // helper: parse from given lines
-// refactor this functiton
+// Minimal validation with error throwing for invalid syntax/values
 void ConfigParser::parseLines(const std::vector<std::string>& lines)
 {
     this->_lines.clear();
@@ -50,8 +50,9 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
         }
 
         if (line[line.size() - 1] != ';') {
-            DEBUG_PRINT("Line " << i << " skipped: missing ';'");
-            continue;
+            // Missing semicolon is a syntax error
+            std::string msg = ErrorHandler::makeLocationMsg("Missing ';' at end of directive", (int)i + 1, this->_configFile);
+            throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_MISSING_SEMICOLON, (int)i + 1, this->_configFile);
         }
 
         line.erase(line.size() - 1);
@@ -67,10 +68,11 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
             std::string::size_type colon = val.rfind(':');
             std::string portStr = (colon == std::string::npos) ? val : val.substr(colon + 1);
             this->_listenPort = std::atoi(portStr.c_str());
-            if (this->_listenPort <= 0) 
+            if (this->_listenPort <= 0)
             {
-                std::cerr << "Invalid port number: " << portStr << std::endl;
-                this->_listenPort = 8080;
+                std::string msg = ErrorHandler::makeLocationMsg(std::string("Invalid port number: ") + portStr,
+                                                                (int)i + 1, this->_configFile);
+                throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_PORT, (int)i + 1, this->_configFile);
             }
             DEBUG_PRINT("Applied listen -> " << this->_listenPort);
         }
@@ -85,6 +87,7 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
             DEBUG_PRINT("Applied index -> '" << this->_index << "'");
         }
         else {
+            // Keep unknown directives as non-fatal for now (skeleton stage)
             DEBUG_PRINT("Unknown directive '" << key << "' (ignored)");
         }
         // TODO: add for more directives
@@ -98,21 +101,26 @@ bool ConfigParser::parse(const std::string &path)
     this->_configFile = path;
     DEBUG_PRINT("Opening config file: '" << path << "'");
 
-    std::ifstream in(path.c_str());
-    if (!in.good())
-    {
-        std::cerr << "Failed to open config file: " << path << std::endl;
+    try {
+        std::ifstream in(path.c_str());
+        if (!in.good())
+        {
+            std::string msg = ErrorHandler::makeLocationMsg(std::string("Failed to open config file: ") + path, -1, path);
+            throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_FILE_NOT_FOUND);
+        }
+
+        std::vector<std::string> rawLines;
+        std::string line;
+        while (std::getline(in, line))
+            rawLines.push_back(line);
+        DEBUG_PRINT("Read " << rawLines.size() << " lines from file");
+
+        parseLines(rawLines);
+        DEBUG_PRINT("Finished parsing file: '" << path << "'");
+        return true;
+    }
+    catch (const ErrorHandler::Exception &e) {
+        std::cerr << "[CONFIG ERROR] (" << ErrorHandler::codeToString(e.code()) << ") " << e.what() << std::endl;
         return false;
     }
-
-    std::vector<std::string> rawLines;
-    std::string line;
-    while (std::getline(in, line))
-        rawLines.push_back(line);
-    DEBUG_PRINT("Read " << rawLines.size() << " lines from file");
-
-    parseLines(rawLines);
-    DEBUG_PRINT("Finished parsing file: '" << path << "'");
-
-    return true;
 }

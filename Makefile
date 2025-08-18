@@ -6,7 +6,9 @@ SRCS = src/main.cpp \
 		src/parser/ConfigParser.cpp \
 		src/server/HttpServer.cpp \
 		src/parser/Getters.cpp \
-		src/parser/Trim.cpp
+		src/parser/Trim.cpp \
+		src/error_handling/ErrorHandler.cpp \
+		src/error_handling/Getters.cpp
 		
 OBJS = $(SRCS:.cpp=.o)
 
