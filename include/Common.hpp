@@ -31,6 +31,9 @@ macros used throughout the project.*/
 #include <cstring> // string operations: memset()
 #include <csignal> // signal handling: SIGINT, SIGTERM
 #include <cerrno> // error handling: errno
+#include <map>
+#include <set>
+#include <vector>
 #include "ConfigParser.hpp" // configuration parser 
 #include "HttpServer.hpp" // HTTP server
 #include "ErrorHandler.hpp"

@@ -12,11 +12,15 @@
 #include "../../include/Common.hpp"
 
 // constructor
-ConfigParser::ConfigParser() : _configFile(""), _listenPort(8080), _root("html"), _index("index.html"), _lines() {}
+ConfigParser::ConfigParser() : _configFile(""), _listenPort(8080), _root("html"), _index(), _lines()
+{
+    _index.push_back("index.html");
+}
 
 // construct from lines
-ConfigParser::ConfigParser(const std::vector<std::string>& lines) : _configFile(""), _listenPort(8080), _root("html"), _index("index.html"), _lines()
+ConfigParser::ConfigParser(const std::vector<std::string>& lines) : _configFile(""), _listenPort(8080), _root("html"), _index(), _lines()
 {
+    _index.push_back("index.html");
     parseLines(lines);
 }
 // destructor
@@ -84,8 +88,8 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
         }
         else if (key == "index")
         {
-            this->_index = val;
-            DEBUG_PRINT("Applied index -> '" << this->_index << "'");
+            this->_index.push_back(val);
+            DEBUG_PRINT("Applied index -> '" << this->_index.back() << "'");
         }
         else {
             // Keep unknown directives as non-fatal for now (skeleton stage)
@@ -93,7 +97,6 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
         }
         // TODO: add for more directives
     }
-    DEBUG_PRINT("parseLines complete: listen=" << this->_listenPort << ", root='" << this->_root << "', index='" << this->_index << "'");
 }
 
 // parse config file

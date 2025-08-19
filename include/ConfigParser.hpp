@@ -6,14 +6,12 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 13:20:54 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/19 15:43:08 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/19 16:12:02 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef CONFIGPARSER_HPP
 #define CONFIGPARSER_HPP
-#include <string>
-#include <vector>
 
 class ConfigParser
 {
@@ -28,7 +26,6 @@ class ConfigParser
         std::string _host; // to implement later
         // add more directives
         std::set<std::string> _allowedMethods; // to implement later, set because order does not matter
-        std
         std::vector<std::string> _lines;
 
         // Parse from a set of lines (expects raw lines; will trim/comment-strip internally)
