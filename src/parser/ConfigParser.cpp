@@ -12,13 +12,33 @@
 #include "../../include/Common.hpp"
 
 // constructor
-ConfigParser::ConfigParser() : _configFile(""), _listenPort(8080), _root("html"), _index(), _lines()
+ConfigParser::ConfigParser()
+    : _configFile("")
+    , _listenPort(8080)
+    , _root("html")
+    , _index()
+    , _serverName("")
+    , _errorPage()
+    , _clientMaxBodySize(1024 * 1024) // default 1 MiB
+    , _host("")
+    , _allowedMethods()
+    , _lines()
 {
     _index.push_back("index.html");
 }
 
 // construct from lines
-ConfigParser::ConfigParser(const std::vector<std::string>& lines) : _configFile(""), _listenPort(8080), _root("html"), _index(), _lines()
+ConfigParser::ConfigParser(const std::vector<std::string>& lines)
+    : _configFile("")
+    , _listenPort(8080)
+    , _root("html")
+    , _index()
+    , _serverName("")
+    , _errorPage()
+    , _clientMaxBodySize(1024 * 1024) // default 1 MiB
+    , _host("")
+    , _allowedMethods()
+    , _lines()
 {
     _index.push_back("index.html");
     parseLines(lines);
@@ -43,7 +63,8 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
         if (!line.empty())
             this->_lines.push_back(line);
 
-        if (line.empty()) {
+        if (line.empty())
+        {
             DEBUG_PRINT("Line " << i << " skipped: empty after trim/comment");
             continue;
         }
@@ -69,28 +90,19 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
         DEBUG_PRINT("Directive key='" << key << "' val='" << val << "'");
 
         if (key == "listen")
-        {
-            std::string::size_type colon = val.rfind(':');
-            std::string portStr = (colon == std::string::npos) ? val : val.substr(colon + 1);
-            this->_listenPort = std::atoi(portStr.c_str());
-            if (this->_listenPort <= 0)
-            {
-                std::string msg = ErrorHandler::makeLocationMsg(std::string("Invalid port number: ") + portStr,
-                                                                (int)i + 1, this->_configFile);
-                throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_PORT, (int)i + 1, this->_configFile);
-            }
-            DEBUG_PRINT("Applied listen -> " << this->_listenPort);
-        }
+            parseListen(val, i + 1);
         else if (key == "root")
-        {
-            this->_root = val;
-            DEBUG_PRINT("Applied root -> '" << this->_root << "'");
-        }
+            parseRoot(val, i + 1);
         else if (key == "index")
-        {
-            this->_index.push_back(val);
-            DEBUG_PRINT("Applied index -> '" << this->_index.back() << "'");
-        }
+            parseIndex(val, i + 1);
+        else if (key == "server_name")
+            parseServerName(val, i + 1);
+        else if (key == "client_max_body_size")
+            parseClientMaxBodySize(val, i + 1);
+        else if (key == "allowed_methods")
+            parseAllowedMethods(val, i + 1);
+        else if (key == "error_page")
+            parseErrorPage(val, i + 1);
         else {
             // Keep unknown directives as non-fatal for now (skeleton stage)
             DEBUG_PRINT("Unknown directive '" << key << "' (ignored)");

@@ -30,6 +30,15 @@ class ConfigParser
 
         // Parse from a set of lines (expects raw lines; will trim/comment-strip internally)
         void        parseLines(const std::vector<std::string>& lines);
+
+        // Per-directive parsers (implemented in separate files)
+        void        parseListen(const std::string &val, size_t lineNo);
+        void        parseRoot(const std::string &val, size_t lineNo);
+        void        parseIndex(const std::string &val, size_t lineNo);
+        void        parseServerName(const std::string &val, size_t lineNo);
+        void        parseClientMaxBodySize(const std::string &val, size_t lineNo);
+        void        parseAllowedMethods(const std::string &val, size_t lineNo);
+        void        parseErrorPage(const std::string &val, size_t lineNo);
     public:
         ConfigParser();
         // Construct directly from lines (e.g., read elsewhere)

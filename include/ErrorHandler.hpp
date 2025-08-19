@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/18 11:08:47 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/18 11:46:59 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/19 17:32:47 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,10 +45,10 @@ class ErrorHandler
         Exception(const std::string &message, int code, int line, const std::string &file);
         virtual ~Exception() throw();
 
-        const char* what() const throw();    // human-readable summary
+        const char* what() const throw();
         int         code() const;             // ErrorCode value
-        int         line() const;             // line number if available
-        const std::string& file() const;      // file path if available
+        int         line() const;             // line number
+        const std::string& file() const;      // file path
     };
 
     // Helper to build a formatted message with location context
