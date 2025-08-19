@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/19 15:05:00 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/19 15:05:00 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/19 18:18:21 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,8 +14,8 @@
 
 void ConfigParser::parseListen(const std::string &val, size_t lineNo)
 {
-    std::string::size_type colon = val.rfind(':');
-    std::string portStr = (colon == std::string::npos) ? val : val.substr(colon + 1);
+    std::string::size_type colonPos = val.rfind(':');
+    std::string portStr = (colonPos == std::string::npos) ? val : val.substr(colonPos + 1);
     this->_listenPort = std::atoi(portStr.c_str());
     if (this->_listenPort <= 0)
     {
@@ -25,8 +25,8 @@ void ConfigParser::parseListen(const std::string &val, size_t lineNo)
     }
     DEBUG_PRINT("Applied listen -> " << this->_listenPort);
     // If host was provided (e.g., 127.0.0.1:8080), capture it
-    if (colon != std::string::npos) {
-        std::string host = trim(val.substr(0, colon));
+    if (colonPos != std::string::npos) {
+        std::string host = trim(val.substr(0, colonPos));
         if (!host.empty()) {
             this->_host = host;
             DEBUG_PRINT("Applied host -> '" << this->_host << "'");
