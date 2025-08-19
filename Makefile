@@ -9,6 +9,7 @@ SRCS = src/main.cpp \
 		src/parser/Trim.cpp \
 		src/error_handling/ErrorHandler.cpp \
 		src/error_handling/Getters.cpp \
+		src/parser/ParserHelpers.cpp \
 		src/parser/directives/ParseListen.cpp \
 		src/parser/directives/ParseRoot.cpp \
 		src/parser/directives/ParseIndex.cpp \

@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 13:20:54 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/19 16:12:02 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/19 17:37:01 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@ class ConfigParser
         // Parse from a set of lines (expects raw lines; will trim/comment-strip internally)
         void        parseLines(const std::vector<std::string>& lines);
 
-        // Per-directive parsers (implemented in separate files)
+        // Per-directive parsers
         void        parseListen(const std::string &val, size_t lineNo);
         void        parseRoot(const std::string &val, size_t lineNo);
         void        parseIndex(const std::string &val, size_t lineNo);
@@ -39,6 +39,14 @@ class ConfigParser
         void        parseClientMaxBodySize(const std::string &val, size_t lineNo);
         void        parseAllowedMethods(const std::string &val, size_t lineNo);
         void        parseErrorPage(const std::string &val, size_t lineNo);
+
+        // Helpers to keep parseLines small
+        std::string preprocessLine(const std::string &raw);
+        bool        isBlockMarker(const std::string &line) const; // '{', '}', or contains '{'
+        void        requireSemicolon(const std::string &line, size_t lineNo) const;
+        std::string stripTrailingSemicolon(const std::string &line) const;
+        bool        splitKeyVal(const std::string &line, std::string &key, std::string &val) const;
+        void        handleDirective(const std::string &key, const std::string &val, size_t lineNo);
     public:
         ConfigParser();
         // Construct directly from lines (e.g., read elsewhere)

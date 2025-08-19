@@ -5,9 +5,10 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/08/13 13:21:29 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/13 13:21:29 by pmolzer          ###   ########.fr       */
+/*   Created: 2025/08/19 17:38:04 by pmolzer           #+#    #+#             */
+/*   Updated: 2025/08/19 17:38:04 by pmolzer          ###   ########.fr       */
 /*                                                                            */
+/* ************************************************************************** */
 
 #include "../../include/Common.hpp"
 
@@ -56,9 +57,8 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
     {
         const std::string raw = lines[i];
         DEBUG_PRINT("Line " << i << " raw: '" << raw << "'");
-        std::string line = strip_comment(raw);
-        line = trim(line);
-        DEBUG_PRINT("Line " << i << " trimmed: '" << line << "'");
+        std::string line = preprocessLine(raw);
+        DEBUG_PRINT("Line " << i << " preprocessed: '" << line << "'");
 
         if (!line.empty())
             this->_lines.push_back(line);
@@ -69,45 +69,20 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
             continue;
         }
 
-        // Skip block markers (e.g., 'server {', 'location / {', '{', or closing '}')
-        if (line == "}" || line.find('{') != std::string::npos) {
+        if (isBlockMarker(line)) {
             DEBUG_PRINT("Line " << i << " skipped: brace/block marker");
             continue;
         }
 
-        if (line[line.size() - 1] != ';') {
-            // Missing semicolon is a syntax error
-            std::string msg = ErrorHandler::makeLocationMsg("Missing ';' at end of directive", (int)i + 1, this->_configFile);
-            throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_MISSING_SEMICOLON, (int)i + 1, this->_configFile);
-        }
+        requireSemicolon(line, i + 1);
+        line = stripTrailingSemicolon(line);
 
-        line.erase(line.size() - 1);
-
-        std::string::size_type sp = line.find(' ');
-        if (sp == std::string::npos) continue;
-        std::string key = trim(line.substr(0, sp));
-        std::string val = trim(line.substr(sp + 1));
+        std::string key, val;
+        if (!splitKeyVal(line, key, val))
+            continue;
         DEBUG_PRINT("Directive key='" << key << "' val='" << val << "'");
 
-        if (key == "listen")
-            parseListen(val, i + 1);
-        else if (key == "root")
-            parseRoot(val, i + 1);
-        else if (key == "index")
-            parseIndex(val, i + 1);
-        else if (key == "server_name")
-            parseServerName(val, i + 1);
-        else if (key == "client_max_body_size")
-            parseClientMaxBodySize(val, i + 1);
-        else if (key == "allowed_methods")
-            parseAllowedMethods(val, i + 1);
-        else if (key == "error_page")
-            parseErrorPage(val, i + 1);
-        else {
-            // Keep unknown directives as non-fatal for now (skeleton stage)
-            DEBUG_PRINT("Unknown directive '" << key << "' (ignored)");
-        }
-        // TODO: add for more directives
+        handleDirective(key, val, i + 1);
     }
 }
 
