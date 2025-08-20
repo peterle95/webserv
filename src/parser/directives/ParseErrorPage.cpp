@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/19 15:05:00 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/19 15:05:00 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/20 17:26:59 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,20 +19,14 @@ void ConfigParser::parseErrorPage(const std::string &val, size_t lineNo)
     std::vector<std::string> parts;
     std::string tok;
     while (iss >> tok) parts.push_back(tok);
-    if (parts.size() < 2) {
+    if (parts.size() < 2) 
+    {
         std::string msg = ErrorHandler::makeLocationMsg("error_page requires at least a code and a target", (int)lineNo, this->_configFile);
         throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE, (int)lineNo, this->_configFile);
     }
     std::string target = parts.back();
-    for (size_t k = 0; k + 1 < parts.size(); ++k) {
-        const std::string &codeStr = parts[k];
-        int code = std::atoi(codeStr.c_str());
-        if (code <= 0) {
-            std::string msg = ErrorHandler::makeLocationMsg(std::string("Invalid status code in error_page: ") + codeStr,
-                                                            (int)lineNo, this->_configFile);
-            throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE, (int)lineNo, this->_configFile);
-        }
-        this->_errorPage[code] = target;
-        DEBUG_PRINT("Applied error_page -> " << code << " => '" << target << "'");
-    }
+    // Create for loop over each code in parts except the last part (which is the target):
+    //     Parse the code 
+    //     If invalid, throw an exception for CONFIG_INVALID_DIRECTIVE
+    //     Otherwise, set _errorPage to the raget
 }
