@@ -29,8 +29,24 @@ macros used throughout the project.*/
 #include <arpa/inet.h> // internet address: inet_addr()
 #include <fcntl.h> // file control: O_RDONLY
 #include <cstring> // string operations: memset()
+#include <csignal> // signal handling: SIGINT, SIGTERM
+#include <cerrno> // error handling: errno
 #include "ConfigParser.hpp" // configuration parser 
 #include "HttpServer.hpp" // HTTP server
+<<<<<<< HEAD
 #include "ErrorHandler.hpp" // error handling
+=======
+#include "ErrorHandler.hpp"
+
+// create a DEBUG macro so that if it's true the debugging mode in the code will print stuff
+#ifndef DEBUG
+#define DEBUG true
+#endif
+#if DEBUG
+#define DEBUG_PRINT(x) std::cout << x << std::endl
+#else
+#define DEBUG_PRINT(x)
+#endif
+>>>>>>> b488101cc1622b45f220c77dc2a260835d9ab971
 
 #endif
