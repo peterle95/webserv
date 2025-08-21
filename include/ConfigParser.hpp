@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigParser.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*   By: pmolzer <pmolzer@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 13:20:54 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/19 17:37:01 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/21 14:56:14 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,9 @@ class ConfigParser
         std::map<int, std::string> _errorPage; // to implement later
         size_t _clientMaxBodySize; // to implement later
         std::string _host; // to implement later
+        std::string _location; // to implement later
+        std::vector<std::string> _server; // to implement later, vector because there might be multiple server blocks
+        
         // add more directives
         std::set<std::string> _allowedMethods; // to implement later, set because order does not matter
         std::vector<std::string> _lines;
