@@ -43,6 +43,8 @@ class HTTPparser
     public:
         HTTPparser();
         ~HTTPparser();
+
+        void parseRequest(const std::string &rawRequest);
 };
 
 #endif

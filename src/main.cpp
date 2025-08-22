@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/12 12:44:17 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/16 15:51:40 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/22 21:04:04 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,7 @@ int main(int argc, char **argv)
         std::cerr << "Usage: " << argv[0] << " conf/[config_file].conf" << std::endl;
         return 1;
     }
-
+    DEBU
     ConfigParser parser;
     if (!parser.parse(configPath))
         return 1;
@@ -42,8 +42,19 @@ int main(int argc, char **argv)
     for (size_t i = 0; i < lines.size(); ++i)
         std::cout << "CFG[" << i << "]: " << lines[i] << std::endl;
     }
-    std::string example = "print test";
-    DEBUG_PRINT("DEBUG_PRINT: " << example << std::endl);
+    
+    // Simulated raw HTTP request
+    std::string fakeRequest =
+        "GET /hello.html HTTP/1.1\r\n"
+        "Host: localhost:8080\r\n"
+        "User-Agent: TestClient/1.0\r\n"
+        "Accept: */*\r\n"
+        "\r\n";
+
+    HTTPparser parserHTTP;
+    parserHTTP.parseRequest(fakeRequest);
+
+    
     HttpServer server(parser.getListenPort(), parser.getRoot(), parser.getIndex());
     return server.start();
 }
