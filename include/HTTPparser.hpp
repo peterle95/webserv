@@ -13,6 +13,20 @@
 #ifndef HTTPPARSER_HPP
 #define HTTPPARSER_HPP
 
+/*Since TCP is a stream-based protocol, HTTP requests are not guaranteed 
+to arrive in a single packet or a single recv() call. 
+A large request, a slow network, or packet fragmentation can cause the data to arrive in chunks. 
+The parser must be designed to handle this incremental arrival.
+The parser effectively operates as a state machine. It consumes the data in the 
+buffer and transitions through several states:*/
+enum State {
+    PARSING_REQUEST_LINE,
+    PARSING_HEADERS,
+    PARSING_BODY,
+    PARSING_COMPLETE,
+    ERROR
+};
+
 class HTTPparser
 {
     private:
