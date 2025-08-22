@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ParseClientMaxBodySize.cpp                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*   By: pmolzer <pmolzer@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/19 15:05:00 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/20 17:22:25 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/21 15:21:06 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,12 @@
 
 void ConfigParser::parseClientMaxBodySize(const std::string &val, size_t lineNo)
 {
+    if (val.empty())
+    {
+        std::string msg = ErrorHandler::makeLocationMsg("Missing value for client_max_body_size directive",
+                                                        (int)lineNo, this->_configFile);
+        throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE, (int)lineNo, this->_configFile);
+    }
     // Accept formats like: 1024, 10k, 1m, 1g (case-insensitive); store in bytes
     // Ensure a value exists (error if missing)
 
