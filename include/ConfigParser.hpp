@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 13:20:54 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/19 17:37:01 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/22 17:04:11 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,8 +19,8 @@ class ConfigParser
         std::string _configFile;
         int         _listenPort;
         std::string _root;
-        std::vector<std::string> _index; // to change implementation, vector because there might be multiple index files
-        std::string _serverName; // to implement later
+        std::vector<std::string> _index; // vector because there might be multiple index files
+        std::string _serverName; 
         std::map<int, std::string> _errorPage; // to implement later
         size_t _clientMaxBodySize; // to implement later
         std::string _host; // to implement later
