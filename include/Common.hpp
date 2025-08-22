@@ -37,6 +37,7 @@ macros used throughout the project.*/
 #include "ConfigParser.hpp" // configuration parser 
 #include "HttpServer.hpp" // HTTP server
 #include "ErrorHandler.hpp"
+#include "HTTPparser.hpp" // parser for HTTP requests sent by the client
 
 // create a DEBUG macro so that if it's true the debugging mode in the code will print stuff
 #ifndef DEBUG
