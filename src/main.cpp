@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/12 12:44:17 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/22 21:04:04 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/25 10:43:41 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,10 @@ int main(int argc, char **argv)
     }
     
     // Simulated raw HTTP request
+    // Note: HTTP1.1 introduced chunked transfer which allows persistent connection through TCP.
+    // It has the benefit that it§s not necessarz to generate the full content before sending it.
+    // This enables the connection for the next HTTP request/response
+    // --> TODO: implement chunked transfer in HTTP parser by using state mechanism
     std::string fakeRequest =
         "GET /hello.html HTTP/1.1\r\n"
         "Host: localhost:8080\r\n"
