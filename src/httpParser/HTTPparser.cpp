@@ -20,10 +20,11 @@ HTTPparser::HTTPparser()
 HTTPparser::~HTTPparser()
 {}
 
-// Rudimentary parse for demonstration
+// Rudimentary parse
+// reads the HTTP request from the socket and splits it into request line, headers and body
 void HTTPparser::parseRequest(const std::string &rawRequest)
 {
-    _HTTPrequest = rawRequest;
+    _HTTPrequest = rawRequest; // for debugging/logging
     std::istringstream iss(rawRequest);
     std::string line;
 
