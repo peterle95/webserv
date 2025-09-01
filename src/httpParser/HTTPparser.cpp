@@ -20,6 +20,12 @@ HTTPparser::HTTPparser()
 HTTPparser::~HTTPparser()
 {}
 
+// Next Steps:
+// 1. Connect HTTP Parser to server logic
+// 2. Logic for identification which HTTP version is used (1.0 and 1.1)
+// 3. Implement state machine for parsing (see enum in header file). TCP stream might come in chunks
+// 4. Use buffer for collect chunks of data from HTTP requests
+
 // Rudimentary parse
 // reads the HTTP request from the socket and splits it into request line, headers and body
 void HTTPparser::parseRequest(const std::string &rawRequest)
