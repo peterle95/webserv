@@ -6,13 +6,11 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 14:20:00 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/13 15:14:03 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/08/16 17:40:24 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../include/Common.hpp"
-#include <csignal>
-#include <cerrno>
+#include "../../include/Common.hpp"
 
 HttpServer::HttpServer(int port, const std::string &root, const std::string &index)
 : _port(port), _root(root), _index(index) {}
