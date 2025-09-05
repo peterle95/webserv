@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 14:20:00 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/09/05 10:28:38 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/09/05 10:44:46 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,7 @@ int HttpServer::start()
     return socket_server("127.0.0.1", _port);
 }
 
-// TODO: The following functions are removed since server.cpp handles the core server logic:
+// The following functions are removed since server.cpp handles the core server logic:
 // - readFileToString() - moved to server.cpp or separate utility
 // - sendAll() - moved to server.cpp or separate utility  
 // - Signal handling - already in server.cpp
