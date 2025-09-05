@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/19 17:38:04 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/19 17:38:04 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/09/05 13:12:39 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,13 +87,14 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
 }
 
 // parse config file
-bool ConfigParser::parse(const std::string &path)
+bool ConfigParser::parseConfigFile(const std::string &path)
 {
     this->_configFile = path;
     DEBUG_PRINT("Opening config file: '" << path << "'");
 
     try {
         std::ifstream in(path.c_str());
+        DEBUG_PRINT("Opened config file: '" << path << "'");
         if (!in.good())
         {
             std::string msg = ErrorHandler::makeLocationMsg(std::string("Failed to open config file: ") + path, -1, path);

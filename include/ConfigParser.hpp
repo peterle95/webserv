@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 13:20:54 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/22 17:06:03 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/09/05 13:11:08 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,7 @@ class ConfigParser
 
         // Parse minimal NGINX-like config supporting: listen, root, index
         // Returns true on success, false on failure.
-        bool        parse(const std::string &path);
+        bool        parseConfigFile(const std::string &path);
 
         // Accessors
         int                 getListenPort() const;
