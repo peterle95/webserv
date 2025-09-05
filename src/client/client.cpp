@@ -57,6 +57,4 @@ int main()
     printf("Sent %d of %d bytes.\n", bytes_sent, (int)strlen(response));
     }
     freeaddrinfo(peer_address);
-
-
 }

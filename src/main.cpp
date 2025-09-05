@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/12 12:44:17 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/16 15:51:40 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/09/05 10:41:54 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,8 +42,8 @@ int main(int argc, char **argv)
     for (size_t i = 0; i < lines.size(); ++i)
         std::cout << "CFG[" << i << "]: " << lines[i] << std::endl;
     }
-    std::string example = "print test";
-    DEBUG_PRINT("DEBUG_PRINT: " << example << std::endl);
+    /* std::string example = "print test";
+    DEBUG_PRINT("DEBUG_PRINT: " << example << std::endl); */
     HttpServer server(parser.getListenPort(), parser.getRoot(), parser.getIndex());
     return server.start();
 }

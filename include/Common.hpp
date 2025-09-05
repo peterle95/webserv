@@ -34,6 +34,17 @@ macros used throughout the project.*/
 #include <map>
 #include <set>
 #include <vector>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "ConfigParser.hpp" // configuration parser 
 #include "HttpServer.hpp" // HTTP server
 #include "ErrorHandler.hpp"

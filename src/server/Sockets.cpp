@@ -1,12 +1,4 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
+#include "../../include/Common.hpp"
 
 int create_socket(const char *host, int port)
 {
@@ -19,7 +11,11 @@ int create_socket(const char *host, int port)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
     struct addrinfo *bind_address;
-    getaddrinfo(0, "8080", &hints, &bind_address);
+    
+    // Use the port parameter instead of hardcoded "8080"
+    char port_str[16];
+    snprintf(port_str, sizeof(port_str), "%d", port);
+    getaddrinfo(host, port_str, &hints, &bind_address); // Use host parameter
 
     printf("Creating socket at client side...\n");
     
@@ -36,18 +32,18 @@ int create_socket(const char *host, int port)
        fprintf(stderr, "bind() failed %d", errno);
        return 1; 
     }
- return socket_listen;
+    freeaddrinfo(bind_address); // free the address info
+    return socket_listen;
 }
 
-//int main(int argc, char **config)
-int main(void)
+int socket_server(const char *host, int port)
 {
     int socket_listen;
-    int ports[] = {8080};
+    int ports[] = {port};
     int num_ports = sizeof(ports)/sizeof(ports[0]);
     for(int i = 0; i < num_ports ; i++)
     {
-        socket_listen = create_socket("127.0.0.1", ports[i]);
+        socket_listen = create_socket(host, ports[i]);
         i++;
     }
     printf("listening....\n");
