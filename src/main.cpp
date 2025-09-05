@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/12 12:44:17 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/09/05 13:16:37 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/09/05 15:33:16 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,20 +27,28 @@ int main(int argc, char **argv)
     }
 
     ConfigParser parser;
-    if (!parser.parseConfigFile(configPath))
+    try 
+    {
+        parser.parseConfigFile(configPath);
+
+        if(DEBUG)
+        {
+            // For now, just show parsed values to verify the minimal parser works
+            std::cout << "Config loaded from: " << configPath << std::endl;
+            std::cout << "listen: " << parser.getListenPort() << std::endl;
+            std::cout << "root:   " << parser.getRoot() << std::endl;
+            std::cout << "index:  " << parser.getIndex() << std::endl;
+        
+            // Demonstrate access to all raw lines read from the config file
+            const std::vector<std::string>& lines = parser.getLines();
+            for (size_t i = 0; i < lines.size(); ++i)
+                std::cout << "CFG[" << i << "]: " << lines[i] << std::endl;
+            }
+        }
+    catch (const ErrorHandler::Exception &e) 
+    {
+        std::cerr << "[CONFIG ERROR] (" << ErrorHandler::codeToString(e.code()) << ") " << e.what() << std::endl;
         return 1;
-
-    if(DEBUG){
-    // For now, just show parsed values to verify the minimal parser works
-    std::cout << "Config loaded from: " << configPath << std::endl;
-    std::cout << "listen: " << parser.getListenPort() << std::endl;
-    std::cout << "root:   " << parser.getRoot() << std::endl;
-    std::cout << "index:  " << parser.getIndex() << std::endl;
-
-    // Demonstrate access to all raw lines read from the config file
-    const std::vector<std::string>& lines = parser.getLines();
-    for (size_t i = 0; i < lines.size(); ++i)
-        std::cout << "CFG[" << i << "]: " << lines[i] << std::endl;
     }
     /* std::string example = "print test";
     DEBUG_PRINT("DEBUG_PRINT: " << example << std::endl); */
