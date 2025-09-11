@@ -1,4 +1,4 @@
-#include "CGI.hpp"
+#include "../../include/Cgi.hpp"
 
 // Utility function to convert number to string
 std::string CGI::numberToString(int number)

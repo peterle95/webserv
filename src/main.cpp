@@ -6,12 +6,13 @@
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/12 12:44:17 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/25 10:43:41 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/09/11 15:11:28 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../include/Common.hpp"
 #include "../include/HttpServer.hpp"
+#include "../include/ConfigParser.hpp"
 
 // implement later try...catch blocks
 int main(int argc, char **argv)
@@ -25,7 +26,6 @@ int main(int argc, char **argv)
         std::cerr << "Usage: " << argv[0] << " conf/[config_file].conf" << std::endl;
         return 1;
     }
-    DEBU
     ConfigParser parser;
     if (!parser.parse(configPath))
         return 1;

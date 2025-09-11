@@ -17,9 +17,9 @@
 #include <algorithm>
 #include <cerrno>
 
-#include "HttpRequest.hpp"
-#include "Location.hpp" // location configuration class
-#include "Server.hpp"
+// #include "HttpRequest.hpp"
+// #include "Location.hpp" // location configuration class
+#include "HttpServer.hpp"
 
 #define CGI_BUFFER_SIZE 4096
 #define CGI_TIMEOUT 30

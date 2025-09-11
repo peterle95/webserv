@@ -17,7 +17,8 @@ SRCS = src/main.cpp \
 		src/configParser/directives/ParseClientMaxBodySize.cpp \
 		src/configParser/directives/ParseAllowedMethods.cpp \
 		src/configParser/directives/ParseErrorPage.cpp \
-		src/httpParser/HTTPparser.cpp
+		src/httpParser/HTTPparser.cpp \
+		src/CGI/cgi.cpp \
 		
 OBJS = $(SRCS:.cpp=.o)
 
