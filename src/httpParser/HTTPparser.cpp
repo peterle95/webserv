@@ -44,7 +44,8 @@ void HTTPparser::parseRequest(const std::string &rawRequest)
     }
 
     // 2. Parse headers until empty line
-    while (std::getline(iss, line)) {
+    while (std::getline(iss, line)) 
+    {
         if (line == "\r" || line.empty())
             break;
         // strip trailing \r if present
@@ -66,7 +67,9 @@ void HTTPparser::parseRequest(const std::string &rawRequest)
     // 3. Body (for now: just read rest)
     std::ostringstream bodyStream;
     while (std::getline(iss, line))
+    {
         bodyStream << line << "\n";
+    }
     _body = bodyStream.str();
 
     if (!_body.empty())
