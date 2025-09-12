@@ -23,6 +23,9 @@ enum State {
     PARSING_REQUEST_LINE,
     PARSING_HEADERS,
     PARSING_BODY,
+    PARSING_CHUNKED_BODY,
+    PARSING_CHUNK_SIZE,
+    PARSING_CHUNK_DATA,
     PARSING_COMPLETE,
     ERROR
 };
@@ -30,6 +33,7 @@ enum State {
 class HTTPparser
 {
     private:
+        State _state; // Current state of the parser
         std::string _HTTPrequest; // raw requested data, this might need to change type because large requests like POST might be too large for a string
         std::vector<std::string> _lines;
         std::string _method; // HTTP Method GET, POST, DELETE

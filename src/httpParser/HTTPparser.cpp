@@ -14,8 +14,12 @@
 #include "../../include/Common.hpp"
 
 HTTPparser::HTTPparser()
-: _contentLength(0)
-{}
+    : _state(PARSING_REQUEST_LINE),
+      _contentLength(0)
+{
+    // Default constructor initializes the state and numeric values.
+    // String, vector, and map members are default-constructed to an empty state.
+}
 
 HTTPparser::~HTTPparser()
 {}
