@@ -80,3 +80,28 @@ void HTTPparser::parseRequest(const std::string &rawRequest)
         DEBUG_PRINT("Body: " << _body);
 }
 
+const std::string& HTTPparser::getMethod() const
+{
+    return _method;
+}
+
+const std::string& HTTPparser::getPath() const
+{
+    return _path;
+}
+
+const std::string& HTTPparser::getVersion() const
+{
+    return _version;
+}
+
+const std::map<std::string, std::string>& HTTPparser::getHeaders() const
+{
+    return _headers;
+}
+
+const std::string& HTTPparser::getBody() const
+{
+    return _body;
+}
+

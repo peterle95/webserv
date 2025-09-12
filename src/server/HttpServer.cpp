@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpServer.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*   By: pmolzer <pmolzer@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 14:20:00 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/16 17:40:24 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/09/12 15:33:51 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -126,20 +126,29 @@ int HttpServer::start()
             continue;
         }
 
-        // Very basic request parsing (GET only)
-        std::string req(buf, (size_t)n);
-        std::string path = "/";
-        if (req.compare(0, 4, "GET ") == 0)
-        {
-            std::string::size_type sp = req.find(' ');
-            if (sp != std::string::npos)
-            {
-                std::string::size_type sp2 = req.find(' ', sp + 1);
-                if (sp2 != std::string::npos)
-                    path = req.substr(sp + 1, sp2 - (sp + 1));
+        // Use HTTPparser to process the raw request
+        // Note: This is a very basic usage, for a real server you would need to handle
+        // more complex scenarios like partial reads, large headers, etc.
+        std::string rawRequest(buf, (size_t)n);
+        HTTPparser parser;
+        parser.parseRequest(rawRequest);
+
+        if (DEBUG) {
+            std::cout << "--- Parsed Request ---" << std::endl;
+            std::cout << "Method: " << parser.getMethod() << std::endl;
+            std::cout << "Path: " << parser.getPath() << std::endl;
+            std::cout << "Version: " << parser.getVersion() << std::endl;
+            const std::map<std::string, std::string>& headers = parser.getHeaders();
+            for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
+                std::cout << "Header: " << it->first << ": " << it->second << std::endl;
             }
+            if (!parser.getBody().empty()) {
+                std::cout << "Body: " << parser.getBody() << std::endl;
+            }
+            std::cout << "----------------------" << std::endl;
         }
 
+        std::string path = parser.getPath();
         std::string filePath;
         if (path == "/" || path.empty())
             filePath = _root + "/" + _index;

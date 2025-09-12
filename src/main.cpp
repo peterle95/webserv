@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
+/*   By: pmolzer <pmolzer@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/12 12:44:17 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/09/11 15:11:28 by pmolzer          ###   ########.fr       */
+/*   Updated: 2025/09/12 15:34:35 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,21 +43,7 @@ int main(int argc, char **argv)
         std::cout << "CFG[" << i << "]: " << lines[i] << std::endl;
     }
     
-    // Simulated raw HTTP request
-    // Note: HTTP1.1 introduced chunked transfer which allows persistent connection through TCP.
-    // It has the benefit that it§s not necessarz to generate the full content before sending it.
-    // This enables the connection for the next HTTP request/response
-    // --> TODO: implement chunked transfer in HTTP parser by using state mechanism
-    std::string fakeRequest =
-        "GET /hello.html HTTP/1.1\r\n"
-        "Host: localhost:8080\r\n"
-        "User-Agent: TestClient/1.0\r\n"
-        "Accept: */*\r\n"
-        "\r\n";
-
-    HTTPparser parserHTTP;
-    parserHTTP.parseRequest(fakeRequest);
-
+    // simulated request no longer needed here
     
     HttpServer server(parser.getListenPort(), parser.getRoot(), parser.getIndex());
     return server.start();
