@@ -20,14 +20,14 @@ The parser must be designed to handle this incremental arrival.
 The parser effectively operates as a state machine. It consumes the data in the 
 buffer and transitions through several states:*/
 enum State {
-    PARSING_REQUEST_LINE,
-    PARSING_HEADERS,
-    PARSING_BODY,
-    PARSING_CHUNKED_BODY,
-    PARSING_CHUNK_SIZE,
-    PARSING_CHUNK_DATA,
-    PARSING_COMPLETE,
-    ERROR
+    PARSING_REQUEST_LINE = 0,
+    PARSING_HEADERS = 0,
+    PARSING_BODY = 0,
+    PARSING_CHUNKED_BODY = 0,
+    PARSING_CHUNK_SIZE = 0,
+    PARSING_CHUNK_DATA = 0,
+    PARSING_COMPLETE = 0,
+    ERROR = 0
 };
 
 class HTTPparser
@@ -39,7 +39,7 @@ class HTTPparser
         std::string _method; // HTTP Method GET, POST, DELETE
         std::string _path; // Path of the requested resource
         std::string _version; // HTTP Version
-        std::map<std::string, std::string> _headers; // Headers
+        std::map<std::string, std::string> _request_headers; // Headers
         std::string _body; // Body
         std::string _buffer; // buffer to account for the sequential and potentially incremental nature of HTTP requests for non-blocking servers
         size_t _contentLength; // content length of the request
@@ -49,6 +49,9 @@ class HTTPparser
         ~HTTPparser();
 
         void parseRequest(const std::string &rawRequest);
+        void parseRequestLine(const std::istringstream& iss, std::string& line);
+        void parseHeaders(const std::istringstream& iss, std::string& line);
+        void parseBody(const std::istringstream& iss, std::string& line);
 
         // Accessors
         const std::string& getMethod() const;
@@ -56,6 +59,13 @@ class HTTPparser
         const std::string& getVersion() const;
         const std::map<std::string, std::string>& getHeaders() const;
         const std::string& getBody() const;
+
+        // Setters
+        const std::string& setMethod(const std::string &method);
+        const std::string& setPath(const std::string &path);
+        const std::string& setVersion(const std::string &version);
+        const std::map<std::string, std::string>& setHeaders(const std::map<std::string, std::string> &headers);
+        const std::string& setBody(const std::string &body);
 };
 
 #endif
