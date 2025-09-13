@@ -197,6 +197,8 @@ void HTTPparser::parseRequest(const std::string &rawRequest)
 {
     // initStates();
     _HTTPrequest = rawRequest; // for debugging/logging
+
+    DEBUG_PRINT("Raw Request:\n" << rawRequest);
     std::istringstream iss(rawRequest);
     std::string line;
     _state = PARSING_REQUEST_LINE;
