@@ -24,7 +24,7 @@ HTTPparser::HTTPparser()
 HTTPparser::~HTTPparser()
 {}
 
-void HTTPparser::parseRequestLine(const std::istringstream& iss, std::string& line)
+void HTTPparser::parseRequestLine(std::istringstream& iss, std::string& line)
 {
     // Identify which version is used 1.0 or 1.1
     // Identify method GET, POST, DELETE
@@ -42,7 +42,7 @@ void HTTPparser::parseRequestLine(const std::istringstream& iss, std::string& li
     }
 }
 
-void HTTPparser::parseHeaders(const std::istringstream& iss, std::string& line)
+void HTTPparser::parseHeaders(std::istringstream& iss, std::string& line)
 {
 
     // Check what content is allowed
@@ -127,7 +127,7 @@ void HTTPparser::parseHeaders(const std::istringstream& iss, std::string& line)
     }
 }
 
-void HTTPparser::parseBody(const std::istringstream& iss, std::string& line)
+void HTTPparser::parseBody(std::istringstream& iss, std::string& line)
 {
 /*
 1.Determine Body Framing from Headers:
@@ -172,7 +172,17 @@ void HTTPparser::parseBody(const std::istringstream& iss, std::string& line)
     ◦ Non-blocking I/O: The state machine design is crucial because read() operations in a non-blocking server 
     might return less data than expected or immediately indicate no data available (EWOULDBLOCK or EAGAIN). 
     The parser must be able to resume from its current state when more data arrives in the buffer*/
+    // for now: just read rest of iss into body
+    // In a real implementation, you would handle Content-Length and Transfer-Encoding here
+    std::ostringstream bodyStream;
+    while (std::getline(iss, line))
+    {
+        bodyStream << line << "\n";
+    }
+    _body = bodyStream.str();
 
+    if (!_body.empty())
+        DEBUG_PRINT("Body: " << _body);
 }
 
 // Next Steps:
@@ -208,17 +218,14 @@ void HTTPparser::parseRequest(const std::string &rawRequest)
         parseBody(iss, line);
         _state = PARSING_COMPLETE;
     }
-    
-    // 3. Body (for now: just read rest)
-    std::ostringstream bodyStream;
-    while (std::getline(iss, line))
+    if (_state == PARSING_COMPLETE)
     {
-        bodyStream << line << "\n";
+        DEBUG_PRINT("Parsing complete.");
     }
-    _body = bodyStream.str();
-
-    if (!_body.empty())
-        DEBUG_PRINT("Body: " << _body);
+    else if (_state == ERROR)
+    {
+        DEBUG_PRINT("Error during parsing.");
+    }
 }
 
 const std::string& HTTPparser::getMethod() const

@@ -49,9 +49,9 @@ class HTTPparser
         ~HTTPparser();
 
         void parseRequest(const std::string &rawRequest);
-        void parseRequestLine(const std::istringstream& iss, std::string& line);
-        void parseHeaders(const std::istringstream& iss, std::string& line);
-        void parseBody(const std::istringstream& iss, std::string& line);
+        void parseRequestLine(std::istringstream& iss, std::string& line);
+        void parseHeaders(std::istringstream& iss, std::string& line);
+        void parseBody(std::istringstream& iss, std::string& line);
 
         // Accessors
         const std::string& getMethod() const;
