@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../include/Common.hpp"
+#include "Common.hpp"
 
 HttpServer::HttpServer(int port, const std::string &root, const std::string &index)
 : _port(port), _root(root), _index(index) {}

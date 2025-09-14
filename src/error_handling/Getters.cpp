@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../include/Common.hpp"
+#include "ErrorHandler.hpp"
 
 int ErrorHandler::Exception::code() const 
 { 

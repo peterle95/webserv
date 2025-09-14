@@ -10,9 +10,85 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../include/Common.hpp"
-#include "../include/HttpServer.hpp"
-#include "../include/ConfigParser.hpp"
+#include "Common.hpp"
+#include "HttpServer.hpp"
+#include "ConfigParser.hpp"
+
+void testhttpParsing()
+{
+    std::cout << "=== Testing Improved HTTP Parser ===" << std::endl;
+    
+    // Example HTTP request
+    std::string testRequest = 
+        "GET /index.html HTTP/1.1\r\n"
+        "Host: localhost:8080\r\n"
+        "User-Agent: Mozilla/5.0 (Test Browser)\r\n"
+        "Accept: text/html,application/xhtml+xml\r\n"
+        "Accept-Language: en-US,en;q=0.9\r\n"
+        "Connection: keep-alive\r\n"
+        "Content-Type: application/x-www-form-urlencoded\r\n"
+        "Content-Length: 13\r\n"
+        "\r\n"
+        "key1=value1&key2=value2";
+    
+    // Create parser and test parsing
+    HTTPparser parser;
+    
+    std::cout << "\n--- Testing Valid Request ---" << std::endl;
+    if (parser.parseRequest(testRequest))
+    {
+        std::cout << "✓ Request parsed successfully!" << std::endl;
+        std::cout << "Method: " << parser.getMethod() << std::endl;
+        std::cout << "Path: " << parser.getPath() << std::endl;
+        std::cout << "Version: " << parser.getVersion() << std::endl;
+        std::cout << "Headers: " << parser.getHeaders().size() << " total" << std::endl;
+        std::cout << "Host: " << parser.getHeader("Host") << std::endl;
+        std::cout << "Content-Length: " << parser.getContentLength() << std::endl;
+        std::cout << "Body length: " << parser.getBody().length() << " characters" << std::endl;
+    }
+    else
+    {
+        std::cout << "✗ Failed to parse request" << std::endl;
+        std::cout << "Error: " << parser.getErrorMessage() << std::endl;
+        std::cout << "Status: " << parser.getErrorStatusCode() << std::endl;
+    }
+    
+    // Test invalid request
+    std::cout << "\n--- Testing Invalid Request ---" << std::endl;
+    std::string invalidRequest = "INVALID REQUEST LINE\r\n";
+    
+    HTTPparser parser2;
+    if (parser2.parseRequest(invalidRequest))
+    {
+        std::cout << "✗ Should have failed but didn't!" << std::endl;
+    }
+    else
+    {
+        std::cout << "✓ Correctly rejected invalid request" << std::endl;
+        std::cout << "Error: " << parser2.getErrorMessage() << std::endl;
+        std::cout << "Status: " << parser2.getErrorStatusCode() << std::endl;
+    }
+    
+    // Test directory traversal protection
+    std::cout << "\n--- Testing Security Features ---" << std::endl;
+    std::string maliciousRequest = 
+        "GET /../../../etc/passwd HTTP/1.1\r\n"
+        "Host: localhost\r\n"
+        "\r\n";
+    
+    HTTPparser parser3;
+    if (parser3.parseRequest(maliciousRequest))
+    {
+        std::cout << "✗ Security vulnerability: directory traversal not blocked!" << std::endl;
+    }
+    else
+    {
+        std::cout << "✓ Security check passed: directory traversal blocked" << std::endl;
+        std::cout << "Error: " << parser3.getErrorMessage() << std::endl;
+    }
+    
+    std::cout << "\n=== Test Complete ===" << std::endl;
+} 
 
 // implement later try...catch blocks
 int main(int argc, char **argv)
@@ -29,22 +105,8 @@ int main(int argc, char **argv)
     ConfigParser parser;
     if (!parser.parse(configPath))
         return 1;
-
-    if(DEBUG){
-    // For now, just show parsed values to verify the minimal parser works
-    std::cout << "Config loaded from: " << configPath << std::endl;
-    std::cout << "listen: " << parser.getListenPort() << std::endl;
-    std::cout << "root:   " << parser.getRoot() << std::endl;
-    std::cout << "index:  " << parser.getIndex() << std::endl;
-
-    // Demonstrate access to all raw lines read from the config file
-    const std::vector<std::string>& lines = parser.getLines();
-    for (size_t i = 0; i < lines.size(); ++i)
-        std::cout << "CFG[" << i << "]: " << lines[i] << std::endl;
-    }
     
-    // simulated request no longer needed here
-    
+    testhttpParsing();
     HttpServer server(parser.getListenPort(), parser.getRoot(), parser.getIndex());
     return server.start();
 }

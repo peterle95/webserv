@@ -1,6 +1,6 @@
 NAME = webserv
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -Iinclude
 
 SRCS = src/main.cpp \
 		src/configParser/ConfigParser.cpp \
@@ -19,8 +19,10 @@ SRCS = src/main.cpp \
 		src/configParser/directives/ParseErrorPage.cpp \
 		src/httpParser/HTTPparser.cpp \
 		src/httpParser/HTTPutils.cpp \
-		
-		
+		src/httpParser/HTTPmessageComponents/HTTPHeaders.cpp \
+		src/httpParser/HTTPmessageComponents/HTTPRequestLine.cpp \
+		src/httpParser/HTTPmessageComponents/HTTPValidation.cpp \
+
 OBJS = $(SRCS:.cpp=.o)
 
 all: $(NAME)

@@ -1,5 +1,5 @@
 
-#include "../../include/Common.hpp"
+#include "Common.hpp"
 
 /* void initStates()
 {

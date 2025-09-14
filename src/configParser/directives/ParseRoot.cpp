@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../../include/Common.hpp"
+#include "Common.hpp"
 
 void ConfigParser::parseRoot(const std::string &val, size_t /*lineNo*/)
 {

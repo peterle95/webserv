@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../include/ErrorHandler.hpp"
+#include "ErrorHandler.hpp"
 #include <sstream>
 
 // Construct an exception with just message and code

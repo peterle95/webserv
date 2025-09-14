@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../include/Common.hpp"
+#include "Common.hpp"
 
 std::string ConfigParser::preprocessLine(const std::string &raw)
 {

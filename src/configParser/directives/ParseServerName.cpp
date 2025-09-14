@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../../include/Common.hpp"
+#include "Common.hpp"
 
 void ConfigParser::parseServerName(const std::string &val, size_t /*lineNo*/)
 {

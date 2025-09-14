@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../include/Common.hpp"
+#include "Common.hpp"
 
 // constructor
 ConfigParser::ConfigParser()

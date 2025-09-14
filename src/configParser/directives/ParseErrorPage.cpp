@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../../include/Common.hpp"
+#include "Common.hpp"
 
 void ConfigParser::parseErrorPage(const std::string &val, size_t lineNo)
 {
