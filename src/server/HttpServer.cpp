@@ -127,26 +127,9 @@ int HttpServer::start()
         }
 
         // Use HTTPparser to process the raw request
-        // Note: This is a very basic usage, for a real server you would need to handle
-        // more complex scenarios like partial reads, large headers, etc.
         std::string rawRequest(buf, (size_t)n);
         HTTPparser parser;
         parser.parseRequest(rawRequest);
-
-        if (DEBUG) {
-            std::cout << "--- Parsed Request ---" << std::endl;
-            std::cout << "Method: " << parser.getMethod() << std::endl;
-            std::cout << "Path: " << parser.getPath() << std::endl;
-            std::cout << "Version: " << parser.getVersion() << std::endl;
-            const std::map<std::string, std::string>& headers = parser.getHeaders();
-            for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
-                std::cout << "Header: " << it->first << ": " << it->second << std::endl;
-            }
-            if (!parser.getBody().empty()) {
-                std::cout << "Body: " << parser.getBody() << std::endl;
-            }
-            std::cout << "----------------------" << std::endl;
-        }
 
         std::string path = parser.getPath();
         std::string filePath;

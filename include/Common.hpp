@@ -17,7 +17,6 @@
 macros used throughout the project.*/
 
 #include <iostream>
-#include <poll.h> // poll()
 #include <sys/socket.h> // socket(), bind(), listen(), accept()
 #include <unistd.h> // close()
 #include <string> 

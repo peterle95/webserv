@@ -36,16 +36,15 @@ enum State {
     ERROR = 7
 };
 
-/**
- * @brief Main HTTP parser class that coordinates parsing of HTTP requests
- * 
- * This class serves as the main controller for parsing HTTP requests.
- * It uses specialized classes for parsing different parts of the request:
- * - HTTPRequestLine for parsing the request line
- * - HTTPHeaders for parsing headers
- * - Body parsing is handled directly for now
- * 
- * The parser operates as a state machine to handle incremental data arrival.
+/*
+  
+  This class serves as the main controller for parsing HTTP requests.
+  It uses specialized classes for parsing different parts of the request:
+  - HTTPRequestLine for parsing the request line
+  - HTTPHeaders for parsing headers
+  - Body parsing is handled directly for now
+  
+  The parser operates as a state machine to handle incremental data arrival.
  */
 class HTTPparser
 {
@@ -95,10 +94,6 @@ class HTTPparser
         // Reset parser to initial state
         void reset();
         
-    private:
-        // Helper methods
-        void setError(const std::string& message, const std::string& statusCode = "400");
-        void setState(State newState) { _state = newState; }
 };
 
 #endif

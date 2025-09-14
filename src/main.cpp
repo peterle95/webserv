@@ -105,8 +105,9 @@ int main(int argc, char **argv)
     ConfigParser parser;
     if (!parser.parse(configPath))
         return 1;
-    
+    // test http parsing
     testhttpParsing();
+    
     HttpServer server(parser.getListenPort(), parser.getRoot(), parser.getIndex());
     return server.start();
 }

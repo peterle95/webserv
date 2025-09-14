@@ -16,14 +16,18 @@
 #include <string>
 #include <set>
 
-/**
- * @brief Utility class for HTTP validation functions
- * 
- * This class provides static methods to validate various HTTP components
- * such as methods, versions, paths, and header values according to RFC specifications.
+/*This class provides static methods to validate various HTTP components
+ such as methods, versions, paths, and header values according to RFC specifications.
  */
 class HTTPValidation
 {
+private:
+    HTTPValidation(); // Prevent instantiation
+    
+    // Helper methods
+    static bool isToken(const std::string& str);
+    static bool isValidChar(char c);
+    static bool isControlChar(char c);
 public:
     // HTTP Method validation
     static bool isValidMethod(const std::string& method);
@@ -50,14 +54,6 @@ public:
     
     // Content-Length validation
     static bool isValidContentLength(const std::string& value, size_t& length);
-    
-private:
-    HTTPValidation(); // Prevent instantiation
-    
-    // Helper methods
-    static bool isToken(const std::string& str);
-    static bool isValidChar(char c);
-    static bool isControlChar(char c);
 };
 
 #endif

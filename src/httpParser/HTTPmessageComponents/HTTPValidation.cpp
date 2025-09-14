@@ -27,11 +27,6 @@ std::set<std::string> HTTPValidation::getValidMethods()
     methods.insert("GET");
     methods.insert("POST");
     methods.insert("DELETE");
-    methods.insert("PUT");
-    methods.insert("HEAD");
-    methods.insert("OPTIONS");
-    methods.insert("TRACE");
-    methods.insert("CONNECT");
     return methods;
 }
 

@@ -18,15 +18,13 @@
 #include <sstream>
 #include <vector>
 
-/**
- * @brief Class responsible for parsing and managing HTTP headers
- * 
- * This class handles:
- * - Parsing header lines from HTTP request
- * - Validation of header names and values according to HTTP specifications
- * - Special handling for important headers (Content-Length, Transfer-Encoding, etc.)
- * - Case-insensitive header name lookup
- * - Error detection and reporting
+/*
+  This class handles:
+  - Parsing header lines from HTTP request
+  - Validation of header names and values according to HTTP specifications
+  - Special handling for important headers (Content-Length, Transfer-Encoding, etc.)
+  - Case-insensitive header name lookup
+  - Error detection and reporting
  */
 class HTTPHeaders
 {
@@ -42,6 +40,20 @@ private:
     std::string _transferEncoding;      // Transfer-Encoding header value
     bool _isValid;                      // Whether headers are valid
     std::string _errorMessage;          // Error message if parsing fails
+
+    // Helper methods
+    bool parseHeaderLine(const std::string& line);
+    void processSpecialHeaders(const std::string& lowerName, const std::string& value);
+    void setError(const std::string& message);
+    std::string toLowercase(const std::string& str) const;
+    void trimTrailingCR(std::string& line);
+    bool isEmptyLine(const std::string& line) const;
+    
+    // Content-Length parsing
+    bool parseContentLength(const std::string& value);
+    
+    // Transfer-Encoding parsing
+    bool parseTransferEncoding(const std::string& value);
 
 public:
     HTTPHeaders();
@@ -76,21 +88,6 @@ public:
     
     // Reset
     void reset();
-
-private:
-    // Helper methods
-    bool parseHeaderLine(const std::string& line);
-    void processSpecialHeaders(const std::string& lowerName, const std::string& value);
-    void setError(const std::string& message);
-    std::string toLowercase(const std::string& str) const;
-    void trimTrailingCR(std::string& line);
-    bool isEmptyLine(const std::string& line) const;
-    
-    // Content-Length parsing
-    bool parseContentLength(const std::string& value);
-    
-    // Transfer-Encoding parsing
-    bool parseTransferEncoding(const std::string& value);
 };
 
 #endif
