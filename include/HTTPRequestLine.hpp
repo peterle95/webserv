@@ -61,7 +61,7 @@ public:
     bool isValid() const { return _isValid; }
     const std::string& getErrorMessage() const { return _errorMessage; }
     
-    // Setters (mainly for testing)
+    // Setters
     void setMethod(const std::string& method) { _method = method; }
     void setPath(const std::string& path) { _path = path; }
     void setVersion(const std::string& version) { _version = version; }

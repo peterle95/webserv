@@ -32,8 +32,9 @@ HTTPparser::~HTTPparser()
 bool HTTPparser::parseRequestLine(std::istringstream& iss)
 {
     std::string line;
-    
-    // Get the first line (request line)
+
+    // Read the first line up to the first LF. For CRLF-terminated lines,
+    // std::getline leaves the trailing CR; we strip it below in HTTPRequestLine.
     if (!std::getline(iss, line))
     {
         setError("No request line found", "400");
@@ -61,7 +62,8 @@ bool HTTPparser::parseRequestLine(std::istringstream& iss)
  */
 bool HTTPparser::parseHeaders(std::istringstream& iss)
 {
-    // Use HTTPHeaders module to parse all headers
+    // Use HTTPHeaders module to parse all headers (reads lines until an
+    // empty line, which signifies the end of the header section).
     if (!_headers.parseHeaders(iss))
     {
         setError("Invalid headers: " + _headers.getErrorMessage(), "400");
@@ -94,7 +96,9 @@ bool HTTPparser::parseHeaders(std::istringstream& iss)
  */
 bool HTTPparser::parseBody(std::istringstream& iss)
 {
-    // Delegate body parsing to HTTPBody for modularity
+    // Delegate body parsing to HTTPBody for modularity. HTTPBody decides
+    // between Content-Length or Transfer-Encoding: chunked and consumes
+    // the remainder of the input stream accordingly.
     setState(_headers.isChunked() ? PARSING_CHUNKED_BODY : PARSING_BODY);
 
     HTTPBody bodyParser;
@@ -129,13 +133,16 @@ bool HTTPparser::parseBody(std::istringstream& iss)
  */
 bool HTTPparser::parseRequest(const std::string &rawRequest)
 {
-    // Reset parser state
+    // Reset parser state and keep a copy of the raw request for debugging
     reset();
     _HTTPrequest = rawRequest; // Store for debugging/logging
 
-    DEBUG_PRINT("=== Starting HTTP Request Parsing ===");
+    DEBUG_PRINT(RED << "=== Starting HTTP Request Parsing ===" << RESET);
     DEBUG_PRINT("Raw Request (first 200 chars): " << rawRequest.substr(0, 200));
     
+    // We parse from a stringstream for simplicity. In a real server with
+    // non-blocking sockets, you would feed incremental buffers and maintain
+    // parsing state across calls.
     std::istringstream iss(rawRequest);
     
     // State machine implementation
@@ -178,7 +185,7 @@ bool HTTPparser::parseRequest(const std::string &rawRequest)
     if (_state == PARSING_COMPLETE)
     {
         _isValid = true;
-        DEBUG_PRINT("=== HTTP Request Parsing Complete ===" );
+        DEBUG_PRINT(RED << "=== HTTP Request Parsing Complete ===" << RESET);
         DEBUG_PRINT("Method: " << getMethod() << ", Path: " << getPath() 
                     << ", Version: " << getVersion());
         DEBUG_PRINT("Headers: " << getHeaders().size() << " total");
@@ -188,7 +195,7 @@ bool HTTPparser::parseRequest(const std::string &rawRequest)
     }
     else if (_state == ERROR)
     {
-        DEBUG_PRINT("=== HTTP Request Parsing Failed ===" );
+        DEBUG_PRINT(RED << "=== HTTP Request Parsing Failed ===" << RESET);
         DEBUG_PRINT("Error: " << _errorMessage);
         return false;
     }

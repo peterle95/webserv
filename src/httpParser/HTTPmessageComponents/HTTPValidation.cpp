@@ -175,6 +175,8 @@ bool HTTPValidation::isValidContentLength(const std::string& value, size_t& leng
     if (value.empty())
         return false;
     
+    // RFC 7230 allows only decimal digits for Content-Length. Reject
+    // any non-digit character to avoid ambiguity.
     // Check if all characters are digits
     for (size_t i = 0; i < value.length(); ++i)
     {

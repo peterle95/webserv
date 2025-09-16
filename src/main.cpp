@@ -16,8 +16,6 @@
 
 void testhttpParsing()
 {
-    #define RED     "\033[31m"
-    #define RESET   "\033[0m"
     std::cout << RED << "=== Testing Improved HTTP Parser ===" << RESET << std::endl;
     
     // Example HTTP request

@@ -68,7 +68,7 @@ public:
     std::string getHeader(const std::string& name) const;
     void removeHeader(const std::string& name);
     
-    // Specialized getters for important headers
+    // getters for headers
     size_t getContentLength() const { return _contentLength; }
     bool hasContentLength() const { return _hasContentLength; }
     bool isChunked() const { return _isChunked; }
@@ -77,7 +77,7 @@ public:
     const std::string& getConnection() const { return _connection; }
     const std::string& getTransferEncoding() const { return _transferEncoding; }
     
-    // General getters
+    // getters
     const std::map<std::string, std::string>& getAllHeaders() const { return _headers; }
     bool isValid() const { return _isValid; }
     const std::string& getErrorMessage() const { return _errorMessage; }

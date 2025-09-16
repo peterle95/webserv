@@ -13,6 +13,9 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
+#define RED     "\033[31m"
+#define RESET   "\033[0m"
+
 /*A header file that includes common standard library headers and defines shared constants or 
 macros used throughout the project.*/
 

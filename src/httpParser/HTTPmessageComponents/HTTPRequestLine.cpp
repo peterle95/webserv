@@ -51,7 +51,8 @@ bool HTTPRequestLine::parseRequestLine(const std::string& requestLine)
     std::string line = requestLine;
     trimTrailingCR(line);
     
-    // Parse components using stringstream
+    // Parse components using stringstream: tokens are whitespace-separated.
+    // Expect exactly three tokens: METHOD SP PATH SP VERSION.
     std::istringstream iss(line);
     if (!parseComponents(iss))
         return false;
@@ -103,14 +104,14 @@ bool HTTPRequestLine::parseComponents(std::istringstream& iss)
         return false;
     }
     
-    if (!(iss >> _version))
+    if (!(iss >> _version)) // Ex: HTTP/1.1
     {
         setError("Missing HTTP version");
         return false;
     }
     
     // Check if there are extra components (which would be invalid)
-    std::string extra;
+    std::string extra; // Any extra token means malformed request line
     if (iss >> extra)
     {
         setError("Too many components in request line");
@@ -120,12 +121,9 @@ bool HTTPRequestLine::parseComponents(std::istringstream& iss)
     return true;
 }
 
-/**
- * @brief Validate HTTP method
- * 
- * @param method The method string to validate
- * @return true if the method is valid, false otherwise
- */
+// Validate HTTP method
+// The method string to validate
+//return true if the method is valid, false otherwise
 bool HTTPRequestLine::validateMethod(const std::string& method)
 {
     if (method.empty())
@@ -134,12 +132,9 @@ bool HTTPRequestLine::validateMethod(const std::string& method)
     return HTTPValidation::isValidMethod(method);
 }
 
-/**
- * @brief Validate request path with security checks
- * 
- * @param path The path string to validate
- * @return true if the path is valid and safe, false otherwise
- */
+// Validate request path with security checks
+// The path string to validate
+// return true if the path is valid and safe, false otherwise
 bool HTTPRequestLine::validatePath(const std::string& path)
 {
     if (path.empty())
@@ -148,12 +143,9 @@ bool HTTPRequestLine::validatePath(const std::string& path)
     return HTTPValidation::isValidPath(path);
 }
 
-/**
- * @brief Validate HTTP version
- * 
- * @param version The version string to validate
- * @return true if the version is supported, false otherwise
- */
+// Validate HTTP version
+// The version string to validate
+// return true if the version is supported, false otherwise
 bool HTTPRequestLine::validateVersion(const std::string& version)
 {
     if (version.empty())
@@ -162,9 +154,7 @@ bool HTTPRequestLine::validateVersion(const std::string& version)
     return HTTPValidation::isValidVersion(version);
 }
 
-/**
- * @brief Reset the object to initial state
- */
+// Reset the object to initial state
 void HTTPRequestLine::reset()
 {
     _method.clear();
@@ -175,11 +165,8 @@ void HTTPRequestLine::reset()
     _errorMessage.clear();
 }
 
-/**
- * @brief Set error state with message
- * 
- * @param message Error message to set
- */
+// Set error state with message
+// Error message to set
 void HTTPRequestLine::setError(const std::string& message)
 {
     _isValid = false;
@@ -187,11 +174,8 @@ void HTTPRequestLine::setError(const std::string& message)
     DEBUG_PRINT("Request line error: " << message);
 }
 
-/**
- * @brief Remove trailing carriage return character if present
- * 
- * @param line String to trim
- */
+// Remove trailing carriage return character if present
+// String to trim
 void HTTPRequestLine::trimTrailingCR(std::string& line)
 {
     if (!line.empty() && line[line.size() - 1] == '\r')

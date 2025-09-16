@@ -49,6 +49,8 @@ void HTTPBody::trimTrailingCR(std::string& line)
 
 bool HTTPBody::readExact(std::istringstream& iss, size_t length, std::string& out)
 {
+    // Attempt to read exactly 'length' bytes from the stream. If fewer
+    // bytes are available (e.g., truncated request), return false.
     if (length == 0)
     {
         out.clear();
@@ -65,6 +67,8 @@ bool HTTPBody::readExact(std::istringstream& iss, size_t length, std::string& ou
 
 bool HTTPBody::readCRLF(std::istringstream& iss)
 {
+    // Consume CRLF exactly. Some clients may send LF only, but HTTP/1.1
+    // requires CRLF; we enforce CRLF here for stricter compliance.
     char cr = 0, lf = 0;
     if (!iss.get(cr)) return false;
     if (!iss.get(lf)) return false;
@@ -73,6 +77,8 @@ bool HTTPBody::readCRLF(std::istringstream& iss)
 
 bool HTTPBody::parseChunkSizeLine(std::istringstream& iss, size_t& outSize)
 {
+    // Read a single "chunk-size[;chunk-extension]" line and parse the size
+    // (hexadecimal). Extensions are ignored for now.
     std::string line;
     if (!std::getline(iss, line))
     {
@@ -119,6 +125,11 @@ bool HTTPBody::parseChunkSizeLine(std::istringstream& iss, size_t& outSize)
 
 bool HTTPBody::parseChunkedBody(std::istringstream& iss)
 {
+    // Implements RFC 7230 chunked coding:
+    //  chunk = chunk-size [; chunk-ext] CRLF
+    //          chunk-data CRLF
+    //  last-chunk = 1*('0') [; chunk-ext] CRLF
+    //               trailer-section CRLF
     _body.clear();
     while (true)
     {
@@ -147,6 +158,7 @@ bool HTTPBody::parseChunkedBody(std::istringstream& iss)
             return true;
         }
 
+        // Read exactly 'chunkSize' bytes of data for this chunk.
         std::string chunk;
         if (!readExact(iss, chunkSize, chunk))
         {
@@ -166,6 +178,7 @@ bool HTTPBody::parseChunkedBody(std::istringstream& iss)
 
 bool HTTPBody::parseFixedLengthBody(std::istringstream& iss, size_t length)
 {
+    // Content-Length driven parsing: read exactly N bytes and store.
     _body.clear();
     std::string data;
     if (!readExact(iss, length, data))
@@ -179,6 +192,9 @@ bool HTTPBody::parseFixedLengthBody(std::istringstream& iss, size_t length)
 
 bool HTTPBody::parse(std::istringstream& iss, const HTTPHeaders& headers, const std::string& method)
 {
+    // Decide body parsing strategy using the already-parsed headers.
+    // Method is informational for future enhancements (e.g., validating
+    // that certain methods typically do not include a body).
     (void)method; // Currently unused; kept for future logic and debug
     _isValid = false;
     _errorMessage.clear();

@@ -20,12 +20,16 @@
 #include <vector>
 #include <sstream>
 
-/*Since TCP is a stream-based protocol, HTTP requests are not guaranteed 
-to arrive in a single packet or a single recv() call. 
-A large request, a slow network, or packet fragmentation can cause the data to arrive in chunks. 
-The parser must be designed to handle this incremental arrival.
-The parser effectively operates as a state machine. It consumes the data in the 
-buffer and transitions through several states:*/
+/*
+ Since TCP is a stream-based protocol, HTTP requests are not guaranteed
+ to arrive in a single packet or a single recv() call. A large request,
+ a slow network, or packet fragmentation can cause the data to arrive
+ in pieces. The parser must be designed to handle incremental arrival.
+
+ The HTTPparser operates as a state machine. It consumes data and
+ transitions through several states. This allows future extension to
+ incremental parsing (e.g., feeding partial buffers from non-blocking I/O).
+*/
 enum State {
     PARSING_REQUEST_LINE = 0,
     PARSING_HEADERS = 1,
@@ -38,15 +42,15 @@ enum State {
 };
 
 /*
-  
-  This class serves as the main controller for parsing HTTP requests.
-  It uses specialized classes for parsing different parts of the request:
-  - HTTPRequestLine for parsing the request line
-  - HTTPHeaders for parsing headers
-  - Body parsing is handled directly for now
-  
-  The parser operates as a state machine to handle incremental data arrival.
- */
+  HTTPparser is the controller that orchestrates parsing the entire
+  HTTP request. It delegates specialized work to dedicated components:
+  - HTTPRequestLine: parses the first line (method, path, version)
+  - HTTPHeaders: parses the header block
+  - HTTPBody: parses the message body (fixed-length or chunked)
+
+  The class also tracks a parsing state (State enum) to reflect progress
+  and to prepare for future incremental parsing.
+*/
 class HTTPparser
 {
     private:

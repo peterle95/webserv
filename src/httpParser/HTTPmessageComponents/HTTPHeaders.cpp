@@ -25,17 +25,14 @@ HTTPHeaders::~HTTPHeaders()
 {
 }
 
-/**
- * @brief Parse headers from input stream until empty line is found
- * 
- * Reads header lines from the input stream, validates them, and stores
- * them in the internal map. Stops when an empty line is encountered.
- * 
- * @param iss Input string stream containing header lines
- * @return true if parsing was successful, false otherwise
- */
+// Parse headers from input stream until empty line is found
+// Reads header lines from the input stream, validates them, and stores
+// them in the internal map. Stops when an empty line is encountered.
+// iss: Input string stream containing header lines
+// return true if parsing was successful, false otherwise
 bool HTTPHeaders::parseHeaders(std::istringstream& iss)
 {
+    // Reset any previous state. We'll accumulate headers in _headers map.
     reset();
     std::string line;
     
@@ -72,15 +69,11 @@ bool HTTPHeaders::parseHeaders(std::istringstream& iss)
     return true;
 }
 
-/**
- * @brief Parse a single header line
- * 
- * Parses a line in the format "name: value" and adds it to the headers map.
- * Validates both name and value according to HTTP specifications.
- * 
- * @param line The header line to parse
- * @return true if parsing was successful, false otherwise
- */
+// Parse a single header line
+// Parses a line in the format "name: value" and adds it to the headers map.
+// Validates both name and value according to HTTP specifications.
+// line: The header line to parse
+// return true if parsing was successful, false otherwise
 bool HTTPHeaders::parseHeaderLine(const std::string& line)
 {
     // Find the colon separator
@@ -92,6 +85,7 @@ bool HTTPHeaders::parseHeaderLine(const std::string& line)
     }
     
     // Extract and trim name and value
+    // The value portion may have leading spaces which we trim.
     std::string name = HTTPValidation::trim(line.substr(0, colonPos));
     std::string value = HTTPValidation::trim(line.substr(colonPos + 1));
     
@@ -113,13 +107,10 @@ bool HTTPHeaders::parseHeaderLine(const std::string& line)
     return addHeader(name, value);
 }
 
-/**
- * @brief Add a header to the collection
- * 
- * @param name Header name
- * @param value Header value
- * @return true if header was added successfully, false otherwise
- */
+// Add a header to the collection
+// name: Header name
+// value: Header value
+// return true if header was added successfully, false otherwise
 bool HTTPHeaders::addHeader(const std::string& name, const std::string& value)
 {
     if (name.empty())

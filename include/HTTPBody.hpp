@@ -45,10 +45,10 @@ public:
     HTTPBody();
     ~HTTPBody();
 
-    // Parse based on headers; method is informational for debug
+    // Parse based on headers; method is for debug
     bool parse(std::istringstream& iss, const HTTPHeaders& headers, const std::string& method);
 
-    // Accessors
+    // Getters
     const std::string& getBody() const { return _body; }
     bool isValid() const { return _isValid; }
     const std::string& getErrorMessage() const { return _errorMessage; }
