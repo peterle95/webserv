@@ -16,8 +16,13 @@
 #include <string>
 #include <set>
 
-/*This class provides static methods to validate various HTTP components
- such as methods, versions, paths, and header values according to RFC specifications.
+/*
+  This class provides static methods to validate various HTTP components
+  such as methods, versions, paths, and header values according to
+  HTTP/1.1 specifications (RFC 7230 et al., superseded in part by RFC 9110).
+
+  The goal is to keep the parsing components small by centralizing
+  low-level validation checks here.
  */
 class HTTPValidation
 {

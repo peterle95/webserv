@@ -121,12 +121,25 @@ bool HTTPparser::parseBody(std::istringstream& iss)
 /**
  * @brief Main method to parse an HTTP request using modular components
  * 
+ * High-level algorithm (HTTP/1.1):
+ * 1) Request-line: "METHOD SP request-target SP HTTP-version CRLF"
+ * 2) Header section: 1+ header fields each ending with CRLF
+ *    - Terminates with an empty line (i.e., the CRLF after the last header
+ *      is immediately followed by another CRLF)
+ * 3) Message body (optional): determined by either
+ *    - Transfer-Encoding: chunked (chunked framing), or
+ *    - Content-Length: N (fixed-length), or
+ *    - Absent (read until EOF if used over a raw TCP stream; for this parser,
+ *      we consume whatever remains in the stringstream when neither header is
+ *      present)
+ * 
  * This method orchestrates the parsing process using specialized classes:
  * - HTTPRequestLine for parsing the first line
- * - HTTPHeaders for parsing header section
- * - Simple body parsing (to be enhanced later)
+ * - HTTPHeaders for parsing header section (stops on the empty line)
+ * - HTTPBody for parsing the body
  * 
- * The method operates as a state machine to handle the parsing flow.
+ * The method operates as a state machine to reflect progress and to make it
+ * easier to evolve toward incremental, non-blocking parsing (poll/epoll).
  * 
  * @param rawRequest The raw HTTP request string to parse
  * @return true if parsing was successful, false otherwise
@@ -137,7 +150,7 @@ bool HTTPparser::parseRequest(const std::string &rawRequest)
     reset();
     _HTTPrequest = rawRequest; // Store for debugging/logging
 
-    DEBUG_PRINT(RED << "=== Starting HTTP Request Parsing ===" << RESET);
+    DEBUG_PRINT("=== Starting HTTP Request Parsing ===");
     DEBUG_PRINT("Raw Request (first 200 chars): " << rawRequest.substr(0, 200));
     
     // We parse from a stringstream for simplicity. In a real server with
@@ -185,7 +198,7 @@ bool HTTPparser::parseRequest(const std::string &rawRequest)
     if (_state == PARSING_COMPLETE)
     {
         _isValid = true;
-        DEBUG_PRINT(RED << "=== HTTP Request Parsing Complete ===" << RESET);
+        DEBUG_PRINT("=== HTTP Request Parsing Complete ===");
         DEBUG_PRINT("Method: " << getMethod() << ", Path: " << getPath() 
                     << ", Version: " << getVersion());
         DEBUG_PRINT("Headers: " << getHeaders().size() << " total");
@@ -195,7 +208,7 @@ bool HTTPparser::parseRequest(const std::string &rawRequest)
     }
     else if (_state == ERROR)
     {
-        DEBUG_PRINT(RED << "=== HTTP Request Parsing Failed ===" << RESET);
+        DEBUG_PRINT("=== HTTP Request Parsing Failed ===");
         DEBUG_PRINT("Error: " << _errorMessage);
         return false;
     }

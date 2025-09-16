@@ -24,17 +24,18 @@ HTTPRequestLine::~HTTPRequestLine()
 {
 }
 
-/**
- * @brief Parse the HTTP request line
- * 
- * Parses a request line string into method, path, and version components.
- * Validates each component according to HTTP specifications.
- * 
- * @param requestLine The raw request line string
- * @return true if parsing was successful, false otherwise
+/*
+Parse the HTTP request line
+ 
+ Parses a request line string into method, path, and version components.
+ Validates each component according to HTTP specifications.
+ 
+ requestLine The raw request line string
+ return true if parsing was successful, false otherwise
  */
 bool HTTPRequestLine::parseRequestLine(const std::string& requestLine)
 {
+    // Reset previous state and keep the original request line for diagnostics
     reset();
     _rawLine = requestLine;
     
@@ -83,12 +84,12 @@ bool HTTPRequestLine::parseRequestLine(const std::string& requestLine)
     return true;
 }
 
-/**
- * @brief Parse the three components from the request line
- * 
- * @param iss Input string stream containing the request line
- * @return true if all three components were extracted, false otherwise
- */
+/*
+Parse the three components from the request line
+
+iss Input string stream containing the request line
+return true if all three components were extracted, false otherwise
+*/
 bool HTTPRequestLine::parseComponents(std::istringstream& iss)
 {
     // Extract method, path, and version separated by spaces
@@ -140,6 +141,9 @@ bool HTTPRequestLine::validatePath(const std::string& path)
     if (path.empty())
         return false;
     
+    // We validate only the path component (request-target) here and do not
+    // implement query-string parsing or percent-decoding. Those can be
+    // layered later if needed by routing.
     return HTTPValidation::isValidPath(path);
 }
 

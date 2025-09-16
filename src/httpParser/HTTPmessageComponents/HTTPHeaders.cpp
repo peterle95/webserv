@@ -59,7 +59,9 @@ bool HTTPHeaders::parseHeaders(std::istringstream& iss)
         }
     }
     
-    // Validate the parsed headers
+    // Validate the parsed headers for conflicts and basic consistency.
+    // Example: both Content-Length and Transfer-Encoding present ->
+    // Transfer-Encoding takes precedence.
     if (!validateHeaders())
         return false;
     

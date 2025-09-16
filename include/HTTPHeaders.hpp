@@ -23,8 +23,14 @@
   - Parsing header lines from HTTP request
   - Validation of header names and values according to HTTP specifications
   - Special handling for important headers (Content-Length, Transfer-Encoding, etc.)
-  - Case-insensitive header name lookup
+  - Case-insensitive header name lookup via lowercase keys
   - Error detection and reporting
+
+  Implementation notes:
+  - Header folding (obsolete line folding) is not supported; each header
+    must be a single line with a colon.
+  - For HTTP/1.1, the Host header is typically required from clients;
+    enforcement is not implemented here but could be added in validateHeaders().
  */
 class HTTPHeaders
 {

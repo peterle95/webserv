@@ -23,6 +23,12 @@ class HTTPHeaders;
   HTTPBody is responsible for parsing and holding the HTTP request body.
   It supports both fixed-length bodies (via Content-Length) and
   Transfer-Encoding: chunked, including optional trailers.
+
+  - Input stream must be positioned at the first byte of the body (i.e.,
+    immediately after the CRLF that ends the header section).
+  - The HTTPHeaders instance must represent the headers for the same request.
+  - On success, getBody() returns the raw body (no decoding beyond chunk
+    framing). The component does not interpret Content-Type; it only frames.
 */
 class HTTPBody
 {

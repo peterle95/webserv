@@ -195,6 +195,12 @@ bool HTTPBody::parse(std::istringstream& iss, const HTTPHeaders& headers, const 
     // Decide body parsing strategy using the already-parsed headers.
     // Method is informational for future enhancements (e.g., validating
     // that certain methods typically do not include a body).
+    //
+    // Notes:
+    // - If both Content-Length and Transfer-Encoding are present, HTTP/1.1
+    //   dictates that Transfer-Encoding takes precedence. We follow that by
+    //   checking isChunked() first.
+    // - We do not parse multipart or form-encoded data here; only framing.
     (void)method; // Currently unused; kept for future logic and debug
     _isValid = false;
     _errorMessage.clear();
