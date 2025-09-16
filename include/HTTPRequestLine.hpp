@@ -40,7 +40,6 @@ private:
     void setError(const std::string& message);
     bool parseComponents(std::istringstream& iss);
     void trimTrailingCR(std::string& line);
-};
 
 public:
     HTTPRequestLine();

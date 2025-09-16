@@ -18,6 +18,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <sstream>
 
 /*Since TCP is a stream-based protocol, HTTP requests are not guaranteed 
 to arrive in a single packet or a single recv() call. 
@@ -58,6 +59,16 @@ class HTTPparser
         std::string _errorStatusCode;    // Error status if parsing fails
         bool _isValid;                   // Whether the request is valid
         std::string _errorMessage;       // Detailed error message
+
+        // Helpers for body parsing and state management
+        bool parseFixedLengthBody(std::istringstream& iss, size_t length);
+        bool parseChunkedBody(std::istringstream& iss);
+        bool parseChunkSizeLine(std::istringstream& iss, size_t& outSize);
+        bool readExact(std::istringstream& iss, size_t length, std::string& out);
+        bool readCRLF(std::istringstream& iss);
+        void setState(State s);
+        void trimTrailingCR(std::string& line);
+        void setError(const std::string& message, const std::string& statusCode = "400");
         
     public:
         HTTPparser();

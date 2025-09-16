@@ -31,3 +31,20 @@ void HTTPparser::setError(const std::string& message, const std::string& statusC
     _state = ERROR;
     DEBUG_PRINT("HTTPparser error: " << message << " (status: " << statusCode << ")");
 }
+
+/**
+ * @brief Set the internal parser state
+ */
+void HTTPparser::setState(State s)
+{
+    _state = s;
+}
+
+/**
+ * @brief Remove trailing carriage return if present
+ */
+void HTTPparser::trimTrailingCR(std::string& line)
+{
+    if (!line.empty() && line[line.size() - 1] == '\r')
+        line.erase(line.size() - 1);
+}
