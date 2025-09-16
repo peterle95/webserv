@@ -22,6 +22,7 @@ SRCS = src/main.cpp \
 		src/httpParser/HTTPmessageComponents/HTTPHeaders.cpp \
 		src/httpParser/HTTPmessageComponents/HTTPRequestLine.cpp \
 		src/httpParser/HTTPmessageComponents/HTTPValidation.cpp \
+		src/httpParser/HTTPmessageComponents/HTTPBody.cpp \
 
 OBJS = $(SRCS:.cpp=.o)
 

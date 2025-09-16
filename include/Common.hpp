@@ -40,6 +40,7 @@ macros used throughout the project.*/
 #include "HTTPValidation.hpp" // HTTP validation utilities
 #include "HTTPRequestLine.hpp" // HTTP request line parser
 #include "HTTPHeaders.hpp" // HTTP headers parser
+#include "HTTPBody.hpp" // HTTP body parser
 
 // create a DEBUG macro so that if it's true the debugging mode in the code will print stuff
 #ifndef DEBUG

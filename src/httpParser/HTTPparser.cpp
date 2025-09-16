@@ -12,6 +12,7 @@
 
 // ./src/httpParser/HTTPparser.cpp
 #include "Common.hpp"
+#include "HTTPBody.hpp"
 
 HTTPparser::HTTPparser()
     : _state(PARSING_REQUEST_LINE), _isValid(false)
@@ -93,185 +94,25 @@ bool HTTPparser::parseHeaders(std::istringstream& iss)
  */
 bool HTTPparser::parseBody(std::istringstream& iss)
 {
-    // Methods like GET/HEAD/DELETE typically do not include a body
-    // but RFC allows it; we simply parse if present.
-    if (_headers.isChunked())
-    {
-        DEBUG_PRINT("Parsing body with Transfer-Encoding: chunked");
-        setState(PARSING_CHUNKED_BODY);
-        if (!parseChunkedBody(iss))
-            return false;
-        return true;
-    }
+    // Delegate body parsing to HTTPBody for modularity
+    setState(_headers.isChunked() ? PARSING_CHUNKED_BODY : PARSING_BODY);
 
-    if (_headers.hasContentLength())
+    HTTPBody bodyParser;
+    if (!bodyParser.parse(iss, _headers, _requestLine.getMethod()))
     {
-        size_t len = _headers.getContentLength();
-        DEBUG_PRINT("Parsing body with Content-Length: " << len);
-        setState(PARSING_BODY);
-        if (!parseFixedLengthBody(iss, len))
-            return false;
-        return true;
+        setError(bodyParser.getErrorMessage(), "400");
+        return false;
     }
-
-    // No length provided: read remaining bytes as-is
-    DEBUG_PRINT("No Content-Length or Transfer-Encoding provided; reading remaining stream as body");
-    setState(PARSING_BODY);
-    std::ostringstream bodyStream;
-    bodyStream << iss.rdbuf();
-    _body = bodyStream.str();
+    _body = bodyParser.getBody();
     if (!_body.empty())
         DEBUG_PRINT("Parsed body with " << _body.length() << " bytes");
     return true;
 }
 
-/**
- * @brief Read exactly 'length' bytes from stream into 'out'
- */
-bool HTTPparser::readExact(std::istringstream& iss, size_t length, std::string& out)
-{
-    if (length == 0)
-    {
-        out.clear();
-        return true;
-    }
-    std::vector<char> buf(length);
-    iss.read(&buf[0], static_cast<std::streamsize>(length));
-    std::streamsize got = iss.gcount();
-    if (static_cast<size_t>(got) != length)
-        return false;
-    out.assign(&buf[0], &buf[0] + length);
-    return true;
-}
 
-/**
- * @brief Consume an expected CRLF from the stream
- */
-bool HTTPparser::readCRLF(std::istringstream& iss)
-{
-    char cr = 0, lf = 0;
-    if (!iss.get(cr)) return false;
-    if (!iss.get(lf)) return false;
-    return (cr == '\r' && lf == '\n');
-}
 
-/**
- * @brief Parse a single chunk-size line and output its numeric value
- */
-bool HTTPparser::parseChunkSizeLine(std::istringstream& iss, size_t& outSize)
-{
-    std::string line;
-    if (!std::getline(iss, line))
-    {
-        setError("Unexpected end of input while reading chunk size", "400");
-        return false;
-    }
-    trimTrailingCR(line);
 
-    // Remove chunk extensions if present
-    std::string::size_type scPos = line.find(';');
-    if (scPos != std::string::npos)
-        line = line.substr(0, scPos);
 
-    // Trim whitespace
-    line = HTTPValidation::trim(line);
-    if (line.empty())
-    {
-        setError("Empty chunk size line", "400");
-        return false;
-    }
-
-    // Validate hex digits and parse
-    for (size_t i = 0; i < line.size(); ++i)
-    {
-        if (!std::isxdigit(static_cast<unsigned char>(line[i])))
-        {
-            setError("Invalid chunk size: non-hex character found", "400");
-            return false;
-        }
-    }
-
-    unsigned long parsed = 0;
-    std::istringstream hexss(line);
-    hexss >> std::hex >> parsed;
-    if (hexss.fail())
-    {
-        setError("Failed to parse chunk size", "400");
-        return false;
-    }
-    outSize = static_cast<size_t>(parsed);
-    DEBUG_PRINT("Chunk size: " << outSize);
-    return true;
-}
-
-/**
- * @brief Parse body with Transfer-Encoding: chunked
- */
-bool HTTPparser::parseChunkedBody(std::istringstream& iss)
-{
-    _body.clear();
-    while (true)
-    {
-        setState(PARSING_CHUNK_SIZE);
-        size_t chunkSize = 0;
-        if (!parseChunkSizeLine(iss, chunkSize))
-            return false;
-
-        if (chunkSize == 0)
-        {
-            // End of chunks
-            // Consume the CRLF that terminates the zero-length chunk data
-            if (!readCRLF(iss))
-            {
-                setError("Missing CRLF after zero-size chunk", "400");
-                return false;
-            }
-            // Read optional trailer headers until an empty line
-            std::string trailer;
-            while (std::getline(iss, trailer))
-            {
-                trimTrailingCR(trailer);
-                if (trailer.empty())
-                    break; // End of trailers
-                // Optionally, handle trailer headers here
-            }
-            DEBUG_PRINT("Finished parsing chunked body, total size: " << _body.size());
-            return true;
-        }
-
-        setState(PARSING_CHUNK_DATA);
-        std::string chunk;
-        if (!readExact(iss, chunkSize, chunk))
-        {
-            setError("Chunk data shorter than declared size", "400");
-            return false;
-        }
-        _body.append(chunk);
-
-        // Each chunk is followed by CRLF
-        if (!readCRLF(iss))
-        {
-            setError("Missing CRLF after chunk data", "400");
-            return false;
-        }
-    }
-}
-
-/**
- * @brief Parse body with a fixed Content-Length
- */
-bool HTTPparser::parseFixedLengthBody(std::istringstream& iss, size_t length)
-{
-    _body.clear();
-    std::string data;
-    if (!readExact(iss, length, data))
-    {
-        setError("Body shorter than Content-Length", "400");
-        return false;
-    }
-    _body = data;
-    return true;
-}
 
 /**
  * @brief Main method to parse an HTTP request using modular components

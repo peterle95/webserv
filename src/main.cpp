@@ -16,7 +16,9 @@
 
 void testhttpParsing()
 {
-    std::cout << "=== Testing Improved HTTP Parser ===" << std::endl;
+    #define RED     "\033[31m"
+    #define RESET   "\033[0m"
+    std::cout << RED << "=== Testing Improved HTTP Parser ===" << RESET << std::endl;
     
     // Example HTTP request
     std::string testRequest = 
@@ -34,7 +36,7 @@ void testhttpParsing()
     // Create parser and test parsing
     HTTPparser parser;
     
-    std::cout << "\n--- Testing Valid Request ---" << std::endl;
+    std::cout << RED << "\n--- Testing Valid Request ---" << RESET << std::endl;
     if (parser.parseRequest(testRequest))
     {
         std::cout << "✓ Request parsed successfully!" << std::endl;
@@ -54,7 +56,7 @@ void testhttpParsing()
     }
     
     // Test invalid request
-    std::cout << "\n--- Testing Invalid Request ---" << std::endl;
+    std::cout << RED << "\n--- Testing Invalid Request ---" << RESET << std::endl;
     std::string invalidRequest = "INVALID REQUEST LINE\r\n";
     
     HTTPparser parser2;
@@ -70,7 +72,7 @@ void testhttpParsing()
     }
     
     // Test directory traversal protection
-    std::cout << "\n--- Testing Security Features ---" << std::endl;
+    std::cout << RED << "\n--- Testing Security Features ---" << RESET << std::endl;
     std::string maliciousRequest = 
         "GET /../../../etc/passwd HTTP/1.1\r\n"
         "Host: localhost\r\n"
@@ -90,10 +92,10 @@ void testhttpParsing()
     // =============================================================
     // Additional tests for HTTP body parsing
     // =============================================================
-    std::cout << "\n=== Additional HTTP Body Parsing Tests ===" << std::endl;
+    std::cout << RED << "\n=== Additional HTTP Body Parsing Tests ===" << RESET << std::endl;
 
     // 1) Fixed-length body (exact match)
-    std::cout << "\n--- Fixed-Length Body: Exact Match ---" << std::endl;
+    std::cout << RED << "\n--- Fixed-Length Body: Exact Match ---" << RESET << std::endl;
     std::string fixedExact =
         "POST /submit HTTP/1.1\r\n"
         "Host: localhost\r\n"
@@ -118,7 +120,7 @@ void testhttpParsing()
     }
 
     // 2) Fixed-length body (shorter than Content-Length)
-    std::cout << "\n--- Fixed-Length Body: Too Short ---" << std::endl;
+    std::cout << RED << "\n--- Fixed-Length Body: Too Short ---" << RESET << std::endl;
     std::string fixedShort =
         "POST /short HTTP/1.1\r\n"
         "Host: localhost\r\n"
@@ -138,7 +140,7 @@ void testhttpParsing()
     }
 
     // 3) Fixed-length body (longer than Content-Length): parser reads only declared bytes
-    std::cout << "\n--- Fixed-Length Body: Longer Than Declared ---" << std::endl;
+    std::cout << RED << "\n--- Fixed-Length Body: Longer Than Declared ---" << RESET << std::endl;
     std::string fixedLong =
         "POST /long HTTP/1.1\r\n"
         "Host: localhost\r\n"
@@ -161,7 +163,7 @@ void testhttpParsing()
     }
 
     // 4) Chunked encoding (standard example)
-    std::cout << "\n--- Chunked Body: Standard ---" << std::endl;
+    std::cout << RED << "\n--- Chunked Body: Standard ---" << RESET << std::endl;
     std::string chunked =
         "POST /chunked HTTP/1.1\r\n"
         "Host: localhost\r\n"
@@ -190,7 +192,7 @@ void testhttpParsing()
     }
 
     // 5) Chunked encoding with trailers
-    std::cout << "\n--- Chunked Body: With Trailers ---" << std::endl;
+    std::cout << RED << "\n--- Chunked Body: With Trailers ---" << RESET << std::endl;
     std::string chunkedTrailers =
         "POST /chunked HTTP/1.1\r\n"
         "Host: localhost\r\n"
@@ -220,7 +222,7 @@ void testhttpParsing()
     }
 
     // 6) Chunked encoding with invalid size (non-hex)
-    std::cout << "\n--- Chunked Body: Invalid Chunk Size ---" << std::endl;
+    std::cout << RED << "\n--- Chunked Body: Invalid Chunk Size ---" << RESET << std::endl;
     std::string chunkedInvalid =
         "POST /chunked HTTP/1.1\r\n"
         "Host: localhost\r\n"
@@ -242,7 +244,7 @@ void testhttpParsing()
     }
 
     // 7) No body with GET (no Content-Length/Transfer-Encoding)
-    std::cout << "\n--- No Body with GET ---" << std::endl;
+    std::cout << RED << "\n--- No Body with GET ---" << RESET << std::endl;
     std::string getNoBody =
         "GET /plain HTTP/1.1\r\n"
         "Host: localhost\r\n"
@@ -261,7 +263,7 @@ void testhttpParsing()
         std::cout << "✗ Failed to parse GET without body" << std::endl;
     }
     
-    std::cout << "\n=== Test Complete ===" << std::endl;
+    std::cout << RED << "\n=== Test Complete ===" << RESET << std::endl;
 } 
 
 // implement later try...catch blocks
