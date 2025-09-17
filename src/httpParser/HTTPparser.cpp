@@ -23,12 +23,12 @@ HTTPparser::HTTPparser()
 HTTPparser::~HTTPparser()
 {}
 
-/**
- * @brief Parse the HTTP request line using the HTTPRequestLine module
- * 
- * @param iss Input string stream containing the request
- * @return true if parsing was successful, false otherwise
- */
+/*
+Parse the HTTP request line using the HTTPRequestLine module
+
+iss Input string stream containing the request
+return true if parsing was successful, false otherwise
+*/
 bool HTTPparser::parseRequestLine(std::istringstream& iss)
 {
     std::string line;
@@ -54,12 +54,12 @@ bool HTTPparser::parseRequestLine(std::istringstream& iss)
     return true;
 }
 
-/**
- * @brief Parse HTTP headers using the HTTPHeaders module
- * 
- * @param iss Input string stream containing the headers section
- * @return true if parsing was successful, false otherwise
- */
+/*
+Parse HTTP headers using the HTTPHeaders module
+
+iss Input string stream containing the headers section
+return true if parsing was successful, false otherwise
+*/
 bool HTTPparser::parseHeaders(std::istringstream& iss)
 {
     // Use HTTPHeaders module to parse all headers (reads lines until an
@@ -83,17 +83,17 @@ bool HTTPparser::parseHeaders(std::istringstream& iss)
     return true;
 }
 
-/**
- * @brief Parse HTTP body with support for Content-Length and chunked encoding
- * 
- * Handles three cases:
- * - Transfer-Encoding: chunked
- * - Content-Length: N
- * - No explicit length (reads remaining stream)
- * 
- * @param iss Input string stream containing the body section
- * @return true if parsing was successful, false otherwise
- */
+/*
+Parse HTTP body with support for Content-Length and chunked encoding
+
+Handles three cases:
+- Transfer-Encoding: chunked
+- Content-Length: N
+- No explicit length (reads remaining stream)
+
+iss Input string stream containing the body section
+return true if parsing was successful, false otherwise
+*/
 bool HTTPparser::parseBody(std::istringstream& iss)
 {
     // Delegate body parsing to HTTPBody for modularity. HTTPBody decides
@@ -118,32 +118,32 @@ bool HTTPparser::parseBody(std::istringstream& iss)
 
 
 
-/**
- * @brief Main method to parse an HTTP request using modular components
- * 
- * High-level algorithm (HTTP/1.1):
- * 1) Request-line: "METHOD SP request-target SP HTTP-version CRLF"
- * 2) Header section: 1+ header fields each ending with CRLF
- *    - Terminates with an empty line (i.e., the CRLF after the last header
- *      is immediately followed by another CRLF)
- * 3) Message body (optional): determined by either
- *    - Transfer-Encoding: chunked (chunked framing), or
- *    - Content-Length: N (fixed-length), or
- *    - Absent (read until EOF if used over a raw TCP stream; for this parser,
- *      we consume whatever remains in the stringstream when neither header is
- *      present)
- * 
- * This method orchestrates the parsing process using specialized classes:
- * - HTTPRequestLine for parsing the first line
- * - HTTPHeaders for parsing header section (stops on the empty line)
- * - HTTPBody for parsing the body
- * 
- * The method operates as a state machine to reflect progress and to make it
- * easier to evolve toward incremental, non-blocking parsing (poll/epoll).
- * 
- * @param rawRequest The raw HTTP request string to parse
- * @return true if parsing was successful, false otherwise
- */
+/*
+Main method to parse an HTTP request using modular components
+
+High-level algorithm (HTTP/1.1):
+1) Request-line: "METHOD SP request-target SP HTTP-version CRLF"
+2) Header section: 1+ header fields each ending with CRLF
+    - Terminates with an empty line (i.e., the CRLF after the last header
+      is immediately followed by another CRLF)
+3) Message body (optional): determined by either
+    - Transfer-Encoding: chunked (chunked framing), or
+    - Content-Length: N (fixed-length), or
+    - Absent (read until EOF if used over a raw TCP stream; for this parser,
+      we consume whatever remains in the stringstream when neither header is
+      present)
+
+This method orchestrates the parsing process using specialized classes:
+- HTTPRequestLine for parsing the first line
+- HTTPHeaders for parsing header section (stops on the empty line)
+- HTTPBody for parsing the body
+
+The method operates as a state machine to reflect progress and to make it
+easier to evolve toward incremental, non-blocking parsing (poll/epoll).
+
+rawRequest The raw HTTP request string to parse
+return true if parsing was successful, false otherwise
+*/
 bool HTTPparser::parseRequest(const std::string &rawRequest)
 {
     // Reset parser state and keep a copy of the raw request for debugging
