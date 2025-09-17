@@ -37,5 +37,6 @@ int main(int argc, char **argv)
     std::cout << "index:  " << parser.getIndex() << std::endl;
 
     HttpServer server(parser.getListenPort(), parser.getRoot(), parser.getIndex());
+    HttpServer server(parser.getListenPort(), parser.getServerName());
     return server.start();
 }

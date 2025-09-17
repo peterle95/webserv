@@ -32,7 +32,8 @@ class ConfigParser
         int                 getListenPort() const;
         const std::string&  getRoot() const;
         const std::string&  getIndex() const;
-
+        //ServerName addition -Shruti
+        const std::string&  getServerName() const;
         // TODO: implement error handling
         // TODO: implement parsing more directives (directives are the lines in the config file)
 };

@@ -70,6 +70,12 @@ const std::string& ConfigParser::getIndex() const
     return _index; 
 }
 
+//ServerName addition -Shruti
+const std::string& ConfigParser::getServerName() const
+{
+    return "127.0.0.1";
+}
+
 // parse config file
 bool ConfigParser::parse(const std::string &path)
 {
