@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../include/Common.hpp"
+#include "Common.hpp"
 
 // helper functions, trim whitespace from left
 std::string ltrim(const std::string &s)

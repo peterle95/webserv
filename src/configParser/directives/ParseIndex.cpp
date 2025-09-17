@@ -1,27 +1,19 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Getters.cpp                                        :+:      :+:    :+:   */
+/*   ParseIndex.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/08/18 11:46:14 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/18 11:46:14 by pmolzer          ###   ########.fr       */
+/*   Created: 2025/08/19 15:05:00 by pmolzer           #+#    #+#             */
+/*   Updated: 2025/08/19 15:05:00 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "ErrorHandler.hpp"
+#include "Common.hpp"
 
-int ErrorHandler::Exception::code() const 
-{ 
-    return _code; 
-}
-
-int ErrorHandler::Exception::line() const 
-{ 
-    return _line; 
-}
-const std::string& ErrorHandler::Exception::file() const 
-{ 
-    return _file; 
+void ConfigParser::parseIndex(const std::string &val, size_t /*lineNo*/)
+{
+    this->_index.push_back(val);
+    DEBUG_PRINT("Applied index -> '" << this->_index.back() << "'");
 }

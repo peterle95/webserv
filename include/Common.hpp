@@ -13,11 +13,13 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
+#define RED     "\033[31m"
+#define RESET   "\033[0m"
+
 /*A header file that includes common standard library headers and defines shared constants or 
 macros used throughout the project.*/
 
 #include <iostream>
-#include <poll.h> // poll()
 #include <sys/socket.h> // socket(), bind(), listen(), accept()
 #include <unistd.h> // close()
 #include <string> 
@@ -37,6 +39,11 @@ macros used throughout the project.*/
 #include "ConfigParser.hpp" // configuration parser 
 #include "HttpServer.hpp" // HTTP server
 #include "ErrorHandler.hpp"
+#include "HTTPparser.hpp" // parser for HTTP requests sent by the client
+#include "HTTPValidation.hpp" // HTTP validation utilities
+#include "HTTPRequestLine.hpp" // HTTP request line parser
+#include "HTTPHeaders.hpp" // HTTP headers parser
+#include "HTTPBody.hpp" // HTTP body parser
 
 // create a DEBUG macro so that if it's true the debugging mode in the code will print stuff
 #ifndef DEBUG
