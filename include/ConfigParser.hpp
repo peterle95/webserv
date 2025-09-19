@@ -33,6 +33,7 @@ class ConfigParser
 
         // Parse from a set of lines (expects raw lines; will trim/comment-strip internally)
         void        parseLines(const std::vector<std::string>& lines);
+        
 
         // Per-directive parsers
         void        parseListen(const std::string &val, size_t lineNo);
@@ -54,6 +55,7 @@ class ConfigParser
         ConfigParser();
         // Construct directly from lines (e.g., read elsewhere)
         ConfigParser(const std::vector<std::string>& lines);
+        const std::vector<std::string>& getLines() const;
         ~ConfigParser();
 
         // Parse minimal NGINX-like config supporting: listen, root, index
@@ -64,8 +66,8 @@ class ConfigParser
         int                 getListenPort() const;
         const std::string&  getRoot() const;
         const std::string&  getIndex() const;
-        const std::vector<std::string>& getLines() const;
-
+        //ServerName addition -Shruti
+        const std::string&  getServerName() const;
         // TODO: implement error handling
         // TODO: implement parsing more directives (directives are the lines in the config file)
 };
@@ -75,5 +77,6 @@ std::string ltrim(const std::string &s);
 std::string rtrim(const std::string &s);
 std::string trim(const std::string &s);
 std::string strip_comment(const std::string &s);
+
 
 #endif

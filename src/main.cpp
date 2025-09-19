@@ -285,5 +285,7 @@ int main(int argc, char **argv)
         testhttpParsing();
     }
     HttpServer server(parser.getListenPort(), parser.getRoot(), parser.getIndex());
+   // HttpServer server(parser.getListenPort(), parser.getServerName());
     return server.start();
 }
+
