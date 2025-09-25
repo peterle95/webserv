@@ -97,20 +97,6 @@ HttpServer::HttpServer(int port, const std::string &root, const std::string &ind
 
 HttpServer::~HttpServer() {}
 
-// read file to string, return empty string on error. Uses binary mode to preserve file contents.
-static std::string readFileToString(const std::string &path)
-{
-    std::ifstream ifs(path.c_str(), std::ios::in | std::ios::binary);
-    if (!ifs.good()) 
-    {
-        std::cerr << "Failed to open file: " << path << std::endl;
-        return std::string();
-    }
-    std::ostringstream ss;
-    ss << ifs.rdbuf();
-    return ss.str();
-}
-
 // Helper to set a socket to non-blocking mode
 // REFACTORED: Added this function to support non-blocking I/O operations
 // Previously, all sockets used blocking I/O which limited concurrency
@@ -215,6 +201,10 @@ int HttpServer::start()
     FD_SET(server_fd, &master_read_set);  // Add listening socket to read set
     int max_fd = server_fd;               // Track highest FD number for select()
 
+    DEBUG_PRINT(RED << "🚀 HTTP Server started on port " << _port << RESET);
+    DEBUG_PRINT("📁 Serving files from: " << RED << _root << "/" << _index << RESET);
+    DEBUG_PRINT("⚙️  Mode: " << (serveOnce ? RED "Single-request (CI mode)" : "Multi-request (keep-alive)") << RESET);
+
     // REFACTORED: Main event loop using select() for I/O multiplexing
     // This replaces the simple while(true) loop with blocking accept/recv/send
     // Now we can handle multiple clients concurrently without threads
@@ -279,6 +269,7 @@ int HttpServer::start()
                     clients[cfd] = ClientState();
                     FD_SET(cfd, &master_read_set);  // Add to read set for request data
                     if (cfd > max_fd) max_fd = cfd; // Update max_fd if necessary
+                    DEBUG_PRINT("🔌 New connection accepted (fd: " << RED << cfd << RESET << ")");
                 }
                 continue;
             }
@@ -312,6 +303,7 @@ int HttpServer::start()
                             if (it->second.requestBuf.find("\r\n\r\n") != std::string::npos)
                             {
                                 it->second.requestComplete = true;
+                                DEBUG_PRINT("Request headers complete (fd: " << RED << fd << RESET << ", size: " << it->second.requestBuf.size() << " bytes)");
                             }
                         }
                         // Continue reading until EAGAIN
@@ -337,6 +329,7 @@ int HttpServer::start()
 
                 if (peerClosed)
                 {
+                    DEBUG_PRINT("🔌 Connection closed by peer (fd: " << RED << fd << RESET << ")");
                     close(fd);
                     FD_CLR(fd, &master_read_set);
                     FD_CLR(fd, &master_write_set);
@@ -347,26 +340,16 @@ int HttpServer::start()
                 // REFACTORED: Check if request parsing is complete and generate response
                 if (it->second.requestComplete && it->second.responseBuf.empty())
                 {
+                    DEBUG_PRINT(RED << "=== Processing Request ===" << RESET);
+                    DEBUG_PRINT("Raw request size: " << it->second.requestBuf.size() << " bytes");
+
+                    // Use existing HTTPparser to parse the raw request
                     it->second.parser.parseRequest(it->second.requestBuf);
 
-                    std::string path = it->second.parser.getPath();
-                    std::string filePath;
-                    if (path == "/" || path.empty())
-                        filePath = _root + "/" + _index;
-                    else
-                    {
-                        if (path.size() > 0 && path[0] == '/')
-                            filePath = _root + path;
-                        else
-                            filePath = _root + "/" + path;
-                    }
-
-                    std::string body = readFileToString(filePath);
+                    // Determine keep-alive based on request headers/version
                     std::ostringstream resp;
-                    // REFACTORED: Determine keep-alive based on request headers/version
                     std::string conn = it->second.parser.getHeader("Connection");
                     std::string version = it->second.parser.getVersion();
-                    // Normalize header value to lowercase for comparison
                     for (size_t i = 0; i < conn.size(); ++i) conn[i] = static_cast<char>(std::tolower(conn[i]));
                     bool wantKeepAlive = false;
                     if (!conn.empty())
@@ -374,29 +357,62 @@ int HttpServer::start()
                     else if (version == "HTTP/1.1")
                         wantKeepAlive = true; // default keep-alive for HTTP/1.1
 
-                    if (!body.empty())
+                    if (!it->second.parser.isValid())
                     {
+                        DEBUG_PRINT(RED << "Request parsing failed: " << it->second.parser.getErrorMessage() << RESET);
+                        // Bad request dummy response
+                        const std::string body = "<h1>400 Bad Request</h1>";
+                        resp << "HTTP/1.1 400 Bad Request\r\n";
+                        resp << "Content-Type: text/html; charset=utf-8\r\n";
+                        resp << "Content-Length: " << body.size() << "\r\n";
+                        if (wantKeepAlive) resp << "Connection: keep-alive\r\n"; else resp << "Connection: close\r\n";
+                        resp << "\r\n";
+                        resp << body;
+                        DEBUG_PRINT(RED << "→ Sending 400 Bad Request" << RESET);
+                    }
+                    else if (it->second.parser.getMethod() == "GET")
+                    {
+                        std::string method = it->second.parser.getMethod();
+                        std::string path = it->second.parser.getPath();
+                        std::string version = it->second.parser.getVersion();
+
+                        DEBUG_PRINT("Valid request parsed:");
+                        DEBUG_PRINT("   Method: " << RED << method << RESET);
+                        DEBUG_PRINT("   Path: " << RED << path << RESET);
+                        DEBUG_PRINT("   Version: " << RED << version << RESET);
+
+                        // Simple dummy response for GET only (no file I/O)
+                        std::string body = std::string("<html><body><h1>OK</h1><p>GET ") + path + "</p></body></html>";
                         resp << "HTTP/1.1 200 OK\r\n";
                         resp << "Content-Type: text/html; charset=utf-8\r\n";
                         resp << "Content-Length: " << body.size() << "\r\n";
                         if (wantKeepAlive) resp << "Connection: keep-alive\r\n"; else resp << "Connection: close\r\n";
                         resp << "\r\n";
                         resp << body;
+                        DEBUG_PRINT("→ Sending 200 OK for GET request");
                     }
                     else
                     {
-                        std::string notFound = "<h1>404 Not Found</h1>";
-                        resp << "HTTP/1.1 404 Not Found\r\n";
+                        std::string method = it->second.parser.getMethod();
+                        DEBUG_PRINT("Method not allowed: " << RED << method << RESET << " (only GET supported)");
+                        // Method not allowed for non-GET methods
+                        const std::string body = "<h1>405 Method Not Allowed</h1>";
+                        resp << "HTTP/1.1 405 Method Not Allowed\r\n";
+                        resp << "Allow: GET\r\n";
                         resp << "Content-Type: text/html; charset=utf-8\r\n";
-                        resp << "Content-Length: " << notFound.size() << "\r\n";
+                        resp << "Content-Length: " << body.size() << "\r\n";
                         if (wantKeepAlive) resp << "Connection: keep-alive\r\n"; else resp << "Connection: close\r\n";
                         resp << "\r\n";
-                        resp << notFound;
+                        resp << body;
+                        DEBUG_PRINT("→ Sending 405 Method Not Allowed");
                     }
 
                     it->second.responseBuf = resp.str();
                     it->second.sendOffset = 0;
                     it->second.keepAlive = wantKeepAlive;
+
+                    DEBUG_PRINT("Response prepared (" << resp.str().size() << " bytes)");
+                    DEBUG_PRINT("Keep-alive: " << (wantKeepAlive ? RED "enabled" : "disabled") << RESET);
 
                     // REFACTORED: Move fd from read to write set
                     FD_CLR(fd, &master_read_set);
@@ -421,6 +437,7 @@ int HttpServer::start()
                 }
 
                 const std::string &resp = it->second.responseBuf;
+                DEBUG_PRINT("Sending response (fd: " << RED << fd << RESET << ", " << it->second.sendOffset << "/" << resp.size() << " bytes sent)");
                 while (it->second.sendOffset < resp.size())
                 {
                     ssize_t n = send(fd, resp.c_str() + it->second.sendOffset, resp.size() - it->second.sendOffset, 0);
@@ -444,6 +461,7 @@ int HttpServer::start()
 
                 if (it->second.sendOffset >= resp.size())
                 {
+                    DEBUG_PRINT("Response sent completely (fd: " << RED << fd << RESET << ")");
                     if (it->second.keepAlive)
                     {
                         // REFACTORED: Reset for next request, go back to reading
@@ -453,10 +471,12 @@ int HttpServer::start()
                         it->second.requestComplete = false;
                         FD_CLR(fd, &master_write_set);
                         FD_SET(fd, &master_read_set);
+                        DEBUG_PRINT("Keep-alive: Ready for next request (fd: " << RED << fd << RESET << ")");
                     }
                     else
                     {
                         // Close connection
+                        DEBUG_PRINT("Closing connection (fd: " << RED << fd << RESET << ")");
                         close(fd);
                         FD_CLR(fd, &master_write_set);
                         clients.erase(fd);
@@ -474,10 +494,13 @@ int HttpServer::start()
     // REFACTORED: Cleanup - close all remaining client connections and server socket
     // In the original blocking version, only the server socket needed cleanup
     // Now we must clean up all active client connections as well
+    DEBUG_PRINT("HTTP Server shutting down...");
     for (std::map<int, ClientState>::iterator it = clients.begin(); it != clients.end(); ++it)
     {
         close(it->first);
+        DEBUG_PRINT("Closed connection (fd: " << RED << it->first << RESET << ")");
     }
     close(server_fd);
+    DEBUG_PRINT(RED << "Server shutdown complete" << RESET);
     return 0;
 }
