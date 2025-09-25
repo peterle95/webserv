@@ -31,21 +31,15 @@ static std::string readFileToString(const std::string &path)
     return ss.str();
 }
 
-// send all data to socket, continue until all data is sent or error occurs
-static void sendAll(int fd, const char *data, size_t len)
+// Helper to set a socket to non-blocking mode
+static bool setNonBlocking(int fd)
 {
-    size_t sent = 0;
-    while (sent < len)
-    {
-        ssize_t n = send(fd, data + sent, len - sent, 0);
-        if (n <= 0) break;
-        sent += (size_t)n;
-    }
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0) return false;
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) return false;
+    return true;
 }
 
-// start the server, return 0 on success, non-zero on error. Blocks until server is stopped.
-// This is a very simple blocking server for demo purposes.
-// TODO: make this non-blocking. Achieve this by using poll() to wait for connections.
 // Global stop flag set by signal handlers
 static volatile sig_atomic_t g_stop = 0;
 
@@ -53,6 +47,17 @@ static void handle_stop_signal(int)
 {
     g_stop = 1;
 }
+
+// Per-client state for the select()-based event loop
+struct ClientState {
+    std::string requestBuf;
+    std::string responseBuf;
+    size_t      sendOffset;
+    bool        keepAlive;
+    bool        requestComplete;
+    HTTPparser  parser;
+    ClientState(): sendOffset(0), keepAlive(false), requestComplete(false) {}
+};
 
 int HttpServer::start()
 {
@@ -63,21 +68,16 @@ int HttpServer::start()
         return 1;
     }
 
-    // this is to allow the server to be restarted quickly without waiting for the port to be released
-    // it works by allowing the socket to be bound to an address that is already in use
+    // Allow quick restart
     int opt = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-    // this struct is defined in <netinet/in.h>
+    // Bind address
     struct sockaddr_in addr;
-    // this block of code is to initialize the struct to 0, because it is not initialized by default
     std::memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET; // AF_INET is the address family for IPv4
-    addr.sin_addr.s_addr = htonl(INADDR_ANY); // INADDR_ANY is a special address that means "any address"
-    addr.sin_port = htons((uint16_t)_port); // htons() converts the port number to network byte order
-
-    // bind the socket to the address, we need to bind the socket to the address because 
-    // we want to listen on a specific port
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port = htons((uint16_t)_port);
     if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
     {
         std::cerr << "bind() failed on port " << _port << std::endl;
@@ -85,17 +85,24 @@ int HttpServer::start()
         return 1;
     }
 
-    // listen for connections, we need to listen for connections because we want to accept connections
-    if (listen(server_fd, 10) < 0)
+    if (listen(server_fd, 128) < 0)
     {
         std::cerr << "listen() failed" << std::endl;
         close(server_fd);
         return 1;
     }
 
+    // Set listening socket to non-blocking
+    if (!setNonBlocking(server_fd))
+    {
+        std::cerr << "Failed to set server socket non-blocking" << std::endl;
+        close(server_fd);
+        return 1;
+    }
+
     std::cout << "Serving " << _root << "/" << _index << " on http://localhost:" << _port << "/" << std::endl;
 
-    // Install simple signal handlers to allow graceful shutdown in CI
+    // Signals for graceful shutdown
     std::signal(SIGINT, handle_stop_signal);
     std::signal(SIGTERM, handle_stop_signal);
 
@@ -104,78 +111,263 @@ int HttpServer::start()
     bool serveOnce = (onceEnv && std::string(onceEnv) == "1");
     size_t servedCount = 0;
 
-    // we need infinite loop to keep the server running
-    while(true)
+    std::map<int, ClientState> clients;
+
+    // Master fd sets and bookkeeping
+    fd_set master_read_set;
+    fd_set master_write_set;
+    FD_ZERO(&master_read_set);
+    FD_ZERO(&master_write_set);
+    FD_SET(server_fd, &master_read_set);
+    int max_fd = server_fd;
+
+    // Event loop
+    while (true)
     {
-        struct sockaddr_in cli; // client address that is connecting to the server
-        socklen_t clilen = sizeof(cli); 
-        int cfd = accept(server_fd, (struct sockaddr*)&cli, &clilen); // accept the connection
-        if (cfd < 0)
+        if (g_stop)
+            break;
+
+        fd_set read_set = master_read_set;
+        fd_set write_set = master_write_set;
+
+        // Optional short timeout to handle signals
+        struct timeval tv;
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+        int ready = select(max_fd + 1, &read_set, &write_set, NULL, &tv);
+        if (ready < 0)
         {
-            if (errno == EINTR && g_stop)
-                break; // interrupted by signal, time to stop
+            if (errno == EINTR) continue;
+            std::cerr << "select() failed" << std::endl;
+            break;
+        }
+        if (ready == 0)
+        {
+            // timeout, loop again to check stop flag
             continue;
         }
 
-        char buf[4096]; // buffer to store the request
-        std::memset(buf, 0, sizeof(buf));
-        ssize_t n = recv(cfd, buf, sizeof(buf)-1, 0);
-        if (n <= 0)
+        // Iterate over all possible fds up to max_fd
+        for (int fd = 0; fd <= max_fd && ready > 0; ++fd)
         {
-            close(cfd);
-            continue;
+            // New incoming connections
+            if (FD_ISSET(fd, &read_set) && fd == server_fd)
+            {
+                --ready;
+                while (true)
+                {
+                    struct sockaddr_in cli;
+                    socklen_t clilen = sizeof(cli);
+                    int cfd = accept(server_fd, (struct sockaddr*)&cli, &clilen);
+                    if (cfd < 0)
+                    {
+                        if (errno == EAGAIN || errno == EWOULDBLOCK)
+                            break; // No more to accept now
+                        if (errno == EINTR)
+                            continue;
+                        std::cerr << "accept() failed" << std::endl;
+                        break;
+                    }
+                    if (!setNonBlocking(cfd))
+                    {
+                        close(cfd);
+                        continue;
+                    }
+                    clients[cfd] = ClientState();
+                    FD_SET(cfd, &master_read_set);
+                    if (cfd > max_fd) max_fd = cfd;
+                }
+                continue;
+            }
+
+            // Readable client socket
+            if (FD_ISSET(fd, &read_set) && fd != server_fd)
+            {
+                --ready;
+                std::map<int, ClientState>::iterator it = clients.find(fd);
+                if (it == clients.end())
+                {
+                    // Unknown fd, remove from master sets for safety
+                    FD_CLR(fd, &master_read_set);
+                    FD_CLR(fd, &master_write_set);
+                    continue;
+                }
+                bool peerClosed = false;
+                char buf[4096];
+                while (true)
+                {
+                    ssize_t n = recv(fd, buf, sizeof(buf), 0);
+                    if (n > 0)
+                    {
+                        it->second.requestBuf.append(buf, buf + n);
+                        // Heuristic: consider request complete if we reached end of headers
+                        if (!it->second.requestComplete)
+                        {
+                            if (it->second.requestBuf.find("\r\n\r\n") != std::string::npos)
+                            {
+                                it->second.requestComplete = true;
+                            }
+                        }
+                        // Continue reading until EAGAIN
+                        continue;
+                    }
+                    else if (n == 0)
+                    {
+                        peerClosed = true;
+                        break;
+                    }
+                    else
+                    {
+                        if (errno == EAGAIN || errno == EWOULDBLOCK)
+                            break;
+                        if (errno == EINTR)
+                            continue;
+                        // Fatal recv error
+                        peerClosed = true;
+                        break;
+                    }
+                }
+
+                if (peerClosed)
+                {
+                    close(fd);
+                    FD_CLR(fd, &master_read_set);
+                    FD_CLR(fd, &master_write_set);
+                    clients.erase(fd);
+                    continue;
+                }
+
+                // If request parsing is complete, generate a response and switch to write
+                if (it->second.requestComplete && it->second.responseBuf.empty())
+                {
+                    it->second.parser.parseRequest(it->second.requestBuf);
+
+                    std::string path = it->second.parser.getPath();
+                    std::string filePath;
+                    if (path == "/" || path.empty())
+                        filePath = _root + "/" + _index;
+                    else
+                    {
+                        if (path.size() > 0 && path[0] == '/')
+                            filePath = _root + path;
+                        else
+                            filePath = _root + "/" + path;
+                    }
+
+                    std::string body = readFileToString(filePath);
+                    std::ostringstream resp;
+                    // Determine keep-alive based on request headers/version
+                    std::string conn = it->second.parser.getHeader("Connection");
+                    std::string version = it->second.parser.getVersion();
+                    // Normalize header value to lowercase for comparison
+                    for (size_t i = 0; i < conn.size(); ++i) conn[i] = static_cast<char>(std::tolower(conn[i]));
+                    bool wantKeepAlive = false;
+                    if (!conn.empty())
+                        wantKeepAlive = (conn == "keep-alive");
+                    else if (version == "HTTP/1.1")
+                        wantKeepAlive = true; // default keep-alive for HTTP/1.1
+
+                    if (!body.empty())
+                    {
+                        resp << "HTTP/1.1 200 OK\r\n";
+                        resp << "Content-Type: text/html; charset=utf-8\r\n";
+                        resp << "Content-Length: " << body.size() << "\r\n";
+                        if (wantKeepAlive) resp << "Connection: keep-alive\r\n"; else resp << "Connection: close\r\n";
+                        resp << "\r\n";
+                        resp << body;
+                    }
+                    else
+                    {
+                        std::string notFound = "<h1>404 Not Found</h1>";
+                        resp << "HTTP/1.1 404 Not Found\r\n";
+                        resp << "Content-Type: text/html; charset=utf-8\r\n";
+                        resp << "Content-Length: " << notFound.size() << "\r\n";
+                        if (wantKeepAlive) resp << "Connection: keep-alive\r\n"; else resp << "Connection: close\r\n";
+                        resp << "\r\n";
+                        resp << notFound;
+                    }
+
+                    it->second.responseBuf = resp.str();
+                    it->second.sendOffset = 0;
+                    it->second.keepAlive = wantKeepAlive;
+
+                    // Move fd from read to write set
+                    FD_CLR(fd, &master_read_set);
+                    FD_SET(fd, &master_write_set);
+
+                    if (serveOnce)
+                        ++servedCount;
+                }
+                continue;
+            }
+
+            // Writable client socket
+            if (FD_ISSET(fd, &write_set) && fd != server_fd)
+            {
+                --ready;
+                std::map<int, ClientState>::iterator it = clients.find(fd);
+                if (it == clients.end())
+                {
+                    FD_CLR(fd, &master_write_set);
+                    continue;
+                }
+
+                const std::string &resp = it->second.responseBuf;
+                while (it->second.sendOffset < resp.size())
+                {
+                    ssize_t n = send(fd, resp.c_str() + it->second.sendOffset, resp.size() - it->second.sendOffset, 0);
+                    if (n > 0)
+                    {
+                        it->second.sendOffset += (size_t)n;
+                        continue;
+                    }
+                    if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+                    {
+                        break; // Can't send more now
+                    }
+                    if (n < 0 && errno == EINTR)
+                    {
+                        continue; // retry
+                    }
+                    // Fatal error or peer closed
+                    it->second.sendOffset = resp.size();
+                    break;
+                }
+
+                if (it->second.sendOffset >= resp.size())
+                {
+                    if (it->second.keepAlive)
+                    {
+                        // Reset for next request, go back to reading
+                        it->second.requestBuf.clear();
+                        it->second.responseBuf.clear();
+                        it->second.sendOffset = 0;
+                        it->second.requestComplete = false;
+                        FD_CLR(fd, &master_write_set);
+                        FD_SET(fd, &master_read_set);
+                    }
+                    else
+                    {
+                        // Close connection
+                        close(fd);
+                        FD_CLR(fd, &master_write_set);
+                        clients.erase(fd);
+                    }
+                }
+                continue;
+            }
         }
 
-        // Use HTTPparser to process the raw request
-        std::string rawRequest(buf, (size_t)n);
-        HTTPparser parser;
-        parser.parseRequest(rawRequest);
-
-        std::string path = parser.getPath();
-        std::string filePath;
-        if (path == "/" || path.empty())
-            filePath = _root + "/" + _index;
-        else
-        {
-            if (path.size() > 0 && path[0] == '/')
-                filePath = _root + path; // maps "/foo" -> "root/foo"
-            else
-                filePath = _root + "/" + path;
-        }
-
-        std::string body = readFileToString(filePath);
-        std::ostringstream resp;
-        if (!body.empty())
-        {
-            resp << "HTTP/1.1 200 OK\r\n";
-            resp << "Content-Type: text/html; charset=utf-8\r\n";
-            resp << "Content-Length: " << body.size() << "\r\n";
-            resp << "Connection: close\r\n\r\n";
-            resp << body;
-        }
-        else
-        {
-            std::string notFound = "<h1>404 Not Found</h1>";
-            resp << "HTTP/1.1 404 Not Found\r\n";
-            resp << "Content-Type: text/html; charset=utf-8\r\n";
-            resp << "Content-Length: " << notFound.size() << "\r\n";
-            resp << "Connection: close\r\n\r\n";
-            resp << notFound;
-        }
-
-        std::string respStr = resp.str();
-        sendAll(cfd, respStr.c_str(), respStr.size());
-        close(cfd);
-
-        // In CI single-request mode, exit after first served request
-        if (serveOnce)
-        {
-            ++servedCount;
-            if (servedCount >= 1)
-                break;
-        }
+        // In CI single-request mode, exit after serving one complete response
+        if (serveOnce && servedCount >= 1)
+            break;
     }
 
+    // Cleanup
+    for (std::map<int, ClientState>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        close(it->first);
+    }
     close(server_fd);
     return 0;
 }

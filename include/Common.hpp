@@ -29,7 +29,10 @@ macros used throughout the project.*/
 #include <cstdlib> // standard library: exit()
 #include <netinet/in.h> // internet address: struct sockaddr_in
 #include <arpa/inet.h> // internet address: inet_addr()
-#include <fcntl.h> // file control: O_RDONLY
+#include <fcntl.h> // file control: O_RDONLY, fcntl(), O_NONBLOCK
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/select.h>
 #include <cstring> // string operations: memset()
 #include <csignal> // signal handling: SIGINT, SIGTERM
 #include <cerrno> // error handling: errno
