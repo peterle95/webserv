@@ -1,22 +1,14 @@
 #include "Common.hpp"
 
- // Helper to set a socket to non-blocking mode
- static bool setNonBlocking(int fd)
- {
-     int flags = fcntl(fd, F_GETFL, 0);
-     if (flags < 0) return false;
-     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) return false;
-     return true;
- }
- 
- // Global stop flag set by signal handlers
- static volatile sig_atomic_t g_stop = 0;
- 
- static void handle_stop_signal(int)
- {
-     g_stop = 1;
- }
+// Global stop flag set by signal handlers
+volatile sig_atomic_t g_stop = 0;
 
+void handle_stop_signal(int)
+{
+    g_stop = 1;
+}
+
+// Helper to set a socket to non-blocking mode
  void HttpServer::setupSignalHandlers()
  {
      std::signal(SIGINT, handle_stop_signal);

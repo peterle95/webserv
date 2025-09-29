@@ -34,7 +34,7 @@ int HttpServer::createAndBindSocket()
          return -1;
      }
  
-     if (!setNonBlocking(server_fd))
+     if (!HttpServer::setNonBlocking(server_fd))
      {
          std::cerr << "Failed to set server socket non-blocking" << std::endl;
          close(server_fd);

@@ -168,26 +168,34 @@ HttpServer::~HttpServer() {}
  {
      std::string conn = parser.getHeader("Connection");
      std::string version = parser.getVersion();
-     
      // Normalize connection header to lowercase
      for (size_t i = 0; i < conn.size(); ++i)
          conn[i] = static_cast<char>(std::tolower(conn[i]));
      
      if (!conn.empty())
-         return (conn == "keep-alive");
-     else if (version == "HTTP/1.1")
-         return true; // Default keep-alive for HTTP/1.1
+        return false; // Explicit keep-alive required for HTTP/1.0
+    else if (version == "HTTP/1.1")
+        return true; // Default keep-alive for HTTP/1.1
      
      return false;
  }
- 
- int HttpServer::start()
+
+bool HttpServer::setNonBlocking(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0) return false;
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) return false;
+    return true;
+}
+
+int HttpServer::start()
  {
      int server_fd = createAndBindSocket();
      if (server_fd < 0)
          return 1;
  
-     setupSignalHandlers();
+     if (!HttpServer::setNonBlocking(server_fd))
+         return 1;
      
      const char* onceEnv = std::getenv("WEBSERV_ONCE");
      bool serveOnce = (onceEnv && std::string(onceEnv) == "1");

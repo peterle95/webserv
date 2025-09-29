@@ -26,6 +26,9 @@ private:
     void setupSignalHandlers();
     void printStartupMessage(bool serveOnce);
 
+    static bool setNonBlocking(int fd);
+
+
     // Simplified per-connection handling (blocking on the accepted socket)
     // NOTE: This is a temporary implementation to keep the server functional
     // without maintaining per-client state. Your partner's Client implementation

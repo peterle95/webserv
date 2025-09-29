@@ -58,4 +58,7 @@ macros used throughout the project.*/
 #define DEBUG_PRINT(x)
 #endif
 
+// Global stop flag set by signal handlers
+extern volatile sig_atomic_t g_stop;
+
 #endif
