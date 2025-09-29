@@ -13,6 +13,7 @@
 #ifndef HTTPSERVER_HPP
 #define HTTPSERVER_HPP
 
+#include "HTTPparser.hpp"
 class HttpServer
 {
 private:
@@ -20,6 +21,25 @@ private:
     std::string _root;
     std::string _index;
 
+    // Socket setup
+    int createAndBindSocket();
+    void setupSignalHandlers();
+    void printStartupMessage(bool serveOnce);
+
+    // Simplified per-connection handling (blocking on the accepted socket)
+    // NOTE: This is a temporary implementation to keep the server functional
+    // without maintaining per-client state. Your partner's Client implementation
+    // should integrate here to handle non-blocking I/O and persistent connections.
+    void handleClient(int client_fd);
+
+    // Accept loop for incoming connections
+    int runAcceptLoop(int server_fd, bool serveOnce);
+
+    // Minimal helpers reused by the simplified handler
+    bool determineKeepAlive(const HTTPparser& parser);
+    std::string generateBadRequestResponse(bool keepAlive);
+    std::string generateGetResponse(const std::string& path, bool keepAlive);
+    std::string generateMethodNotAllowedResponse(bool keepAlive);
 public:
     HttpServer(int port, const std::string &root, const std::string &index);
     ~HttpServer();
