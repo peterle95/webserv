@@ -16,7 +16,6 @@ bool HttpServer::determineKeepAlive(const HTTPparser& parser)
     return false;
 }
 
-// === INTEGRATION POINT ===
  // Replace `handleClient()` with Client class to implement
  // non-blocking, stateful per-connection handling (read/parse/write, keep-alive).
  // Integrate the Http Response logic

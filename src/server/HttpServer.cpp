@@ -10,19 +10,6 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-/* ORIGINAL IMPLEMENTATION:
-  - Blocking single-threaded server using accept(), recv(), sendAll()
-  - Each request processed sequentially: accept -> read entire request -> parse -> generate response -> send -> close
-  - Could only handle one client at a time
-  - Used blocking I/O operations that would wait indefinitely
-
- NEW IMPLEMENTATION (Non-blocking select()-based event loop):
-  - Event-driven architecture using select() system call for I/O multiplexing
-  - Non-blocking sockets with fcntl(O_NONBLOCK) to prevent blocking on I/O operations
-  - Master fd_sets (read/write) rebuilt each iteration and passed to select()
-  - Per-client state management using std::map<int, ClientState>
- */
-
 #include "Common.hpp"
 
 HttpServer::HttpServer(int port, const std::string &root, const std::string &index)
@@ -39,6 +26,8 @@ int HttpServer::start()
      if (!setNonBlocking(server_fd))
          return 1;
      
+    // Use environment variable to control serve-once mode
+    // This allows running the server in a single-request mode for testing
      const char* onceEnv = std::getenv("WEBSERV_ONCE");
      bool serveOnce = (onceEnv && std::string(onceEnv) == "1");
      
