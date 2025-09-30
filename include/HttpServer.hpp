@@ -12,16 +12,22 @@
 
 #ifndef HTTPSERVER_HPP
 #define HTTPSERVER_HPP
+#include "ConfigParser.hpp"
 
 class HttpServer
 {
 private:
-    int         _port;
+    int _port;
     std::string _root;
     std::string _index;
+    ConfigParser _configParser;
+    const LocationConfig *_currentLocation;
+
+    void mapCurrentLocationConfig(const std::string &path);
+    std::string getFilePath(const std::string &path);
 
 public:
-    HttpServer(int port, const std::string &root, const std::string &index);
+    HttpServer(ConfigParser &configParser);
     ~HttpServer();
 
     // Start a very simple blocking server for demo purposes

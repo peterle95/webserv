@@ -12,8 +12,8 @@
 
 #include "Common.hpp"
 
-void ConfigParser::parseIndex(const std::string &val, size_t /*lineNo*/)
+void ConfigParser::parseIndex(const std::string &val, size_t /*lineNo*/, std::string *index)
 {
-    this->_index.push_back(val);
-    DEBUG_PRINT("Applied index -> '" << this->_index.back() << "'");
+    *index = val;
+    DEBUG_PRINT("Applied index -> '" << *index << "'");
 }

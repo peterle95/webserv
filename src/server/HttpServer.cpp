@@ -12,8 +12,13 @@
 
 #include "Common.hpp"
 
-HttpServer::HttpServer(int port, const std::string &root, const std::string &index)
-: _port(port), _root(root), _index(index) {}
+HttpServer::HttpServer(ConfigParser &configParser) : _configParser(configParser)
+{
+    _port = configParser.getListenPort();
+    _root = configParser.getRoot();
+    _index = configParser.getIndex();
+    mapCurrentLocationConfig("/"); // default location
+}
 
 HttpServer::~HttpServer() {}
 
@@ -21,7 +26,7 @@ HttpServer::~HttpServer() {}
 static std::string readFileToString(const std::string &path)
 {
     std::ifstream ifs(path.c_str(), std::ios::in | std::ios::binary);
-    if (!ifs.good()) 
+    if (!ifs.good())
     {
         std::cerr << "Failed to open file: " << path << std::endl;
         return std::string();
@@ -38,7 +43,8 @@ static void sendAll(int fd, const char *data, size_t len)
     while (sent < len)
     {
         ssize_t n = send(fd, data + sent, len - sent, 0);
-        if (n <= 0) break;
+        if (n <= 0)
+            break;
         sent += (size_t)n;
     }
 }
@@ -72,13 +78,13 @@ int HttpServer::start()
     struct sockaddr_in addr;
     // this block of code is to initialize the struct to 0, because it is not initialized by default
     std::memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET; // AF_INET is the address family for IPv4
+    addr.sin_family = AF_INET;                // AF_INET is the address family for IPv4
     addr.sin_addr.s_addr = htonl(INADDR_ANY); // INADDR_ANY is a special address that means "any address"
-    addr.sin_port = htons((uint16_t)_port); // htons() converts the port number to network byte order
+    addr.sin_port = htons((uint16_t)_port);   // htons() converts the port number to network byte order
 
-    // bind the socket to the address, we need to bind the socket to the address because 
+    // bind the socket to the address, we need to bind the socket to the address because
     // we want to listen on a specific port
-    if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+    if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
         std::cerr << "bind() failed on port " << _port << std::endl;
         close(server_fd);
@@ -100,16 +106,16 @@ int HttpServer::start()
     std::signal(SIGTERM, handle_stop_signal);
 
     // Single-request mode for CI when WEBSERV_ONCE=1
-    const char* onceEnv = std::getenv("WEBSERV_ONCE");
+    const char *onceEnv = std::getenv("WEBSERV_ONCE");
     bool serveOnce = (onceEnv && std::string(onceEnv) == "1");
     size_t servedCount = 0;
 
     // we need infinite loop to keep the server running
-    while(true)
+    while (true)
     {
         struct sockaddr_in cli; // client address that is connecting to the server
-        socklen_t clilen = sizeof(cli); 
-        int cfd = accept(server_fd, (struct sockaddr*)&cli, &clilen); // accept the connection
+        socklen_t clilen = sizeof(cli);
+        int cfd = accept(server_fd, (struct sockaddr *)&cli, &clilen); // accept the connection
         if (cfd < 0)
         {
             if (errno == EINTR && g_stop)
@@ -119,7 +125,7 @@ int HttpServer::start()
 
         char buf[4096]; // buffer to store the request
         std::memset(buf, 0, sizeof(buf));
-        ssize_t n = recv(cfd, buf, sizeof(buf)-1, 0);
+        ssize_t n = recv(cfd, buf, sizeof(buf) - 1, 0);
         if (n <= 0)
         {
             close(cfd);
@@ -132,17 +138,10 @@ int HttpServer::start()
         parser.parseRequest(rawRequest);
 
         std::string path = parser.getPath();
-        std::string filePath;
-        if (path == "/" || path.empty())
-            filePath = _root + "/" + _index;
-        else
-        {
-            if (path.size() > 0 && path[0] == '/')
-                filePath = _root + path; // maps "/foo" -> "root/foo"
-            else
-                filePath = _root + "/" + path;
-        }
+        mapCurrentLocationConfig(path);
+        std::string filePath = getFilePath(path); // get the file path based on the request path and current location config
 
+        DEBUG_PRINT("Request path: '" << path << "', mapped to file: '" << filePath << "'");
         std::string body = readFileToString(filePath);
         std::ostringstream resp;
         if (!body.empty())
@@ -178,4 +177,52 @@ int HttpServer::start()
 
     close(server_fd);
     return 0;
+}
+
+// Map the current location config based on the request path
+void HttpServer::mapCurrentLocationConfig(const std::string &path)
+{
+    const std::map<std::string, LocationConfig> &locations = _configParser.getLocations();
+
+    // Exact match lookup
+    std::map<std::string, LocationConfig>::const_iterator it = locations.find(path);
+    if (it != locations.end())
+    {
+        _currentLocation = &it->second;
+    }
+}
+
+// Get the full file path based on the request path and
+//    current location config
+std::string HttpServer::getFilePath(const std::string &path)
+{
+    std::string filePath;
+    if (_currentLocation->path == path)
+    {
+        if (!_currentLocation->root.empty())
+        {
+            if (!_currentLocation->index.empty())
+            {
+                filePath = _currentLocation->root + path + _currentLocation->index;
+            }
+            else
+            {
+                filePath = _currentLocation->root + path + _index; // fallback to server index
+            }
+        }
+        else
+        {
+            if (!_currentLocation->index.empty())
+                filePath = _root + path + _currentLocation->index;
+            else
+                filePath = _root + path + _index; // fallback to server index
+        }
+    }
+    else
+    {
+        (!_currentLocation->root.empty()) ? filePath = _currentLocation->root + path
+                                          : filePath = _root + path;
+    }
+
+    return filePath;
 }
