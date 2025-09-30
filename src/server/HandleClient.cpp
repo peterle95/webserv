@@ -1,5 +1,21 @@
 #include "Common.hpp"
 
+bool HttpServer::determineKeepAlive(const HTTPparser& parser)
+{
+    std::string conn = parser.getHeader("Connection");
+    std::string version = parser.getVersion();
+    // Normalize connection header to lowercase
+    for (size_t i = 0; i < conn.size(); ++i)
+        conn[i] = static_cast<char>(std::tolower(conn[i]));
+    
+    if (!conn.empty())
+       return false; // Explicit keep-alive required for HTTP/1.0
+   else if (version == "HTTP/1.1")
+       return true; // Default keep-alive for HTTP/1.1
+    
+    return false;
+}
+
 // === INTEGRATION POINT ===
  // Replace `handleClient()` with Client class to implement
  // non-blocking, stateful per-connection handling (read/parse/write, keep-alive).
@@ -58,7 +74,7 @@
          response = generateMethodNotAllowedResponse(keepAlive);
      }
  
-     // Send full response (blocking)
+     // Send full response
      size_t off = 0;
      while (off < response.size())
      {

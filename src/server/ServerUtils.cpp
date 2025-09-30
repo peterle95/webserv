@@ -15,6 +15,7 @@ void handle_stop_signal(int)
      std::signal(SIGTERM, handle_stop_signal);
  }
 
+ /*Following functions have to be integrated with http response mechanism and logging*/
  void HttpServer::printStartupMessage(bool serveOnce)
  {
      std::cout << "Serving " << _root << "/" << _index 
