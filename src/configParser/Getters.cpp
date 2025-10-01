@@ -22,12 +22,9 @@ const std::string& ConfigParser::getRoot() const
     return _root; 
 }
 
-const std::string& ConfigParser::getIndex() const 
-{ 
-    if (!_index.empty())
-        return _index.front();
-    static const std::string kEmpty;
-    return kEmpty;
+const std::string &ConfigParser::getIndex() const
+{
+    return _index;
 }
 
 const std::vector<std::string>& ConfigParser::getLines() const

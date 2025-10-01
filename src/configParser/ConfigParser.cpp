@@ -14,34 +14,18 @@
 
 // constructor
 ConfigParser::ConfigParser()
-    : _configFile("")
-    , _listenPort(8080)
-    , _root("html")
-    , _index()
-    , _serverName("")
-    , _errorPage()
-    , _clientMaxBodySize(1024 * 1024) // default 1 MiB
-    , _host("")
-    , _allowedMethods()
-    , _lines()
+    : _configFile(""), _listenPort(8080), _root("html"), _index("index.html"), _serverName(""), _errorPage(), _clientMaxBodySize(1024 * 1024) // default 1 MiB
+      ,
+      _host(""), _allowedMethods(), _lines()
 {
-    _index.push_back("index.html");
 }
 
 // construct from lines
-ConfigParser::ConfigParser(const std::vector<std::string>& lines)
-    : _configFile("")
-    , _listenPort(8080)
-    , _root("html")
-    , _index()
-    , _serverName("")
-    , _errorPage()
-    , _clientMaxBodySize(1024 * 1024) // default 1 MiB
-    , _host("")
-    , _allowedMethods()
-    , _lines()
+ConfigParser::ConfigParser(const std::vector<std::string> &lines)
+    : _configFile(""), _listenPort(8080), _root("html"), _index("index.html"), _serverName(""), _errorPage(), _clientMaxBodySize(1024 * 1024) // default 1 MiB
+      ,
+      _host(""), _allowedMethods(), _lines()
 {
-    _index.push_back("index.html");
     parseLines(lines);
 }
 // destructor
@@ -52,7 +36,7 @@ ConfigParser::~ConfigParser() {}
 void ConfigParser::parseLines(const std::vector<std::string>& lines)
 {
     this->_lines.clear();
-
+    LocationConfig *currentLocation = NULL;
     for (size_t i = 0; i < lines.size(); ++i)
     {
         const std::string raw = lines[i];
@@ -60,12 +44,36 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
         std::string line = preprocessLine(raw);
         DEBUG_PRINT("Line " << i << " preprocessed: '" << line << "'");
 
-        if (!line.empty())
-            this->_lines.push_back(line);
+        // if (!line.empty())
+        //     this->_lines.push_back(line);
 
         if (line.empty())
         {
             DEBUG_PRINT("Line " << i << " skipped: empty after trim/comment");
+            continue;
+        }
+        // Detect location block
+        if ((line.find("location") == 0) && (line.find("{") != std::string::npos))
+        {
+            size_t bracePos = line.find('{');
+            std::string locPath = trim(line.substr(8, bracePos - 8));
+            _locations[locPath] = LocationConfig();
+            currentLocation = &_locations[locPath];
+            currentLocation->path = locPath;
+            DEBUG_PRINT("Started location block for path: '" << locPath << "'");
+            continue;
+        }
+        if (line == "}")
+        {
+            if (currentLocation)
+            {
+                DEBUG_PRINT("Ended location block for path: '" << currentLocation->path << "'");
+                currentLocation = NULL;
+            }
+            else
+            {
+                DEBUG_PRINT("Line " << i << " skipped: unmatched '}'");
+            }
             continue;
         }
 
@@ -82,6 +90,12 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
             continue;
         DEBUG_PRINT("Directive key='" << key << "' val='" << val << "'");
 
+        if (currentLocation)
+        {
+            // Handle location-specific directives
+            handleLocationDirective(currentLocation, key, val, i + 1);
+            continue;
+        }
         handleDirective(key, val, i + 1);
     }
 }
@@ -114,4 +128,9 @@ bool ConfigParser::parse(const std::string &path)
         std::cerr << "[CONFIG ERROR] (" << ErrorHandler::codeToString(e.code()) << ") " << e.what() << std::endl;
         return false;
     }
+}
+
+const std::map<std::string, LocationConfig> &ConfigParser::getLocations() const
+{
+    return this->_locations;
 }
