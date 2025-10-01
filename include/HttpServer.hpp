@@ -12,6 +12,7 @@
 
 #ifndef HTTPSERVER_HPP
 #define HTTPSERVER_HPP
+#include "ConfigParser.hpp"
 
 #include "HTTPparser.hpp"
 class HttpServer
@@ -20,6 +21,11 @@ private:
     int         _port;
     std::string _root;
     std::string _index;
+    ConfigParser _configParser;
+    const LocationConfig *_currentLocation;
+
+    void mapCurrentLocationConfig(const std::string &path);
+    std::string getFilePath(const std::string &path);
 
     // Socket setup
     int createAndBindSocket();
@@ -35,7 +41,7 @@ private:
     std::string generateGetResponse(const std::string& path, bool keepAlive);
     std::string generateMethodNotAllowedResponse(bool keepAlive);
 public:
-    HttpServer(int port, const std::string &root, const std::string &index);
+    HttpServer(ConfigParser &configParser);
     ~HttpServer();
 
     // Simplified per-connection handling (blocking on the accepted socket)

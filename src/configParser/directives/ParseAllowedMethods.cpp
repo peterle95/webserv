@@ -12,7 +12,7 @@
 
 #include "Common.hpp"
 
-void ConfigParser::parseAllowedMethods(const std::string &val, size_t lineNo)
+void ConfigParser::parseAllowedMethods(const std::string &val, size_t lineNo, std::set<std::string> *allowedMethods)
 {
     // Split by spaces and validate methods
     std::istringstream iss(val);
@@ -25,10 +25,10 @@ void ConfigParser::parseAllowedMethods(const std::string &val, size_t lineNo)
                                                             (int)lineNo, this->_configFile);
             throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE, (int)lineNo, this->_configFile);
         }
-        this->_allowedMethods.insert(tok);
+        allowedMethods->insert(tok);
         DEBUG_PRINT("Added allowed_method -> '" << tok << "'");
     }
-    if (this->_allowedMethods.empty()) 
+    if (allowedMethods->empty()) 
     {
         std::string msg = ErrorHandler::makeLocationMsg("allowed_methods requires at least one method", (int)lineNo, this->_configFile);
         throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE, (int)lineNo, this->_configFile);

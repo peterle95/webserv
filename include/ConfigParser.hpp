@@ -13,13 +13,27 @@
 #ifndef CONFIGPARSER_HPP
 #define CONFIGPARSER_HPP
 
+// Location configuration structure to hold per-location settings
+struct LocationConfig
+{
+    std::string path;
+    std::string root;
+    std::string index;
+    std::set<std::string> allowedMethods;
+    bool autoindex;
+    bool cgiPass;
+    std::string cgiExtension;
+
+    LocationConfig()
+        : path(""), root(""), index(), allowedMethods(), autoindex(false), cgiPass(false), cgiExtension("") {}
+};
 class ConfigParser
 {
     private:
         std::string _configFile;
         int         _listenPort;
         std::string _root;
-        std::vector<std::string> _index; // vector because there might be multiple index files
+    	std::string _index;
         std::string _serverName; 
         std::map<int, std::string> _errorPage; // to implement later
         size_t _clientMaxBodySize; // to implement later
@@ -30,6 +44,7 @@ class ConfigParser
         // add more directives
         std::set<std::string> _allowedMethods; // to implement later, set because order does not matter
         std::vector<std::string> _lines;
+    	std::map<std::string, LocationConfig> _locations; // map of location path to LocationConfig
 
         // Parse from a set of lines (expects raw lines; will trim/comment-strip internally)
         void        parseLines(const std::vector<std::string>& lines);
@@ -37,11 +52,11 @@ class ConfigParser
 
         // Per-directive parsers
         void        parseListen(const std::string &val, size_t lineNo);
-        void        parseRoot(const std::string &val, size_t lineNo);
-        void        parseIndex(const std::string &val, size_t lineNo);
+    	void parseRoot(const std::string &val, size_t lineNo, std::string *root);
+    	void parseIndex(const std::string &val, size_t lineNo, std::string *index);
         void        parseServerName(const std::string &val, size_t lineNo);
         void        parseClientMaxBodySize(const std::string &val, size_t lineNo);
-        void        parseAllowedMethods(const std::string &val, size_t lineNo);
+    	void parseAllowedMethods(const std::string &val, size_t lineNo, std::set<std::string> *allowedMethods = NULL);
         void        parseErrorPage(const std::string &val, size_t lineNo);
 
         // Helpers to keep parseLines small
@@ -68,8 +83,19 @@ class ConfigParser
         const std::string&  getIndex() const;
         //ServerName addition -Shruti
         const std::string&  getServerName() const;
+    	const std::map<std::string, LocationConfig> &getLocations() const;
         // TODO: implement error handling
         // TODO: implement parsing more directives (directives are the lines in the config file)
+    	// Location handling
+    	void handleLocationDirective(LocationConfig *currentLocation,
+                                 const std::string &key,
+                                 const std::string &val,
+                                 size_t lineNumber);
+    	// void applyRoot(LocationConfig *loc, const std::string &val);
+    	void applyIndex(LocationConfig *loc, const std::string &val, size_t lineNo);
+    	void applyAutoindex(LocationConfig *loc, const std::string &val, size_t lineNo);
+    	void applyCgiPass(LocationConfig *loc, const std::string &val, size_t lineNo);
+    	void applyCgiExtension(LocationConfig *loc, const std::string &val, size_t lineNo);
 };
 
 // Prototypes
