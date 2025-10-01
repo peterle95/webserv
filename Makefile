@@ -4,6 +4,7 @@ CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -Iinclude
 
 SRCS = src/main.cpp \
 		src/configParser/ConfigParser.cpp \
+		src/configParser/HandleLocationDirective.cpp \
 		src/server/HttpServer.cpp \
 		src/configParser/Getters.cpp \
 		src/configParser/Trim.cpp \

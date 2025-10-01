@@ -54,15 +54,15 @@ void ConfigParser::handleDirective(const std::string &key, const std::string &va
     if (key == "listen")
         parseListen(val, lineNo);
     else if (key == "root")
-        parseRoot(val, lineNo);
+        parseRoot(val, lineNo, &this->_root);
     else if (key == "index")
-        parseIndex(val, lineNo);
+        parseIndex(val, lineNo, &this->_index);
     else if (key == "server_name")
         parseServerName(val, lineNo);
     else if (key == "client_max_body_size")
         parseClientMaxBodySize(val, lineNo);
     else if (key == "allowed_methods")
-        parseAllowedMethods(val, lineNo);
+        parseAllowedMethods(val, lineNo, &this->_allowedMethods);
     else if (key == "error_page")
         parseErrorPage(val, lineNo);
     else {

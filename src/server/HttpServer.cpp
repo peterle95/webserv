@@ -12,8 +12,13 @@
 
 #include "Common.hpp"
 
-HttpServer::HttpServer(int port, const std::string &root, const std::string &index)
-: _port(port), _root(root), _index(index) {}
+HttpServer::HttpServer(ConfigParser &configParser) : _configParser(configParser)
+{
+    _port = configParser.getListenPort();
+    _root = configParser.getRoot();
+    _index = configParser.getIndex();
+    mapCurrentLocationConfig("/"); // default location
+}
 
 HttpServer::~HttpServer() {}
 
@@ -132,17 +137,10 @@ int HttpServer::start()
         parser.parseRequest(rawRequest);
 
         std::string path = parser.getPath();
-        std::string filePath;
-        if (path == "/" || path.empty())
-            filePath = _root + "/" + _index;
-        else
-        {
-            if (path.size() > 0 && path[0] == '/')
-                filePath = _root + path; // maps "/foo" -> "root/foo"
-            else
-                filePath = _root + "/" + path;
-        }
+        mapCurrentLocationConfig(path);
+        std::string filePath = getFilePath(path); // get the file path based on the request path and current location config
 
+        DEBUG_PRINT("Request path: '" << path << "', mapped to file: '" << filePath << "'");
         std::string body = readFileToString(filePath);
         std::ostringstream resp;
         if (!body.empty())
@@ -178,4 +176,52 @@ int HttpServer::start()
 
     close(server_fd);
     return 0;
+}
+
+// Map the current location config based on the request path
+void HttpServer::mapCurrentLocationConfig(const std::string &path)
+{
+    const std::map<std::string, LocationConfig> &locations = _configParser.getLocations();
+
+    // Exact match lookup
+    std::map<std::string, LocationConfig>::const_iterator it = locations.find(path);
+    if (it != locations.end())
+    {
+        _currentLocation = &it->second;
+    }
+}
+
+// Get the full file path based on the request path and
+//    current location config
+std::string HttpServer::getFilePath(const std::string &path)
+{
+    std::string filePath;
+    if (_currentLocation->path == path)
+    {
+        if (!_currentLocation->root.empty())
+        {
+            if (!_currentLocation->index.empty())
+            {
+                filePath = _currentLocation->root + path + _currentLocation->index;
+            }
+            else
+            {
+                filePath = _currentLocation->root + path + _index; // fallback to server index
+            }
+        }
+        else
+        {
+            if (!_currentLocation->index.empty())
+                filePath = _root + path + _currentLocation->index;
+            else
+                filePath = _root + path + _index; // fallback to server index
+        }
+    }
+    else
+    {
+        (!_currentLocation->root.empty()) ? filePath = _currentLocation->root + path
+                                          : filePath = _root + path;
+    }
+
+    return filePath;
 }

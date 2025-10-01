@@ -57,17 +57,17 @@ bool HTTPRequestLine::parseRequestLine(const std::string& requestLine)
     std::istringstream iss(line);
     if (!parseComponents(iss))
         return false;
-    
+
+    if (!validatePath(_path))
+    {
+        setError("Invalid request path: " + _path);
+        return false;
+    }
+
     // Validate each component
     if (!validateMethod(_method))
     {
         setError("Invalid HTTP method: " + _method);
-        return false;
-    }
-    
-    if (!validatePath(_path))
-    {
-        setError("Invalid request path: " + _path);
         return false;
     }
     
