@@ -65,14 +65,21 @@ bool HttpServer::determineKeepAlive(const HTTPparser& parser)
          DEBUG_PRINT("   Method: " << RED << parser.getMethod() << RESET);
          DEBUG_PRINT("   Path: " << RED << parser.getPath() << RESET);
          DEBUG_PRINT("   Version: " << RED << parser.getVersion() << RESET);
-         response = generateGetResponse(parser.getPath(), keepAlive);
+
+         std::string path = parser.getPath();
+         mapCurrentLocationConfig(path);
+         std::string filePath = getFilePath(path); // get the file path based on the request path and current location config
+
+         DEBUG_PRINT(RED << "Request path: '" << path << "', mapped to file: '" << filePath << "'" << RESET);
+
+         response = generateGetResponse(filePath, keepAlive);
      }
      else
      {
          DEBUG_PRINT("Method not allowed: " << RED << parser.getMethod() << RESET << " (only GET supported)");
          response = generateMethodNotAllowedResponse(keepAlive);
      }
- 
+     
      // Send full response
      size_t off = 0;
      while (off < response.size())
