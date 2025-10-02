@@ -24,6 +24,10 @@ SRCS = src/main.cpp \
 		src/httpParser/HTTPmessageComponents/HTTPRequestLine.cpp \
 		src/httpParser/HTTPmessageComponents/HTTPValidation.cpp \
 		src/httpParser/HTTPmessageComponents/HTTPBody.cpp \
+		src/server/ServerUtils.cpp \
+		src/server/BindSocket.cpp \
+		src/server/AcceptSocket.cpp \
+		src/server/HandleClient.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 
