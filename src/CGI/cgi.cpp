@@ -1,4 +1,5 @@
 #include "Cgi.hpp"
+#include "Common.hpp"
 
 // Utility function to convert number to string
 std::string CGI::numberToString(int number)
@@ -9,7 +10,7 @@ std::string CGI::numberToString(int number)
 }
 
 // Constructor
-CGI::CGI(const HttpRequest &request, const Location &location, const Server &server)
+CGI::CGI(const HTTPparser &request, const HttpServer &server)
 	: cgi_pid_(-1)
 {
 	// Initialize pipes to invalid values
@@ -18,9 +19,11 @@ CGI::CGI(const HttpRequest &request, const Location &location, const Server &ser
 	pipe_out_[0] = -1;
 	pipe_out_[1] = -1;
 
-	script_path_ = getTargetFileFullPath(request, location);
-	setupEnvironment(request, location, server);
-	determineInterpreter();
+	script_path_ = request.getCurrentFilePath();
+
+	// determineInterpreter();
+	// Use /usr/bin/env to find the Python interpreter in the user's PATH for portability
+	interpreter_path_ = "/usr/bin/env";
 	request_body_ = request.getBody();
 
 	// Handle chunked encoding if needed
@@ -30,6 +33,7 @@ CGI::CGI(const HttpRequest &request, const Location &location, const Server &ser
 	{
 		handleChunkedBody();
 	}
+	setupEnvironment(request, server);
 }
 
 // Destructor
@@ -38,39 +42,22 @@ CGI::~CGI()
 	cleanup();
 }
 
-// Get full target file path
-std::string CGI::getTargetFileFullPath(const HttpRequest &request, const Location &location) const
-{
-	std::string root = location.getRoot();
-	std::string path = request.getPath();
-
-	// Ensure root doesn't end with slash and path starts with slash
-	if (!root.empty() && root[root.size() - 1] == '/')
-	{
-		root = root.substr(0, root.size() - 1);
-	}
-	if (!path.empty() && path[0] != '/')
-	{
-		path = "/" + path;
-	}
-
-	return root + path;
-}
-
 // Setup environment variables
-void CGI::setupEnvironment(const HttpRequest &request, const Location &location, const Server &server)
+void CGI::setupEnvironment(const HTTPparser &request, const HttpServer &server)
 {
 	const std::map<std::string, std::string> &headers = request.getHeaders();
 
 	// Required CGI environment variables
+
+	// Get the current system PATH and use it for the CGI environment.
+	// This ensures /usr/bin/env can find interpreters (like python3.11) in the user's PATH.
+	const char *sys_path = getenv("PATH");
+	env_["PATH"] = sys_path ? sys_path : "/usr/bin:/bin:/usr/sbin:/sbin";
 	env_["AUTH_TYPE"] = "";
-	env_["CONTENT_TYPE"] = headers.count("Content-Type") > 0 ? headers.find("Content-Type")->second : "";
+	env_["CONTENT_TYPE"] = headers.count("content-type") > 0 ? headers.find("content-type")->second : "";
 	env_["GATEWAY_INTERFACE"] = "CGI/1.1";
 	env_["PATH_INFO"] = request.getPath();
 	env_["PATH_TRANSLATED"] = script_path_;
-	env_["QUERY_STRING"] = request.getQuery();
-	env_["REMOTE_ADDR"] = "127.0.0.1"; // Should be actual client IP
-	env_["REMOTE_HOST"] = "localhost";
 	env_["REQUEST_METHOD"] = request.getMethod();
 	env_["REQUEST_URI"] = request.getPath();
 	env_["SCRIPT_NAME"] = request.getPath();
@@ -89,37 +76,6 @@ void CGI::setupEnvironment(const HttpRequest &request, const Location &location,
 		std::replace(env_name.begin(), env_name.end(), '-', '_');
 		std::transform(env_name.begin(), env_name.end(), env_name.begin(), ::toupper);
 		env_[env_name] = it->second;
-	}
-}
-
-// Determine interpreter based on file extension
-void CGI::determineInterpreter()
-{
-	size_t dot_pos = script_path_.find_last_of(".");
-	if (dot_pos != std::string::npos)
-	{
-		std::string extension = script_path_.substr(dot_pos);
-
-		if (extension == ".php")
-		{
-			interpreter_path_ = "/usr/bin/php";
-		}
-		else if (extension == ".py")
-		{
-			interpreter_path_ = "/usr/bin/python";
-		}
-		else if (extension == ".pl")
-		{
-			interpreter_path_ = "/usr/bin/perl";
-		}
-		else if (extension == ".sh")
-		{
-			interpreter_path_ = "/bin/sh";
-		}
-		else
-		{
-			interpreter_path_ = "";
-		}
 	}
 }
 
@@ -189,17 +145,20 @@ char **CGI::createEnvArray() const
 // Create arguments array for execve
 char **CGI::createArgsArray() const
 {
-	char **args = new char *[3];
+	char **args = new char *[4];
 	if (!args)
 		return NULL;
 
 	args[0] = new char[interpreter_path_.size() + 1];
 	strcpy(args[0], interpreter_path_.c_str());
 
-	args[1] = new char[script_path_.size() + 1];
-	strcpy(args[1], script_path_.c_str());
+	args[1] = new char[11];
+	strcpy(args[1], "python3.11");
 
-	args[2] = NULL;
+	args[2] = new char[script_path_.size() + 1];
+	strcpy(args[2], script_path_.c_str());
+
+	args[3] = NULL;
 	return args;
 }
 
@@ -282,7 +241,6 @@ int CGI::execute()
 		dup2(pipe_out_[1], STDERR_FILENO);
 
 		closePipes();
-
 		// Change to script directory for relative paths
 		size_t last_slash = script_path_.find_last_of("/");
 		if (last_slash != std::string::npos)
@@ -302,7 +260,6 @@ int CGI::execute()
 		{
 			exit(EXIT_FAILURE);
 		}
-
 		execve(interpreter_path_.c_str(), args, envp);
 
 		// If execve fails
@@ -363,6 +320,7 @@ std::string CGI::readResponse()
 
 	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 	{
+		DEBUG_PRINT("CGI executed successfully.");
 		return response;
 	}
 	else

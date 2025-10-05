@@ -13,7 +13,8 @@
 #ifndef CONFIGPARSER_HPP
 #define CONFIGPARSER_HPP
 
-// Location configuration structure to hold per-location settings
+#include <set>
+//  Location configuration structure to hold per-location settings
 struct LocationConfig
 {
     std::string path;
