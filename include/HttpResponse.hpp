@@ -35,6 +35,13 @@ class Response
     std::bool isDirectory(std::string path);
     std::bool fileExits(const std::string& name);
     std::string appRoot(std::string _path, std::string _target);
+<<<<<<< HEAD
+=======
+    int reqErr();
+    std::string statusMessage(int code);
+    int buildResponse();
+    int _cgi;
+>>>>>>> c0886c7 (Resouce.cpp)
     
 };
 
