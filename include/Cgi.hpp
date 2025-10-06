@@ -24,10 +24,6 @@
 #define CGI_BUFFER_SIZE 4096
 #define CGI_TIMEOUT 30
 
-class HttpRequest;
-class Location;
-class Server;
-
 class CGI
 {
 private:
@@ -40,9 +36,7 @@ private:
 	pid_t cgi_pid_;
 
 	// Private helper functions
-	std::string getTargetFileFullPath(const HttpRequest &request, const Location &location) const;
-	void setupEnvironment(const HttpRequest &request, const Location &location, const Server &server);
-	void determineInterpreter();
+	void setupEnvironment(const HTTPparser &request, const HttpServer &server);
 	char **createEnvArray() const;
 	char **createArgsArray() const;
 	void setupPipes();
@@ -51,7 +45,7 @@ private:
 	static std::string numberToString(int number);
 
 public:
-	CGI(const HttpRequest &request, const Location &location, const Server &server);
+	CGI(const HTTPparser &request, const HttpServer &server);
 	~CGI();
 
 	int execute();

@@ -12,13 +12,14 @@
 
 #ifndef HTTPSERVER_HPP
 #define HTTPSERVER_HPP
+
 #include "ConfigParser.hpp"
 
 #include "HTTPparser.hpp"
 class HttpServer
 {
 private:
-    int         _port;
+    int _port;
     std::string _root;
     std::string _index;
     ConfigParser _configParser;
@@ -36,10 +37,15 @@ private:
     int runAcceptLoop(int server_fd, bool serveOnce);
 
     // Minimal helpers reused by the simplified handler
-    bool determineKeepAlive(const HTTPparser& parser);
+    bool determineKeepAlive(const HTTPparser &parser);
     std::string generateBadRequestResponse(bool keepAlive);
-    std::string generateGetResponse(const std::string& path, bool keepAlive);
+    std::string generateGetResponse(const std::string &path, bool keepAlive);
     std::string generateMethodNotAllowedResponse(bool keepAlive);
+    std::string generatePostResponse(const std::string &body, bool keepAlive);
+    bool isMethodAllowed(const std::string &method);
+    std::string processCGI(HTTPparser &parser);
+    size_t checkContentLength(const std::string &request, size_t header_end);
+
 public:
     HttpServer(ConfigParser &configParser);
     ~HttpServer();
@@ -51,6 +57,8 @@ public:
     void handleClient(int client_fd);
 
     static bool setNonBlocking(int fd);
+
+    int getPort() const { return _port; }
 
     // Start a very simple blocking server for demo purposes
     // Returns 0 on normal exit, non-zero on error

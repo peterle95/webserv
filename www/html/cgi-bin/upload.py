@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.11
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 import os
 import sys
 import cgi
@@ -7,8 +9,6 @@ import cgitb
 # Enable debugging (show errors in browser)
 cgitb.enable()
 
-# Print headers first
-print("Content-Type: text/html\n")
 
 # Only allow POST method
 if os.environ.get("REQUEST_METHOD") != "POST":
@@ -20,7 +20,7 @@ cwd = os.getcwd()
 print(f"Current working directory: {cwd}<br>")
 
 # Define upload directory
-upload_dir = os.path.join(cwd, "cgi-bin/upload")
+upload_dir = os.path.join(cwd, "cgi_upload")
 
 # Ensure upload directory exists
 os.makedirs(upload_dir, exist_ok=True)
@@ -41,7 +41,7 @@ for field in form.keys():
             with open(filepath, "wb") as f:
                 f.write(field_item.file.read())
 
-            file_url = f"http://localhost:8080/cgi-bin/upload/{filename}"
+            file_url = f"http://localhost:8080/cgi-bin/cgi_upload/{filename}"
             print(f"File uploaded successfully: <a href='{file_url}'>{filename}</a><br>")
             file_uploaded = True
         except Exception as e:

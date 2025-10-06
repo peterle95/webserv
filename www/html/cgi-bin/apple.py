@@ -1,17 +1,21 @@
-#!/usr/bin/env python3
-
+#!/usr/bin/env python3.11
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 import cgi
+import sys
 
 # Parse form data
-form = cgi.FieldStorage()
-apples = int(form.getfirst("apples", 0))
-price = float(form.getfirst("price", 0))
+try:
+    form = cgi.FieldStorage()
+    apples = int(form.getfirst("apples", 0))
+    price = float(form.getfirst("price", 0))
+except Exception as e:
+    print("Error type:", type(e).__name__)
+    print("Error message:", str(e))
+    sys.exit(1)
 
 # Calculate total price
 total_price = apples * price
-
-# Print HTTP header
-print("Content-Type: text/html\n")
 
 # Print HTML response
 print("""<!DOCTYPE html>

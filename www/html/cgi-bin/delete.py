@@ -1,15 +1,14 @@
-#!/usr/bin/env python3
-
+#!/usr/bin/env python3.11
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 import os # For file operations and environment variables	
 import sys # For reading stdin and exiting
 import cgi # For CGI handling of python scripts
 
-print("Content-Type: text/html\n")
-
 # Check request method
 if os.environ.get("REQUEST_METHOD", "") == "POST":
     cwd = os.getcwd()
-    upload_dir = os.path.join(cwd, "cgi-bin/upload")
+    upload_dir = os.path.join(cwd, "cgi_upload")
 
     # Read POST data from stdin
     post_data = sys.stdin.read().strip()
