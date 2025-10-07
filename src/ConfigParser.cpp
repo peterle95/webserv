@@ -76,12 +76,10 @@ const std::string& ConfigParser::getServerName() const
     return "127.0.0.1";
 }
 
-<<<<<<< HEAD
-=======
-/*const std::string& ConfigParser::getErrorPage() const
+const std::string& ConfigParser::getErrorPage() const
 {
-    = parseerror_page();
-}*/
+   this->_error_page = /404.html;
+}
 
 
 >>>>>>> c0886c7 (Resouce.cpp)
@@ -145,4 +143,5 @@ bool ConfigParser::parse(const std::string &path)
 
     return true;
 }
+
 
