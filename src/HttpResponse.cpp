@@ -283,7 +283,6 @@ int Response::buildResponse()
 
 void Response::setHeaders()
 {
-    appBody();
     statusLine();
     appDate();
     appContentLen();
