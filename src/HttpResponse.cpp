@@ -281,23 +281,16 @@ int Response::buildResponse()
     }
 }
 
-/*void Response::setHeaders()
-=======
-    //to do for pots and delete
-}
-
 void Response::setHeaders()
->>>>>>> c0886c7 (Resouce.cpp)
 {
+    appBody();
     statusLine();
     appDate();
     appContentLen();
     appContentType();
     connection();
     server();
-<<<<<<< HEAD
-
-}*/
+}
 
 
 void Response::buildResponse()
