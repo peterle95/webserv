@@ -39,7 +39,5 @@ class Response
     std::string statusMessage(int code);
     int buildResponse();
     int _cgi;
-    
 };
-
 #endif
