@@ -132,13 +132,14 @@ bool ConfigParser::parse(const std::string &path)
 
 const std::string& getErrorPage()
 {
-     return (this->_errorPage = "/404.html");
+     return (_errorPage = "/404.html");
 }
 const std::map<std::string, LocationConfig> &ConfigParser::getLocations() const
 {
     return this->_locations;
 
 }
+
 
 
 
