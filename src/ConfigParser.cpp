@@ -75,12 +75,6 @@ const std::string& ConfigParser::getServerName() const
 {
     return "127.0.0.1";
 }
-
-const std::string& ConfigParser::getErrorPage() const
-{
-   _error_page = "/404.html";
-}//to be parsed from config and not hard code
-
 // parse config file
 bool ConfigParser::parse(const std::string &path)
 {
@@ -141,6 +135,7 @@ bool ConfigParser::parse(const std::string &path)
 
     return true;
 }
+
 
 
 
