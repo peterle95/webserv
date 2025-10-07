@@ -85,7 +85,7 @@ class ConfigParser
         //ServerName addition -Shruti
         const std::string&  getServerName() const;
     	const std::map<std::string, LocationConfig> &getLocations() const;
-        const std::string& getErrorPage() const;//To read error page mapped for the status code in config file
+        const std::string& getErrorPage();//To read error page mapped for the status code in config file
         // TODO: implement error handling
         // TODO: implement parsing more directives (directives are the lines in the config file)
     	// Location handling
@@ -108,6 +108,7 @@ std::string strip_comment(const std::string &s);
 
 
 #endif
+
 
 
 
