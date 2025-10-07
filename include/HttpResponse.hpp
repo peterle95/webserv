@@ -35,7 +35,9 @@ class Response
     std::bool isDirectory(std::string path);
     std::bool fileExits(const std::string& name);
     std::string appRoot(std::string _path, std::string _target);
-    
+    int reqErr();
+    std::string statusMessage(int code);
+    int buildResponse();
+    int _cgi;
 };
-
 #endif

@@ -2,6 +2,7 @@
 #include "HTTPHeaders.hpp"
 #include "HTTPparser.hpp"
 #include "ConfigParser.hpp"
+#include <cgi.h>
 
 
 Response::Response()
@@ -11,6 +12,7 @@ Response::Response()
     _response_body = "";
     _code = 0;
     _response_final = " ";
+    _loc = "";
 }
 
 void Response::appDate()
@@ -25,8 +27,12 @@ void Response::appDate()
 
 void Response::appContentLen()
 {
+
+    if(respone.body.empty())
+        _response_headers.append("Content-Length: 0\r\n");
+    else
     _response_headers.append("Content-Length: ");
-    _response_headers.append(std::to_string(_response_body.size()+_response_headers.size()) + "\r\n");
+    _response_headers.append(std::to_string(_response_body.size()) + "\r\n");
 }
 
 void Response::appContentType()
@@ -45,6 +51,8 @@ void Response::appContentType()
         {".txt", "text/plain"},
         {".pdf", "application/pdf"},
     };
+    //location_config loc;
+    std::string targetfile = loc.getPath();
     size_t dot_pos = _targetfile.rfind('.');
     if (dot_pos != std::string::npos)
     {
@@ -58,7 +66,6 @@ void Response::appContentType()
         {
             _response_headers.append(" Content-Type: text/html r\n");
         }
-
     }   
 }
 
@@ -66,6 +73,8 @@ void builderror_body(int code)
 {
     if(code == 404)
     _response_body.append(" Not Found");
+    else if(code == 413)
+    _response_body.append(" Payload Too Large");
 }
 
 void Response::appBody()
@@ -109,10 +118,34 @@ void Response::statusLine()
         _response_headers.append(" Unknown Status\r\n");
 }
 
+std::string statusMessage(int code)
+{
+    if(code == 200)
+        return "OK";
+    else if(code == 404)
+        return "Not Found";
+    else if(code == 500)
+        return "Internal Server Error";
+    else if(code == 400)
+        return "Bad Request";
+    else if(code == 403)
+        return "Forbidden";
+    else if(code == 301)
+        return "Moved Permanently";
+    else if(code == 302)
+        return "Found";
+    else if(code == 405)
+        return "Method Not Allowed";
+    else
+        return "Unknown Status";
+}
+
 void Response::connection()
 {
     if(request.getHeaders().getConnection() == "keep-alive")
         _response_headers.append(" Connection: keep-alive\r\n");
+    else
+        _response_headers.append(" Connection: close\r\n");
 }
 
 void Response::server()
@@ -121,7 +154,6 @@ void Response::server()
  _response_headers.append(" Server: ");
  _response_headers.append("Webserv/1.1")
  _response_headers.append("\r\n");
-
 }
 
 std::bool isDirectory(std::string path)
@@ -131,12 +163,12 @@ std::bool isDirectory(std::string path)
     return S_ISDIR(path_stat.st_mode);
 }
 
-std::bool fileExits(const std::string& name)
+
+std::bool fileExists(const std::string& name)
 {
     ifstream f(name.c_str());
     return f.good();
 }
-
 
 std::string Response::appRoot(std::string _path, std::string _target)
 {
@@ -157,15 +189,99 @@ std::string Response::appRoot(std::string _path, std::string _target)
     return server.getRoot() + request.getPath();
 }
 
-void Response::buildResponse()
+int Response::appBody()
 {
-    if(request.getMethod() == "GET" && _code == 200)
+ if(request.getMethod() == "GET")
+ {
+    std::ifstream file(_targetfile);
+    if(file)
+    {
+        std::ostringstream ss;
+        ss << file.rdbuf();
+        _response_body = ss.str();
+        file.close();
+        _code = 200;
+        return 0;
+    }
+    _code = 413;
+    return 1;
+}
+else if(request.getMethod() == "POST" &&  client_max_body_size < request.getBody().size())
+{
+    _code = 413;
+    return 1;
+}
+else if(request.getMethod() == "POST" && request.getPath.find("cgi-bin") != std::string::npos)
+{
+    execute();
+    _code = 200;
+    _cgi = 1;
+    readResponse();
+    return 0;
+}
+else if(request.getMethod() == "DELETE" && request.getPath.find("cgi-bin") != std::string::npos)
+{
+    if(fileExists(_targetfile.c_str()))
+    {
+    execute();
+    _code = 200;
+    _cgi = 1;
+    readResponse();
+    return 0;
+   }
+   else
+   {
+    _code = 404;
+    return 1;
+   }
+}
+}
+
+
+std::string Response::buildErrorPage(int code)
+{
+  return ("<html><head><title>" + std::to_string(_code) +" " + statusMessage(code) +" Error</title></head>"
+          "<body><h1>" + std::to_string(_code) + " " + statusMessage(code) << "</h1>"
+          "</body></html>");
+}
+
+void Response::builderror_body(int code)
+{
+    if(server.getErrorPage(code).empty() || !server.getErrorPage(code).count(code))
+        buildErrorPage(code);
+    else
+    {
+       std::string file = server.getroot() + server.getErrorPage().at(code);
+       if(fileExists(file))
+       {
+         std::ostringstream ss;
+        ss << file.rdbuf();
+        _response_body = ss.str();
+        file.close();
+        //return 0;
+       }
+       else
+         buildErrorPage(404);
+    }    
+}
+
+int Response::buildResponse()
+{
+    if(reqErr() || appbody())
+    {
+        builderror_body(_code);
+    }
+    else if(_cgi)
+    {
+        return 0;
+    }
+    else if(request.getMethod() == "GET" && _code == 200)
     {
         _response_final = _response_headers + "\r\n"; 
     }
 }
 
-/*void Response::setHeaders()
+void Response::setHeaders()
 {
     statusLine();
     appDate();
@@ -173,10 +289,24 @@ void Response::buildResponse()
     appContentType();
     connection();
     server();
+}
 
-}*/
+
+void Response::buildResponse()
+{
+ appBody();
+ setHeaders();
+}
+
+int Response::reqErr()
+{
+    if(request.getErrorStatusCode() != 0)
+    {
+        _code = request.getErrorStatusCode();
+        return 1;
+    }
+}
 
 Response::~Response()
 {
-
 }
