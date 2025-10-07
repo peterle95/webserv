@@ -318,6 +318,3 @@ int Response::reqErr()
 Response::~Response()
 {
 }
-{
-
-}
