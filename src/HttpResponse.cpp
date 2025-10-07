@@ -2,10 +2,7 @@
 #include "HTTPHeaders.hpp"
 #include "HTTPparser.hpp"
 #include "ConfigParser.hpp"
-<<<<<<< HEAD
-=======
 #include <cgi.h>
->>>>>>> c0886c7 (Resouce.cpp)
 
 
 Response::Response()
@@ -15,11 +12,7 @@ Response::Response()
     _response_body = "";
     _code = 0;
     _response_final = " ";
-<<<<<<< HEAD
-=======
     _loc = "";
-
->>>>>>> c0886c7 (Resouce.cpp)
 }
 
 void Response::appDate()
@@ -34,16 +27,12 @@ void Response::appDate()
 
 void Response::appContentLen()
 {
-<<<<<<< HEAD
-    _response_headers.append("Content-Length: ");
-    _response_headers.append(std::to_string(_response_body.size()+_response_headers.size()) + "\r\n");
-=======
+
     if(respone.body.empty())
         _response_headers.append("Content-Length: 0\r\n");
     else
     _response_headers.append("Content-Length: ");
     _response_headers.append(std::to_string(_response_body.size()) + "\r\n");
->>>>>>> c0886c7 (Resouce.cpp)
 }
 
 void Response::appContentType()
@@ -62,11 +51,8 @@ void Response::appContentType()
         {".txt", "text/plain"},
         {".pdf", "application/pdf"},
     };
-<<<<<<< HEAD
-=======
     //location_config loc;
     std::string targetfile = loc.getPath();
->>>>>>> c0886c7 (Resouce.cpp)
     size_t dot_pos = _targetfile.rfind('.');
     if (dot_pos != std::string::npos)
     {
@@ -80,10 +66,6 @@ void Response::appContentType()
         {
             _response_headers.append(" Content-Type: text/html r\n");
         }
-<<<<<<< HEAD
-
-=======
->>>>>>> c0886c7 (Resouce.cpp)
     }   
 }
 
@@ -91,7 +73,8 @@ void builderror_body(int code)
 {
     if(code == 404)
     _response_body.append(" Not Found");
-<<<<<<< HEAD
+    else if(code == 413)
+    _response_body.append(" Payload Too Large");
 }
 
 void Response::appBody()
@@ -109,10 +92,6 @@ void Response::appBody()
 }
  else
     builderror_body(_code);
-=======
-    if(code == 413)
-    _response_body.append(" Payload Too Large");
->>>>>>> c0886c7 (Resouce.cpp)
 }
 
 void Response::statusLine()
@@ -139,8 +118,6 @@ void Response::statusLine()
         _response_headers.append(" Unknown Status\r\n");
 }
 
-<<<<<<< HEAD
-=======
 std::string statusMessage(int code)
 {
     if(code == 200)
@@ -163,16 +140,12 @@ std::string statusMessage(int code)
         return "Unknown Status";
 }
 
->>>>>>> c0886c7 (Resouce.cpp)
 void Response::connection()
 {
     if(request.getHeaders().getConnection() == "keep-alive")
         _response_headers.append(" Connection: keep-alive\r\n");
-<<<<<<< HEAD
-=======
     else
         _response_headers.append(" Connection: close\r\n");
->>>>>>> c0886c7 (Resouce.cpp)
 }
 
 void Response::server()
@@ -181,10 +154,6 @@ void Response::server()
  _response_headers.append(" Server: ");
  _response_headers.append("Webserv/1.1")
  _response_headers.append("\r\n");
-<<<<<<< HEAD
-
-=======
->>>>>>> c0886c7 (Resouce.cpp)
 }
 
 std::bool isDirectory(std::string path)
@@ -194,17 +163,12 @@ std::bool isDirectory(std::string path)
     return S_ISDIR(path_stat.st_mode);
 }
 
-<<<<<<< HEAD
-std::bool fileExits(const std::string& name)
-=======
+
 std::bool fileExists(const std::string& name)
->>>>>>> c0886c7 (Resouce.cpp)
 {
     ifstream f(name.c_str());
     return f.good();
 }
-
-<<<<<<< HEAD
 
 std::string Response::appRoot(std::string _path, std::string _target)
 {
@@ -225,9 +189,6 @@ std::string Response::appRoot(std::string _path, std::string _target)
     return server.getRoot() + request.getPath();
 }
 
-void Response::buildResponse()
-{
-=======
 int Response::appBody()
 {
  if(request.getMethod() == "GET")
@@ -314,12 +275,10 @@ int Response::buildResponse()
     {
         return 0;
     }
->>>>>>> c0886c7 (Resouce.cpp)
-    if(request.getMethod() == "GET" && _code == 200)
+    else if(request.getMethod() == "GET" && _code == 200)
     {
         _response_final = _response_headers + "\r\n"; 
     }
-<<<<<<< HEAD
 }
 
 /*void Response::setHeaders()
@@ -339,8 +298,7 @@ void Response::setHeaders()
 <<<<<<< HEAD
 
 }*/
-=======
-}
+
 
 void Response::buildResponse()
 {
@@ -356,7 +314,6 @@ int Response::reqErr()
         return 1;
     }
 }
->>>>>>> c0886c7 (Resouce.cpp)
 
 Response::~Response()
 {
