@@ -2,11 +2,56 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>It works!</title>
+  <title>Webserv project</title>
+  <script>
+    function sendRequest(method) {
+      const responseDiv = document.getElementById('response');
+      responseDiv.innerHTML = `<p>Sending ${method} request...</p>`;
+
+      const xhr = new XMLHttpRequest();
+
+      // Set timeout to prevent hanging
+      xhr.timeout = 5000;
+
+      xhr.open(method, `http://localhost:8080/`, true);
+
+      xhr.onreadystatechange = function() {
+        console.log(`XHR state: ${xhr.readyState}, status: ${xhr.status}`);
+
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            responseDiv.innerHTML = `<p style="color: green;">✅ ${method} request successful! Status: ${xhr.status}</p>
+                                   <p>Response: ${xhr.responseText.substring(0, 200)}...</p>`;
+          } else if (xhr.status === 405) {
+            responseDiv.innerHTML = `<p style="color: red;">❌ ${method} method not allowed! Status: ${xhr.status}</p>`;
+          } else {
+            responseDiv.innerHTML = `<p style="color: orange;">⚠️ ${method} request completed. Status: ${xhr.status}</p>`;
+          }
+        }
+      };
+
+      xhr.onerror = function() {
+        responseDiv.innerHTML = `<p style="color: red;">❌ Network error occurred while sending ${method} request</p>`;
+      };
+
+      xhr.ontimeout = function() {
+        responseDiv.innerHTML = `<p style="color: red;">❌ ${method} request timed out</p>`;
+      };
+
+      xhr.send();
+    }
+  </script>
 </head>
 <body>
-  <h1>It works!</h1>
+  <h1>Welcome to our Webserv Project</h1>
   <p>Serving index.html</p>
-  <button onclick="alert('Hello World!')">Click me</button>
+
+  <div style="margin: 20px 0;">
+    <button onclick="sendRequest('GET')" style="margin: 5px; padding: 10px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Send GET Request</button>
+    <button onclick="sendRequest('POST')" style="margin: 5px; padding: 10px; background-color: #FF9800; color: white; border: none; border-radius: 4px;">Send POST Request</button>
+    <button onclick="sendRequest('DELETE')" style="margin: 5px; padding: 10px; background-color: #F44336; color: white; border: none; border-radius: 4px;">Send DELETE Request</button>
+  </div>
+
+  <div id="response" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
 </body>
 </html>
