@@ -39,5 +39,9 @@ class Response
     std::string statusMessage(int code);
     int buildResponse();
     int _cgi;
+<<<<<<< HEAD
+=======
+    
+>>>>>>> 454b43f (Error Page, response conditions)
 };
 #endif
