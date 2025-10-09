@@ -27,11 +27,31 @@ void HttpServer::mapCurrentLocationConfig(const std::string &path)
 {
     const std::map<std::string, LocationConfig> &locations = _configParser.getLocations();
 
-    // Exact match lookup
-    std::map<std::string, LocationConfig>::const_iterator it = locations.find(path);
-    if (it != locations.end())
+    size_t longestMatchLength = 0;
+    const LocationConfig *bestLocation = NULL;
+
+    // Find the longest matching location prefix
+    for (std::map<std::string, LocationConfig>::const_iterator it = locations.begin(); it != locations.end(); ++it)
     {
-        _currentLocation = &it->second;
+        const std::string &locationPath = it->first;
+
+        // Check if the request path starts with this location path
+        if (path.size() >= locationPath.size() &&
+            path.substr(0, locationPath.size()) == locationPath)
+        {
+            // If this is a longer match than what we've found so far, use it
+            if (locationPath.size() > longestMatchLength)
+            {
+                longestMatchLength = locationPath.size();
+                bestLocation = &it->second;
+            }
+        }
+    }
+
+    // Set the best matching location, or keep current if no match found
+    if (bestLocation != NULL)
+    {
+        _currentLocation = bestLocation;
     }
 }
 
