@@ -36,8 +36,8 @@ class ConfigParser
         std::string _root;
     	std::string _index;
         std::string _serverName; 
-        //std::map<int, std::string> _errorPage; // to implement later
-        std::string _errorPage;//until implemetation finishes
+        std::map<int, std::string> _errorPage; // to implement later
+       // std::string _errorPage;//until implemetation finishes
         size_t _clientMaxBodySize; // to implement later
         std::string _host; // to implement later
         std::string _location; // to implement later
@@ -111,6 +111,7 @@ std::string strip_comment(const std::string &s);
 
 
 #endif
+
 
 
 
