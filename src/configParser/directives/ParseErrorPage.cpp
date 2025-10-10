@@ -29,7 +29,7 @@ void ConfigParser::parseErrorPage(const std::string &val, size_t lineNo)
   {
     int code;
     try{
-        code = std::atoi(parts[i].c_str();
+        code = std::atoi(parts[i].c_str());
          if(code < 400 || code > 599)
          {
         std::string msg = ErrorHandler::makeLocationMsg("Status code in error page must be between 400 and 599",(int)lineNo, this->_configFile);
@@ -53,4 +53,5 @@ void ConfigParser::parseErrorPage(const std::string &val, size_t lineNo)
 
 
 }
+
 
