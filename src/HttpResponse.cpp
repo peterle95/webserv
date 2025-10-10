@@ -13,6 +13,8 @@ Response::Response()
     _code = 0;
     _response_final = " ";
     _loc = "";
+
+
 }
 
 void Response::appDate()
@@ -27,12 +29,15 @@ void Response::appDate()
 
 void Response::appContentLen()
 {
+    _response_headers.append("Content-Length: ");
+    _response_headers.append(std::to_string(_response_body.size()+_response_headers.size()) + "\r\n");
 
     if(respone.body.empty())
         _response_headers.append("Content-Length: 0\r\n");
     else
     _response_headers.append("Content-Length: ");
     _response_headers.append(std::to_string(_response_body.size()) + "\r\n");
+
 }
 
 void Response::appContentType()
@@ -73,8 +78,9 @@ void builderror_body(int code)
 {
     if(code == 404)
     _response_body.append(" Not Found");
-    else if(code == 413)
+     else if(code == 413)
     _response_body.append(" Payload Too Large");
+
 }
 
 void Response::appBody()
@@ -90,8 +96,9 @@ void Response::appBody()
         file.close();
     }
 }
- else
-    builderror_body(_code);
+
+  
+
 }
 
 void Response::statusLine()
@@ -170,6 +177,8 @@ std::bool fileExists(const std::string& name)
     return f.good();
 }
 
+
+
 std::string Response::appRoot(std::string _path, std::string _target)
 {
     //if(request.path == )
@@ -188,6 +197,9 @@ std::string Response::appRoot(std::string _path, std::string _target)
     else 
     return server.getRoot() + request.getPath();
 }
+
+void Response::buildResponse()
+{
 
 int Response::appBody()
 {
@@ -247,7 +259,8 @@ std::string Response::buildErrorPage(int code)
 
 void Response::builderror_body(int code)
 {
-    if(server.getErrorPage(code).empty() || !server.getErrorPage(code).count(code))
+    
+    if(server.getErrorPage(code).empty() || !server.getErrorPage(code).count(code)))
         buildErrorPage(code);
     else
     {
@@ -275,11 +288,17 @@ int Response::buildResponse()
     {
         return 0;
     }
-    else if(request.getMethod() == "GET" && _code == 200)
+
+    if(request.getMethod() == "GET" && _code == 200)
     {
         _response_final = _response_headers + "\r\n"; 
     }
 }
+
+/*void Response::setHeaders()
+=======
+    //to do for pots and delete
+}*/
 
 void Response::setHeaders()
 {
