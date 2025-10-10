@@ -29,13 +29,13 @@ void ConfigParser::parseErrorPage(const std::string &val, size_t lineNo)
   {
     int code;
     try{
-        code = std::stoi(parts[i]);
+        code = std::atoi(parts[i].c_str();
          if(code < 400 || code > 599)
          {
         std::string msg = ErrorHandler::makeLocationMsg("Status code in error page must be between 400 and 599",(int)lineNo, this->_configFile);
         throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE, (int)lineNo, this->_configFile);
    }
-            errorPage[code] = target;
+            _errorPage[code] = target;
     }
     catch(const std::exception &e)
     {
@@ -53,3 +53,4 @@ void ConfigParser::parseErrorPage(const std::string &val, size_t lineNo)
 
 
 }
+
