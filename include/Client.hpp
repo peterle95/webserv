@@ -24,6 +24,7 @@ class Client
     void getClientInfo();
     std::string getClient();
     void dropClient();
+    
 
 };
 #endif

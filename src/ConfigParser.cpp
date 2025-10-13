@@ -44,7 +44,7 @@ static std::string trim(const std::string &s)
 }
 
 // static helper functions, strip comments
-static std::string strip_comment(const std::string &s)
+ static std::string strip_comment(const std::string &s)
 {
     std::string::size_type pos = s.find('#');
     if (pos == std::string::npos)
@@ -71,11 +71,10 @@ const std::string& ConfigParser::getIndex() const
 }
 
 //ServerName addition -Shruti
-const std::string& ConfigParser::getServerName() const
+const std::string ConfigParser::getServerName() const
 {
     return "127.0.0.1";
 }
-
 
 
 // parse config file

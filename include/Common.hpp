@@ -47,6 +47,11 @@ macros used throughout the project.*/
 #include "HTTPRequestLine.hpp" // HTTP request line parser
 #include "HTTPHeaders.hpp" // HTTP headers parser
 #include "HTTPBody.hpp" // HTTP body parser
+#include "HttpResponse.hpp"
+#include "Cgi.hpp" // CGI handling
+#include <dirent.h> // directory handling: opendir(), readdir()
+#include <cstring> // string operations: strcmp()
+
 
 // create a DEBUG macro so that if it's true the debugging mode in the code will print stuff
 #ifndef DEBUG

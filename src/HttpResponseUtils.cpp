@@ -1,12 +1,13 @@
-#include <iostream>
+/*#include <iostream>
 #include <dirent.h>
-#include <cstring>
+#include <cstring>*/
+#include "Common.hpp"
 
 void generateDirectoryListing(std::string path)
 {
     std::string distlist_page;
     DIR *dir = opendir(path.c_str());
-    if(dir == nullptr)
+    if(dir == NULL)
     {
         std::cerr << "Error: Unable to open directory " << path << std::endl;
     }
@@ -17,7 +18,7 @@ void generateDirectoryListing(std::string path)
     distlist_page += ("</head>\n");
     distlist_page += ("<body>\n");
     distlist_page += ("<table>\n");
-    while((entry = readdir(dir)) != nullptr)
+    while((entry = readdir(dir)) != NULL)
     { 
      if(strcmp(entry->d_name, ".") == 0 || strcmp((entry->d_name), "..") == 0)
         continue;  

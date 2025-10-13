@@ -13,7 +13,7 @@ void Client::getClientInfo()
 
 std::string Client::getClient()
 {
-
+ return "1";
 }
 
 void Client::dropClient()

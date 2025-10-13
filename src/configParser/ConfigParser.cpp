@@ -136,6 +136,22 @@ const std::map<std::string, LocationConfig> &ConfigParser::getLocations() const
 
 }
 
+const std::string& ConfigParser::getErrorPage(int status_code) const
+{
+    std::map<int, std::string>::const_iterator it = _errorPage.find(status_code);
+    if (it != _errorPage.end())
+        return it->second;
+    static const std::string empty = "";
+    return empty;
+}
+
+
+size_t ConfigParser::getClientMaxBodySize() const
+{
+    return _clientMaxBodySize;
+}
+
+
 
 
 

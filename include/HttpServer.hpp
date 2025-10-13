@@ -26,7 +26,7 @@ private:
     const LocationConfig *_currentLocation;
 
     void mapCurrentLocationConfig(const std::string &path);
-    std::string getFilePath(const std::string &path);
+    
 
     // Socket setup
     int createAndBindSocket();
@@ -37,19 +37,24 @@ private:
     int runAcceptLoop(int server_fd, bool serveOnce);
 
     // Minimal helpers reused by the simplified handler
-    bool determineKeepAlive(const HTTPparser &parser);
+    
     std::string generateBadRequestResponse(bool keepAlive);
     std::string generateGetResponse(const std::string &path, bool keepAlive);
     std::string generateMethodNotAllowedResponse(bool keepAlive);
     std::string generatePostResponse(const std::string &body, bool keepAlive);
     bool isMethodAllowed(const std::string &method);
-    std::string processCGI(HTTPparser &parser);
+    
     size_t checkContentLength(const std::string &request, size_t header_end);
-
+    
 public:
     HttpServer(ConfigParser &configParser);
+    //HttpServer();//As a default constructor for HTTPResponse
     ~HttpServer();
 
+    std::string getFilePath(const std::string &path);//changed from private for response.cpp
+    bool determineKeepAlive(const HTTPparser &parser);//changed from private to public for access in response.cpp
+    const LocationConfig *getCurrentLocation();
+    std::string processCGI(HTTPparser &parser);//changed from private to public for access in response.cpp
     // Simplified per-connection handling (blocking on the accepted socket)
     // NOTE: This is a temporary implementation to keep the server functional
     // without maintaining per-client state. Implement Client class to handle
