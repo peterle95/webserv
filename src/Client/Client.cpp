@@ -63,6 +63,8 @@ Client::~Client()
 int Client::getSocket() const { return _socket; }
 ClientState Client::getState() const { return _state; }
 
+// main control point for client state machine
+// executes logic bbased on the current state
 void Client::handleConnection()
 {
     DEBUG_PRINT("=== HANDLE CONNECTION ===");
@@ -74,11 +76,21 @@ void Client::handleConnection()
 
     switch (_state)
     {
-        case READING:              readRequest(); break;
-        case GENERATING_RESPONSE:  generateResponse(); break;
-        case WRITING:              writeResponse(); break;
-        case AWAITING_CGI:         handleCgi(); break;
-        case CLOSING:              default: break; // Server will close
+        case READING:              
+            readRequest(); 
+            break;
+        case GENERATING_RESPONSE:  
+            generateResponse(); 
+            break;
+        case WRITING:              
+            writeResponse(); 
+            break;
+        case AWAITING_CGI:         
+            handleCgi(); 
+            break;
+        case CLOSING:              
+            default: 
+        break; // Server will close
     }
 }
 

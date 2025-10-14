@@ -26,10 +26,6 @@ bool HttpServer::determineKeepAlive(const HTTPparser &parser)
     return false;
 }
 
-// ============================================================================
-// Helper methods used by Client class for request/response handling
-// ============================================================================
-
 // Check if the method is allowed in the current location
 // Returns false if no location is set or method is not allowed
 bool HttpServer::isMethodAllowed(const std::string &method)
