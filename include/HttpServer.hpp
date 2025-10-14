@@ -16,6 +16,10 @@
 #include "ConfigParser.hpp"
 
 #include "HTTPparser.hpp"
+#include <map>
+
+class Client; // forward declaration
+
 class HttpServer
 {
 private:
@@ -24,6 +28,9 @@ private:
     std::string _index;
     ConfigParser _configParser;
     const LocationConfig *_currentLocation;
+
+    // Active clients keyed by socket fd
+    std::map<int, Client*> _clients;
 
     void mapCurrentLocationConfig(const std::string &path);
     
@@ -55,6 +62,9 @@ public:
     bool determineKeepAlive(const HTTPparser &parser);//changed from private to public for access in response.cpp
     const LocationConfig *getCurrentLocation();
     std::string processCGI(HTTPparser &parser);//changed from private to public for access in response.cpp
+
+    // Helper: map location for path and return resolved file path
+    std::string resolveFilePathFor(const std::string &path);
     // Simplified per-connection handling (blocking on the accepted socket)
     // NOTE: This is a temporary implementation to keep the server functional
     // without maintaining per-client state. Implement Client class to handle
@@ -69,6 +79,13 @@ public:
     // Returns 0 on normal exit, non-zero on error
     // TODO: make this non-blocking. Achieve this by using poll() to wait for connections.
     int start();
+
+    // Public thin wrappers to reuse existing response builders from other modules
+    std::string buildBadRequestResponse(bool keepAlive) { return generateBadRequestResponse(keepAlive); }
+    std::string buildGetResponse(const std::string &path, bool keepAlive) { return generateGetResponse(path, keepAlive); }
+    std::string buildMethodNotAllowedResponse(bool keepAlive) { return generateMethodNotAllowedResponse(keepAlive); }
+    std::string buildPostResponse(const std::string &body, bool keepAlive) { return generatePostResponse(body, keepAlive); }
+    bool isMethodAllowedPublic(const std::string &method) { return isMethodAllowed(method); }
 };
 
 #endif

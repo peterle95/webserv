@@ -91,6 +91,13 @@ std::string HttpServer::getFilePath(const std::string &path)
     return filePath;
 }
 
+// Public helper to resolve file path for a request path and map location
+std::string HttpServer::resolveFilePathFor(const std::string &path)
+{
+    mapCurrentLocationConfig(path);
+    return getFilePath(path);
+}
+
 //for use in response.cpp return the current location config
 const LocationConfig *HttpServer::getCurrentLocation()
 {

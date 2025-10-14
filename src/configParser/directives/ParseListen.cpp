@@ -23,13 +23,13 @@ void ConfigParser::parseListen(const std::string &val, size_t lineNo)
                                                         (int)lineNo, this->_configFile);
         throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_PORT, (int)lineNo, this->_configFile);
     }
-    DEBUG_PRINT("Applied listen -> " << this->_listenPort);
+   // DEBUG_PRINT("Applied listen -> " << this->_listenPort);
     // If host was provided (e.g., 127.0.0.1:8080), capture it
     if (colonPos != std::string::npos) {
         std::string host = trim(val.substr(0, colonPos));
         if (!host.empty()) {
             this->_host = host;
-            DEBUG_PRINT("Applied host -> '" << this->_host << "'");
+            // DEBUG_PRINT("Applied host -> '" << this->_host << "'");
         }
     }
 }

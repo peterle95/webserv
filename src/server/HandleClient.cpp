@@ -9,11 +9,20 @@ bool HttpServer::determineKeepAlive(const HTTPparser &parser)
     for (size_t i = 0; i < conn.size(); ++i)
         conn[i] = static_cast<char>(std::tolower(conn[i]));
 
-    if (!conn.empty())
-        return false; // Explicit keep-alive required for HTTP/1.0
-    else if (version == "HTTP/1.1")
-        return true; // Default keep-alive for HTTP/1.1
+    DEBUG_PRINT("Determining keep-alive: Connection='" << conn << "', Version='" << version << "'");
 
+    if (conn.empty())
+    {
+        DEBUG_PRINT("Keep-alive: NO (HTTP/1.0 without explicit Connection header)");
+        return false; // Explicit keep-alive required for HTTP/1.0
+    }
+    else if (version == "HTTP/1.1")
+    {
+        DEBUG_PRINT("Keep-alive: YES (HTTP/1.1 default)");
+        return true; // Default keep-alive for HTTP/1.1
+    }
+
+    DEBUG_PRINT("Keep-alive: NO (HTTP/1.0 with Connection header but not 1.1)");
     return false;
 }
 
@@ -26,6 +35,9 @@ bool HttpServer::determineKeepAlive(const HTTPparser &parser)
 //
 void HttpServer::handleClient(int client_fd)
 {
+    DEBUG_PRINT("=== NEW CLIENT CONNECTION ===");
+    DEBUG_PRINT("Client socket: " << client_fd);
+
     std::string request;
     char buf[4096];
 
@@ -36,13 +48,17 @@ void HttpServer::handleClient(int client_fd)
         if (n > 0)
         {
             request.append(buf, buf + n);
+            DEBUG_PRINT("Received " << n << " bytes, total request size: " << request.size());
+
             size_t header_end = request.find("\r\n\r\n");
             if (header_end != std::string::npos)
             {
+                DEBUG_PRINT("Headers received, length: " << header_end + 4);
                 // Check for Content-Length to read the body if present
                 size_t contentLength = checkContentLength(request, header_end);
                 if (contentLength > 0)
                 {
+                    DEBUG_PRINT("Content-Length found: " << contentLength << " bytes");
                     // Total length = header end position + 4 (for CRLF) + body
                     size_t totalLength = header_end + 4 + contentLength;
 
@@ -53,9 +69,11 @@ void HttpServer::handleClient(int client_fd)
                         if (n > 0)
                         {
                             request.append(buf, buf + n);
+                            DEBUG_PRINT("Body bytes received: " << n << ", progress: " << request.size() << "/" << totalLength);
                         }
                         else if (n == 0)
                         {
+                            DEBUG_PRINT("Connection closed while reading body");
                             break; // peer closed
                         }
                         else if (n < 0)
@@ -64,34 +82,52 @@ void HttpServer::handleClient(int client_fd)
                                 continue;
                             if (errno == EAGAIN || errno == EWOULDBLOCK)
                                 continue;
+                            DEBUG_PRINT("Error reading body: " << strerror(errno));
                             return; // fatal error
                         }
                     }
+                    DEBUG_PRINT("Body reading completed, total request size: " << request.size());
+                }
+                else
+                {
+                    DEBUG_PRINT("No Content-Length header found, request complete");
                 }
                 break;
             }
             continue;
         }
         if (n == 0)
+        {
+            DEBUG_PRINT("Connection closed by peer during request reading");
             break; // peer closed
+        }
         if (n < 0)
         {
             if (errno == EINTR)
                 continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 continue;
+            DEBUG_PRINT("Fatal error reading request: " << strerror(errno));
             return; // fatal error
         }
     }
+
+    DEBUG_PRINT("=== PARSING REQUEST ===");
+    DEBUG_PRINT("Request size: " << request.size() << " bytes");
 
     HTTPparser parser;
     parser.parseRequest(request);
     bool keepAlive = determineKeepAlive(parser);
 
+    DEBUG_PRINT("Parsing completed. Keep-Alive: " << (keepAlive ? "YES" : "NO"));
+    DEBUG_PRINT("Connection header: '" << parser.getHeader("Connection") << "'");
+    DEBUG_PRINT("HTTP version: " << parser.getVersion());
+
     std::string response;
     if (!parser.isValid()) // integrate here the Http Response logic
     {
         DEBUG_PRINT(RED << "Request parsing failed: " << parser.getErrorMessage() << RESET);
+        DEBUG_PRINT("Generating BAD REQUEST response");
         response = generateBadRequestResponse(keepAlive);
     }
     else if (parser.getMethod() == "GET")
@@ -108,18 +144,22 @@ void HttpServer::handleClient(int client_fd)
         parser.setCurrentFilePath(filePath); // Store current file path in parser for potential CGI use
 
         DEBUG_PRINT(RED << "Request path: '" << path << "', mapped to file: '" << filePath << "'" << RESET);
+        DEBUG_PRINT("Generating GET response");
 
         response = generateGetResponse(filePath, keepAlive);
     }
     else if ((parser.getMethod() == "POST") || (parser.getMethod() == "DELETE"))
     {
+        DEBUG_PRINT("CGI request: Method=" << parser.getMethod() << ", Path=" << parser.getPath());
         if (_currentLocation && _currentLocation->cgiPass && (isMethodAllowed(parser.getMethod())))
         {
             parser.setCurrentFilePath(getFilePath(parser.getPath())); // Ensure current file path is set for CGI
+            DEBUG_PRINT("CGI enabled for this location, processing CGI");
             response = processCGI(parser);
             if (!response.empty())
             {
                 // Create the proper HTTP response based on CGI output
+                DEBUG_PRINT("CGI processing successful, wrapping response");
                 response = generatePostResponse(response, keepAlive);
             }
             else
@@ -140,24 +180,41 @@ void HttpServer::handleClient(int client_fd)
         response = generateMethodNotAllowedResponse(keepAlive);
     }
 
+    DEBUG_PRINT("=== RESPONSE READY ===");
+    DEBUG_PRINT("Response size: " << response.size() << " bytes");
+    DEBUG_PRINT("Response preview: " << response.substr(0, std::min<size_t>(100, response.size())) << (response.size() > 100 ? "..." : ""));
+
     // Send full response
     size_t off = 0;
+    DEBUG_PRINT("=== SENDING RESPONSE ===");
     while (off < response.size())
     {
         ssize_t sent = send(client_fd, response.c_str() + off, response.size() - off, 0);
         if (sent > 0)
         {
             off += static_cast<size_t>(sent);
+            DEBUG_PRINT("Sent " << sent << " bytes, progress: " << off << "/" << response.size());
             continue;
         }
         if (sent < 0 && errno == EINTR)
+        {
+            DEBUG_PRINT("Send interrupted, retrying...");
             continue;
+        }
         if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+        {
+            DEBUG_PRINT("Send would block, retrying...");
             continue;
+        }
+        DEBUG_PRINT("Fatal send error: " << strerror(errno));
         break; // other error
     }
 
-    // NOTE: Keep-alive not supported yet
+    DEBUG_PRINT("Response sent successfully, total bytes: " << off);
+
+    DEBUG_PRINT("=== CLIENT CONNECTION HANDLED ===");
+    DEBUG_PRINT("Keep-alive support: NOT IMPLEMENTED (connection will close)");
+    DEBUG_PRINT("=================================");
 }
 
 // Check if the method is allowed in the current location

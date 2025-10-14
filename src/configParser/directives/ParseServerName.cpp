@@ -15,5 +15,5 @@
 void ConfigParser::parseServerName(const std::string &val, size_t /*lineNo*/)
 {
     this->_serverName = val;
-    DEBUG_PRINT("Applied server_name -> '" << this->_serverName << "'");
+   // DEBUG_PRINT("Applied server_name -> '" << this->_serverName << "'");
 }

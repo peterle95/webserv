@@ -9,6 +9,22 @@ std::string CGI::numberToString(int number)
 	return ss.str();
 }
 
+// Default constructor
+CGI::CGI()
+	: cgi_pid_(-1)
+{
+	// Initialize pipes to invalid values
+	pipe_in_[0] = -1;
+	pipe_in_[1] = -1;
+	pipe_out_[0] = -1;
+	pipe_out_[1] = -1;
+
+	// Initialize other members to empty/default values
+	script_path_ = "";
+	interpreter_path_ = "";
+	request_body_ = "";
+}
+
 // Constructor
 CGI::CGI(const HTTPparser &request, const HttpServer &server)
 	: cgi_pid_(-1)

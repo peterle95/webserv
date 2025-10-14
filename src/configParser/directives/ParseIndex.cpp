@@ -15,5 +15,5 @@
 void ConfigParser::parseIndex(const std::string &val, size_t /*lineNo*/, std::string *index)
 {
     *index = val;
-    DEBUG_PRINT("Applied index -> '" << *index << "'");
+    //DEBUG_PRINT("Applied index -> '" << *index << "'");
 }

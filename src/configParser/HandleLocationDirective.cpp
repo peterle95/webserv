@@ -14,7 +14,7 @@ void ConfigParser::applyAutoindex(LocationConfig *loc, const std::string &val, s
 		throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE,
 									  (int)lineNumber, this->_configFile);
 	}
-	DEBUG_PRINT("Set location autoindex -> " << (loc->autoindex ? "on" : "off"));
+	// DEBUG_PRINT("Set location autoindex -> " << (loc->autoindex ? "on" : "off"));
 }
 
 void ConfigParser::applyCgiPass(LocationConfig *loc, const std::string &val, size_t lineNumber)
@@ -31,7 +31,7 @@ void ConfigParser::applyCgiPass(LocationConfig *loc, const std::string &val, siz
 		throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE,
 									  (int)lineNumber, this->_configFile);
 	}
-	DEBUG_PRINT("Set location cgi_pass -> " << (loc->cgiPass ? "on" : "off"));
+	// DEBUG_PRINT("Set location cgi_pass -> " << (loc->cgiPass ? "on" : "off"));
 }
 
 void ConfigParser::applyCgiExtension(LocationConfig *loc, const std::string &val, size_t lineNumber)
@@ -45,7 +45,7 @@ void ConfigParser::applyCgiExtension(LocationConfig *loc, const std::string &val
 									  (int)lineNumber, this->_configFile);
 	}
 	loc->cgiExtension = val;
-	DEBUG_PRINT("Set location cgi_extension -> '" << loc->cgiExtension << "'");
+	// DEBUG_PRINT("Set location cgi_extension -> '" << loc->cgiExtension << "'");
 }
 
 // Handle location-specific directives
