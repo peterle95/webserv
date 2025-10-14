@@ -36,9 +36,9 @@ class ConfigParser
         std::string _root;
     	std::string _index;
         std::string _serverName; 
-        //std::map<int, std::string> _errorPage; // to implement later
-        std::string _errorPage;//until implemetation finishes
-        size_t _clientMaxBodySize; // to implement later
+        std::map<int, std::string> _errorPage; 
+   
+        size_t _clientMaxBodySize;
         std::string _host; // to implement later
         std::string _location; // to implement later
         std::vector<std::string> _server; // to implement later, vector because there might be multiple server blocks
@@ -83,10 +83,13 @@ class ConfigParser
         int                 getListenPort() const;
         const std::string&  getRoot() const;
         const std::string&  getIndex() const;
+        
         //ServerName addition -Shruti
-        const std::string&  getServerName() const;
+        const std::string  getServerName() const;
     	const std::map<std::string, LocationConfig> &getLocations() const;
-        const std::string& getErrorPage();//To read error page mapped for the status code in config file
+        size_t getClientMaxBodySize() const;
+        const std::string& getErrorPage(int status_code) const;
+
         // TODO: implement error handling
         // TODO: implement parsing more directives (directives are the lines in the config file)
     	// Location handling
@@ -109,6 +112,7 @@ std::string strip_comment(const std::string &s);
 
 
 #endif
+
 
 
 

@@ -18,6 +18,7 @@ HttpServer::HttpServer(ConfigParser &configParser) : _configParser(configParser)
     _root = configParser.getRoot();
     _index = configParser.getIndex();
     mapCurrentLocationConfig("/"); // default location
+
 }
 
 HttpServer::~HttpServer() {}
@@ -88,6 +89,12 @@ std::string HttpServer::getFilePath(const std::string &path)
     }
 
     return filePath;
+}
+
+//for use in response.cpp return the current location config
+const LocationConfig *HttpServer::getCurrentLocation()
+{
+    return _currentLocation;
 }
 
 int HttpServer::start()
