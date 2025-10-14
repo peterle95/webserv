@@ -43,6 +43,7 @@ private:
     HttpServer& _server;              // Reference to the main server for config access
     ClientState _state;               // The current state of the connection
     bool        _keep_alive;          // Whether to keep the connection alive after response
+    bool        _peer_half_closed;    // Peer performed shutdown(SHUT_WR); close after response
 
     // Buffers
     std::string _request_buffer;      // Stores raw request data as it's read

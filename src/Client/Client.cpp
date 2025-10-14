@@ -25,6 +25,7 @@ Client::Client(int socket, HttpServer& server)
     , _server(server)
     , _state(READING)
     , _keep_alive(false)
+    , _peer_half_closed(false)
     , _request_buffer()
     , _response_buffer()
     , _response_offset(0)
@@ -113,9 +114,9 @@ void Client::readRequest()
         if (n == 0)
         {
             DEBUG_PRINT("Connection closed by peer");
-            // Peer closed
-            _state = CLOSING;
-            return;
+            // Mark half-close; don't close yet — attempt to parse and respond
+            _peer_half_closed = true;
+            break;
         }
         if (n < 0)
         {
@@ -143,8 +144,16 @@ void Client::readRequest()
     size_t header_end = _request_buffer.find("\r\n\r\n");
     if (header_end == std::string::npos)
     {
-        DEBUG_PRINT("Headers not complete yet, need more data");
-        return; // need more data
+        if (_peer_half_closed && !_request_buffer.empty())
+        {
+            DEBUG_PRINT("Peer half-closed; parsing whatever we have as a request");
+            _state = GENERATING_RESPONSE;
+        }
+        else
+        {
+            DEBUG_PRINT("Headers not complete yet, need more data");
+        }
+        return; // either wait for more or parse as-is
     }
 
     DEBUG_PRINT("Headers found at position: " << header_end);
@@ -204,6 +213,12 @@ void Client::readRequest()
         DEBUG_PRINT("Expected total size: " << total << " bytes, current: " << _request_buffer.size());
         if (_request_buffer.size() < total)
         {
+            if (_peer_half_closed)
+            {
+                DEBUG_PRINT("Peer half-closed with incomplete body; will parse and likely send 400");
+                _state = GENERATING_RESPONSE;
+                return;
+            }
             DEBUG_PRINT("Body not complete yet, waiting for more data");
             return; // wait for more
         }
@@ -395,6 +410,15 @@ void Client::writeResponse()
     if (_response_offset >= _response_buffer.size())
     {
         DEBUG_PRINT("Response fully sent");
+
+        // If the peer already half-closed its write side, close after sending
+        if (_peer_half_closed)
+        {
+            DEBUG_PRINT("Peer half-closed earlier; transitioning to CLOSING");
+            _state = CLOSING;
+            return;
+        }
+
         if (_keep_alive)
         {
             DEBUG_PRINT("Keep-alive enabled, resetting for next request");
