@@ -51,8 +51,6 @@ private:
     std::string generatePostResponse(const std::string &body, bool keepAlive);
     bool isMethodAllowed(const std::string &method);
     
-    size_t checkContentLength(const std::string &request, size_t header_end);
-    
 public:
     HttpServer(ConfigParser &configParser);
     //HttpServer();//As a default constructor for HTTPResponse
@@ -65,19 +63,13 @@ public:
 
     // Helper: map location for path and return resolved file path
     std::string resolveFilePathFor(const std::string &path);
-    // Simplified per-connection handling (blocking on the accepted socket)
-    // NOTE: This is a temporary implementation to keep the server functional
-    // without maintaining per-client state. Implement Client class to handle
-    // non-blocking I/O and persistent connections.
-    void handleClient(int client_fd);
 
     static bool setNonBlocking(int fd);
 
     int getPort() const { return _port; }
 
-    // Start a very simple blocking server for demo purposes
+    // Start the non-blocking HTTP server with Client class state machine
     // Returns 0 on normal exit, non-zero on error
-    // TODO: make this non-blocking. Achieve this by using poll() to wait for connections.
     int start();
 
     // Public thin wrappers to reuse existing response builders from other modules

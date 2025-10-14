@@ -27,11 +27,11 @@ SRCS = src/main.cpp \
 		src/server/ServerUtils.cpp \
 		src/server/BindSocket.cpp \
 		src/server/AcceptSocket.cpp \
-	src/server/HandleClient.cpp \
-	src/Client/Client.cpp \
-	src/CGI/cgi.cpp \
-	src/httpResponse/HttpResponse.cpp \
-	src/httpResponse/HttpResponseUtils.cpp
+		src/Client/HandleClient.cpp \
+		src/Client/Client.cpp \
+		src/CGI/cgi.cpp \
+		src/httpResponse/HttpResponse.cpp \
+		src/httpResponse/HttpResponseUtils.cpp
 		
 
 OBJS = $(SRCS:.cpp=.o)
