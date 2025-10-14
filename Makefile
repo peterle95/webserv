@@ -1,6 +1,6 @@
 NAME = webserv
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -Iinclude
+CXXFLAGS = -g -Wall -Wextra -Werror -std=c++98 -Iinclude
 
 SRCS = src/main.cpp \
 		src/configParser/ConfigParser.cpp \

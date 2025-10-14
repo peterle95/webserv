@@ -48,6 +48,49 @@ void ConfigParser::applyCgiExtension(LocationConfig *loc, const std::string &val
 	DEBUG_PRINT("Set location cgi_extension -> '" << loc->cgiExtension << "'");
 }
 
+void ConfigParser::applyRedirect(LocationConfig *loc, const std::string &val, size_t lineNumber)
+{
+	std::istringstream iss(val);
+	std::string statusCodeStr, url;
+	if (!(iss >> statusCodeStr >> url))
+	{
+		std::string msg = ErrorHandler::makeLocationMsg(
+			std::string("Invalid redirect format (expected: <status_code> <url>): ") + val,
+			(int)lineNumber, this->_configFile);
+		throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE,
+									  (int)lineNumber, this->_configFile);
+	}
+
+	int statusCode;
+	try
+	{
+		int num;
+		std::stringstream ss(statusCodeStr) ;
+		ss >> num;
+		statusCode = num;
+	}
+	catch (const std::invalid_argument &)
+	{
+		std::string msg = ErrorHandler::makeLocationMsg(
+			std::string("Invalid status code in redirect: ") + statusCodeStr,
+			(int)lineNumber, this->_configFile);
+		throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE,
+									  (int)lineNumber, this->_configFile);
+	}
+
+	if (statusCode < 300 || statusCode > 399)
+	{
+		std::string msg = ErrorHandler::makeLocationMsg(
+			std::string("Status code for redirect must be between 300 and 399: ") + statusCodeStr,
+			(int)lineNumber, this->_configFile);
+		throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE,
+									  (int)lineNumber, this->_configFile);
+	}
+
+	loc->redirect[statusCode] = url;
+	DEBUG_PRINT("Set location redirect -> " << statusCode << " " << url);
+}
+
 // Handle location-specific directives
 void ConfigParser::handleLocationDirective(LocationConfig *currentLocation,
 										   const std::string &key,
@@ -66,6 +109,8 @@ void ConfigParser::handleLocationDirective(LocationConfig *currentLocation,
 		applyCgiPass(currentLocation, val, lineNumber);
 	else if (key == "cgi_extension")
 		applyCgiExtension(currentLocation, val, lineNumber);
+	else if(key == "redirect")
+		applyRedirect(currentLocation, val, lineNumber);
 	else
 	{
 		std::string msg = ErrorHandler::makeLocationMsg(

@@ -3,7 +3,7 @@
 #include <cstring>*/
 #include "Common.hpp"
 
-void generateDirectoryListing(std::string path)
+std::string generateDirectoryListing(std::string path)
 {
     std::string distlist_page;
     DIR *dir = opendir(path.c_str());
@@ -32,5 +32,6 @@ void generateDirectoryListing(std::string path)
     distlist_page += ("</body>\n");
     distlist_page += ("</html>");
     closedir(dir);
+    return distlist_page;
     std::cout << distlist_page << std::endl;
-}
+}       
