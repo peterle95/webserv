@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Common.hpp" // Include all necessary headers
 #include "HTTPparser.hpp"
 #include "HttpResponse.hpp"
