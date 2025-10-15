@@ -150,7 +150,7 @@ bool HTTPparser::parseRequest(const std::string &rawRequest)
     reset();
     _HTTPrequest = rawRequest; // Store for debugging/logging
 
-    DEBUG_PRINT("=== Starting HTTP Request Parsing ===");
+    DEBUG_PRINT(MAGENTA << "~~~ Starting HTTP Request Parsing ~~~" << RESET);
     DEBUG_PRINT("Raw Request (first 200 chars): " << rawRequest.substr(0, 200));
     
     // We parse from a stringstream for simplicity. In a real server with
@@ -198,7 +198,7 @@ bool HTTPparser::parseRequest(const std::string &rawRequest)
     if (_state == PARSING_COMPLETE)
     {
         _isValid = true;
-        DEBUG_PRINT("=== HTTP Request Parsing Complete ===");
+        DEBUG_PRINT(MAGENTA << "~~~ HTTP Request Parsing Complete ~~~" << RESET);
         DEBUG_PRINT("Method: " << getMethod() << ", Path: " << getPath() 
                     << ", Version: " << getVersion());
         DEBUG_PRINT("Headers: " << getHeaders().size() << " total");
@@ -208,7 +208,7 @@ bool HTTPparser::parseRequest(const std::string &rawRequest)
     }
     else if (_state == ERROR)
     {
-        DEBUG_PRINT("=== HTTP Request Parsing Failed ===");
+        DEBUG_PRINT(MAGENTA << "~~~ HTTP Request Parsing Failed ~~~" << RESET);
         DEBUG_PRINT("Error: " << _errorMessage);
         return false;
     }

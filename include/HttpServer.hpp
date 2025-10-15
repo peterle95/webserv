@@ -42,14 +42,6 @@ private:
 
     // Accept loop for incoming connections
     int runAcceptLoop(int server_fd, bool serveOnce);
-
-    // Minimal helpers reused by the simplified handler
-    
-    std::string generateBadRequestResponse(bool keepAlive);
-    std::string generateGetResponse(const std::string &path, bool keepAlive);
-    std::string generateMethodNotAllowedResponse(bool keepAlive);
-    std::string generatePostResponse(const std::string &body, bool keepAlive);
-    bool isMethodAllowed(const std::string &method);
     
 public:
     HttpServer(ConfigParser &configParser);
@@ -71,13 +63,13 @@ public:
     // Start the non-blocking HTTP server with Client class state machine
     // Returns 0 on normal exit, non-zero on error
     int start();
-
-    // Public thin wrappers to reuse existing response builders from other modules
-    std::string buildBadRequestResponse(bool keepAlive) { return generateBadRequestResponse(keepAlive); }
-    std::string buildGetResponse(const std::string &path, bool keepAlive) { return generateGetResponse(path, keepAlive); }
-    std::string buildMethodNotAllowedResponse(bool keepAlive) { return generateMethodNotAllowedResponse(keepAlive); }
-    std::string buildPostResponse(const std::string &body, bool keepAlive) { return generatePostResponse(body, keepAlive); }
-    bool isMethodAllowedPublic(const std::string &method) { return isMethodAllowed(method); }
+    
+    // Response generation methods (public for Client access)
+    std::string generateBadRequestResponse(bool keepAlive);
+    std::string generateGetResponse(const std::string &path, bool keepAlive);
+    std::string generateMethodNotAllowedResponse(bool keepAlive);
+    std::string generatePostResponse(const std::string &body, bool keepAlive);
+    bool isMethodAllowed(const std::string &method);
 };
 
 #endif

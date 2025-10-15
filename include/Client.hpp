@@ -2,7 +2,6 @@
 
 #include "Common.hpp" // Include all necessary headers
 #include "HTTPparser.hpp"
-#include "HttpResponse.hpp"
 #include "Cgi.hpp"
 
 // Forward declare to avoid circular dependencies
@@ -52,7 +51,6 @@ private:
 
     // Parsers and Handlers
     HTTPparser   _parser;             // Parses the raw request
-    Response    *_response;           // Builds the HTTP response (project-specific)
     CGI          _cgi_handler;        // Manages the CGI process (project-specific wrapper)
 
     // CGI-specific state
@@ -63,5 +61,5 @@ private:
 
     // Private copy constructor and assignment operator to prevent copying
     Client(const Client& other);
-    Client& operator=(const Client& other);
+    // Client& operator=(const Client& other);
 };

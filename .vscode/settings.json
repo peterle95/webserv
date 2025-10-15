@@ -55,6 +55,7 @@
         "ranges": "cpp",
         "span": "cpp",
         "cinttypes": "cpp",
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "cerrno": "cpp"
     }
 }
