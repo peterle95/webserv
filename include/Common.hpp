@@ -57,6 +57,7 @@ macros used throughout the project.*/
 #include "Cgi.hpp" // CGI handling
 #include <dirent.h> // directory handling: opendir(), readdir()
 #include <cstring> // string operations: strcmp()
+#include <HttpResponseUtils.hpp>
 
 
 // create a DEBUG macro so that if it's true the debugging mode in the code will print stuff

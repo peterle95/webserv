@@ -69,7 +69,8 @@ class Response
     //int buildResponse();
     //void appBody();
     std::string buildErrorPage(int code);
-    std::string getResponse() { return _response_final; }
+    std::string getResponse();
+    std::string redirecUtil();
 };
 
 #endif
