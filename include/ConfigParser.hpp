@@ -24,9 +24,10 @@ struct LocationConfig
     bool autoindex;
     bool cgiPass;
     std::string cgiExtension;
+    std::map <int, std::string> redirect;
 
     LocationConfig()
-        : path(""), root(""), index(), allowedMethods(), autoindex(false), cgiPass(false), cgiExtension("") {}
+        : path(""), root(""), index(), allowedMethods(), autoindex(false), cgiPass(false), cgiExtension(""),redirect() {}
 };
 class ConfigParser
 {
@@ -102,6 +103,7 @@ class ConfigParser
     	void applyAutoindex(LocationConfig *loc, const std::string &val, size_t lineNo);
     	void applyCgiPass(LocationConfig *loc, const std::string &val, size_t lineNo);
     	void applyCgiExtension(LocationConfig *loc, const std::string &val, size_t lineNo);
+        void applyRedirect(LocationConfig *loc, const std::string &val, size_t lineNo);
 };
 
 // Prototypes

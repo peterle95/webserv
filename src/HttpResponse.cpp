@@ -70,40 +70,50 @@ void Response::appContentLen()
 
 }
 
+// Sets the Content-Type header based on the file extension of the target file.
 void Response::appContentType()
 {
+    // Map of file extensions to MIME types
     std::map<std::string, std::string> mime_types;
-    
-        mime_types.insert((std::make_pair(".html", "text/html")));
-        mime_types.insert((std::make_pair(".htm", "text/html")));
-        mime_types.insert((std::make_pair(".css", "text/css")));
-        mime_types.insert((std::make_pair(".js", "application/javascript")));
-        mime_types.insert((std::make_pair(".json", "application/json")));
-        mime_types.insert((std::make_pair(".png", "image/png")));
-        mime_types.insert((std::make_pair(".jpg", "image/jpeg")));
-        mime_types.insert((std::make_pair(".jpeg", "image/jpeg")));
-        mime_types.insert((std::make_pair(".gif", "image/gif")));
-        mime_types.insert((std::make_pair(".txt", "text/plain")));
-        mime_types.insert((std::make_pair(".pdf", "application/pdf")));
-    
+    mime_types.insert((std::make_pair(".html", "text/html")));
+    mime_types.insert((std::make_pair(".htm", "text/html")));
+    mime_types.insert((std::make_pair(".css", "text/css")));
+    mime_types.insert((std::make_pair(".js", "application/javascript")));
+    mime_types.insert((std::make_pair(".json", "application/json")));
+    mime_types.insert((std::make_pair(".png", "image/png")));
+    mime_types.insert((std::make_pair(".jpg", "image/jpeg")));
+    mime_types.insert((std::make_pair(".jpeg", "image/jpeg")));
+    mime_types.insert((std::make_pair(".gif", "image/gif")));
+    mime_types.insert((std::make_pair(".txt", "text/plain")));
+    mime_types.insert((std::make_pair(".pdf", "application/pdf")));
+
+    // Find the last dot in the target file name to get the extension
     size_t dot_pos = _targetfile.rfind('.');
     if (dot_pos != std::string::npos)
     {
-        std::string fileExt = _targetfile.substr(dot_pos + 1);
+        // Extract the file extension including the dot
+        std::string fileExt = _targetfile.substr(dot_pos);
+        // Look up the MIME type for the extension
         std::map<std::string, std::string>::iterator it = mime_types.find(fileExt);
         if (it != mime_types.end())
         {
+            // If found, set the Content-Type header accordingly
             _response_headers.append(" Content-Type: " + mime_types[fileExt] + "\r\n");
         }
         else
         {
-            _response_headers.append(" Content-Type: text/html r\n");
+            // Default to text/html if extension is unknown
+            _response_headers.append(" Content-Type: text/html\r\n");
         }
-    }   
+    }
 }
 
+
+// Generates a simple error message in the response body based on the provided HTTP status code.
+// Supported codes:
 void Response::builderror_body(int code)
 {
+    
     if(code == 404)
     _response_body.append(" Not Found");
      else if(code == 413)
@@ -315,19 +325,67 @@ void Response::builderror_responses(int code)
     }    
 }
 
+std::string Response::redirecUtil()
+{
+    std::string _response_headers;
+    std::map<int, std::string> redirec = _HttpServer.getCurrentLocation()->redirect;
+    std::map<int, std::string>::iterator it = redirec.begin();
+    if(it != redirec.end())
+    {
+    // Build redirect response headers
+       _response_headers.append(" HTTP/1.1 ");
+        // Create an output string stream to build the status code string
+        std::ostringstream oss;
+        oss << it->first;
+        _response_headers.append(oss.str());
+        std::string statusMsg = statusMessage(it->first);
+        _response_headers.append(" " + statusMsg + "\r\n");
+        _response_headers.append(" Content-Length: 0\r\n");    
+        _response_headers.append("Location: " + it->second + "\r\n");
+        }
+      return _response_headers;
+}
+
 void Response::buildResponse()
 {
+    // Handle error responses or body generation
     if(reqErr() || appBody())
     {
+        // Build error body based on the response code
         builderror_body(_code);
     }
-   /* else if(_cgi)
+    // Handle autoindex (directory listing) if enabled
+    else if(_HttpServer.getCurrentLocation()->autoindex)
     {
-        return;
-    }*/
-
-    if(request.getMethod() == "GET" && _code == 200)
+        const LocationConfig *currentLocation = _HttpServer.getCurrentLocation();
+        std::string filePath = _HttpServer.getFilePath(currentLocation->path);
+        generateDirectoryListing(filePath);
+    }
+    // Handle HTTP redirects if configured
+    else if(!_HttpServer.getCurrentLocation()->redirect.empty())
     {
+        std::string _response_headers;
+        std::map<int, std::string> redirec = _HttpServer.getCurrentLocation()->redirect;
+        std::map<int, std::string>::iterator it = redirec.begin();
+        if(it != redirec.end())
+        {
+            // Build redirect response headers
+            _response_headers.append(" HTTP/1.1 ");
+            std::ostringstream oss;
+            oss << it->first;
+            _response_headers.append(oss.str());
+            std::string statusMsg = statusMessage(it->first);
+            _response_headers.append(" " + statusMsg + "\r\n");
+            _response_headers.append(" Content-Length: 0\r\n");    
+            _response_headers.append("Location: " + it->second + "\r\n");
+            // Set the final response string
+            _response_final = _response_headers + "\r\n";
+        }
+    }
+    // Handle successful GET requests
+    else if(request.getMethod() == "GET" && _code == 200)
+    {
+        // Set the final response string for successful GET
         _response_final = _response_headers + "\r\n"; 
     }
 }
@@ -343,6 +401,9 @@ void Response::setHeaders()
 }
 
 
+// Checks if the request has an error status code set.
+// If so, sets the response code accordingly and returns it.
+// Otherwise, returns 0 indicating no error.
 int Response::reqErr()
 {
     if(!request.getErrorStatusCode().empty())
@@ -352,6 +413,11 @@ int Response::reqErr()
     }
     return 0;
 }
+
+ std::string Response::getResponse()
+ {
+    return _response_final;
+ }
 
 Response::~Response()
 {

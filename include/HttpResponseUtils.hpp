@@ -1,8 +1,7 @@
 #ifndef HTTPRESPONSEUTILS_HPP
 #define HTTPRESPONSEUTILS_HPP
-#include <string>
+#include "Common.hpp"
 
-void generateDirectoryListing(std::string path);
+std::string generateDirectoryListing(std::string path);
 
 #endif
-
