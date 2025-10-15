@@ -181,7 +181,6 @@ void Client::generateResponse()
     DEBUG_PRINT("Keep-alive: " << (_keep_alive ? "YES" : "NO"));
 
     DEBUG_PRINT(MAGENTA << "*** EXITING HTTP PARSER ***" << RESET);
-    DEBUG_PRINT()
     if (!ok || !_parser.isValid())
     {
         DEBUG_PRINT(RED << "Request parsing failed: " << _parser.getErrorMessage() << RESET);
