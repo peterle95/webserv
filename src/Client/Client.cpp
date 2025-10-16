@@ -1,4 +1,5 @@
 #include "Client.hpp"
+#include "Logger.hpp"
 
 /*
 Client::readRequest()
@@ -152,6 +153,7 @@ void Client::readRequest()
         {
             DEBUG_PRINT("Peer half-closed; attempting to parse incomplete request");
             _state = GENERATING_RESPONSE;
+            Logger::logRequest(_request_buffer);
         }
         else
         {
@@ -164,6 +166,7 @@ void Client::readRequest()
     // For now, we'll attempt to parse. HTTPparser will validate completeness.
     DEBUG_PRINT("Headers found, transitioning to GENERATING_RESPONSE");
     _state = GENERATING_RESPONSE;
+    Logger::logRequest(_request_buffer);
 }
 
 void Client::generateResponse()
@@ -186,6 +189,7 @@ void Client::generateResponse()
         DEBUG_PRINT(RED << "Request parsing failed: " << _parser.getErrorMessage() << RESET);
         DEBUG_PRINT("Generating BAD REQUEST response");
         _response_buffer = _server.generateBadRequestResponse(false);
+        Logger::logResponse(_response_buffer);
         _response_offset = 0;
         DEBUG_PRINT("Transitioning to WRITING state");
         _state = WRITING;
@@ -208,6 +212,7 @@ void Client::generateResponse()
     {
         DEBUG_PRINT(GREEN << "Handling GET request" << RESET);
         _response_buffer = _server.generateGetResponse(filePath, _keep_alive);
+        Logger::logResponse(_response_buffer);
         _response_offset = 0;
         DEBUG_PRINT("GET response generated, size: " << _response_buffer.size());
         DEBUG_PRINT("Transitioning to WRITING state");
@@ -245,6 +250,7 @@ void Client::generateResponse()
                 _response_buffer = _server.generatePostResponse(cgiOut, _keep_alive);
             }
 
+            Logger::logResponse(_response_buffer);
             _response_offset = 0;
             DEBUG_PRINT(CYAN << "CGI response generated, size: " << _response_buffer.size() << RESET);
             DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
@@ -255,6 +261,7 @@ void Client::generateResponse()
         {
             DEBUG_PRINT(CYAN << "CGI not available, generating METHOD NOT ALLOWED" << RESET);
             _response_buffer = _server.generateMethodNotAllowedResponse(_keep_alive);
+            Logger::logResponse(_response_buffer);
             _response_offset = 0;
             DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
             _state = WRITING;
@@ -266,6 +273,7 @@ void Client::generateResponse()
         DEBUG_PRINT(CYAN << "Unknown method: " << RED << method << RESET);
         DEBUG_PRINT(RED << "Generating METHOD NOT ALLOWED response" << RESET);
         _response_buffer = _server.generateMethodNotAllowedResponse(_keep_alive);
+        Logger::logResponse(_response_buffer);
         _response_offset = 0;
         DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
         _state = WRITING;
