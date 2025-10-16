@@ -74,11 +74,17 @@ bool HTTPparser::parseHeaders(std::istringstream& iss)
     
     // Log important headers for debugging
     if (_headers.hasContentLength())
+    {
         DEBUG_PRINT("Content-Length: " << _headers.getContentLength());
+    }
     if (_headers.isChunked())
+    {
         DEBUG_PRINT("Transfer-Encoding: chunked detected");
+    }
     if (!_headers.getHost().empty())
+    {
         DEBUG_PRINT("Host: " << _headers.getHost());
+    }
     
     return true;
 }
@@ -109,7 +115,9 @@ bool HTTPparser::parseBody(std::istringstream& iss)
     }
     _body = bodyParser.getBody();
     if (!_body.empty())
+    {
         DEBUG_PRINT("Parsed body with " << _body.length() << " bytes");
+    }
     return true;
 }
 
@@ -203,7 +211,9 @@ bool HTTPparser::parseRequest(const std::string &rawRequest)
                     << ", Version: " << getVersion());
         DEBUG_PRINT("Headers: " << getHeaders().size() << " total");
         if (!_body.empty())
+        {
             DEBUG_PRINT("Body: " << _body.length() << " characters");
+        }
         return true;
     }
     else if (_state == ERROR)
