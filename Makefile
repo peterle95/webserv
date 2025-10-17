@@ -32,7 +32,7 @@ SRCS = src/main.cpp \
 		src/CGI/cgi.cpp \
 		src/httpResponse/HttpResponse.cpp \
 		src/httpResponse/HttpResponseUtils.cpp \
-		src/Logger.cpp \
+		src/Logging/Logger.cpp \
 		
 
 OBJS = $(SRCS:.cpp=.o)

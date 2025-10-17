@@ -34,7 +34,7 @@ std::string Logger::timestamp() {
 
 static void printLine(const std::string &prefix, const std::string &raw) {
 #ifdef DEBUG
-    std::cout << prefix << " " << raw << std::endl;
+    std::cout << RED << prefix << " " << RESET << raw << std::endl;
 #else
     (void)prefix; (void)raw;
 #endif
