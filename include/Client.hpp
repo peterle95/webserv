@@ -36,6 +36,7 @@ private:
     void writeResponse();
     void handleCgi();
     void startCgi();
+    size_t checkContentLength(const std::string &request, size_t header_end);
 
     // Member Variables
     int _socket;                      // The client's socket file descriptor

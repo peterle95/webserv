@@ -169,7 +169,8 @@ char **CGI::createArgsArray() const
 	strcpy(args[0], interpreter_path_.c_str());
 
 	args[1] = new char[11];
-	strcpy(args[1], "python3.11");
+	// strcpy(args[1], "python3.11");
+	strcpy(args[1], "python3"); // campus system uses python3
 
 	args[2] = new char[script_path_.size() + 1];
 	strcpy(args[2], script_path_.c_str());
