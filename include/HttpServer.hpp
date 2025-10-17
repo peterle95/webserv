@@ -16,6 +16,10 @@
 #include "ConfigParser.hpp"
 
 #include "HTTPparser.hpp"
+#include <map>
+
+class Client; // forward declaration
+
 class HttpServer
 {
 private:
@@ -24,6 +28,9 @@ private:
     std::string _index;
     ConfigParser _configParser;
     const LocationConfig *_currentLocation;
+
+    // Active clients keyed by socket fd
+    std::map<int, Client*> _clients;
 
     void mapCurrentLocationConfig(const std::string &path);
     
@@ -35,16 +42,6 @@ private:
 
     // Accept loop for incoming connections
     int runAcceptLoop(int server_fd, bool serveOnce);
-
-    // Minimal helpers reused by the simplified handler
-    
-    std::string generateBadRequestResponse(bool keepAlive);
-    std::string generateGetResponse(const std::string &path, bool keepAlive);
-    std::string generateMethodNotAllowedResponse(bool keepAlive);
-    std::string generatePostResponse(const std::string &body, bool keepAlive);
-    bool isMethodAllowed(const std::string &method);
-    
-    size_t checkContentLength(const std::string &request, size_t header_end);
     
 public:
     HttpServer(ConfigParser &configParser);
@@ -55,20 +52,24 @@ public:
     bool determineKeepAlive(const HTTPparser &parser);//changed from private to public for access in response.cpp
     const LocationConfig *getCurrentLocation();
     std::string processCGI(HTTPparser &parser);//changed from private to public for access in response.cpp
-    // Simplified per-connection handling (blocking on the accepted socket)
-    // NOTE: This is a temporary implementation to keep the server functional
-    // without maintaining per-client state. Implement Client class to handle
-    // non-blocking I/O and persistent connections.
-    void handleClient(int client_fd);
+
+    // Helper: map location for path and return resolved file path
+    std::string resolveFilePathFor(const std::string &path);
 
     static bool setNonBlocking(int fd);
 
     int getPort() const { return _port; }
 
-    // Start a very simple blocking server for demo purposes
+    // Start the non-blocking HTTP server with Client class state machine
     // Returns 0 on normal exit, non-zero on error
-    // TODO: make this non-blocking. Achieve this by using poll() to wait for connections.
     int start();
+    
+    // Response generation methods (public for Client access)
+    std::string generateBadRequestResponse(bool keepAlive);
+    std::string generateGetResponse(const std::string &path, bool keepAlive);
+    std::string generateMethodNotAllowedResponse(bool keepAlive);
+    std::string generatePostResponse(const std::string &body, bool keepAlive);
+    bool isMethodAllowed(const std::string &method);
 };
 
 #endif

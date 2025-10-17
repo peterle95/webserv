@@ -15,5 +15,5 @@
 void ConfigParser::parseRoot(const std::string &val, size_t /*lineNo*/, std::string *root)
 {
     *root = val;
-    DEBUG_PRINT("Applied root -> '" << *root << "'");
+   // DEBUG_PRINT("Applied root -> '" << *root << "'");
 }

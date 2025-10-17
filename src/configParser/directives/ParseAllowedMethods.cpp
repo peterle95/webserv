@@ -26,7 +26,7 @@ void ConfigParser::parseAllowedMethods(const std::string &val, size_t lineNo, st
             throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE, (int)lineNo, this->_configFile);
         }
         allowedMethods->insert(tok);
-        DEBUG_PRINT("Added allowed_method -> '" << tok << "'");
+        // DEBUG_PRINT(RED << "Added allowed_method -> '" << tok << "'" << RESET);
     }
     if (allowedMethods->empty()) 
     {

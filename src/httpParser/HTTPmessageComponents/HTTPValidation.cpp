@@ -17,12 +17,29 @@
 // HTTP Method validation
 bool HTTPValidation::isValidMethod(const std::string& method)
 {
-    std::set<std::string> validMethods = getValidMethods();
-    return validMethods.find(method) != validMethods.end();
+    // Per RFCs, the request method is a "token". Unknown methods are permitted
+    // syntactically and should result in 405 Method Not Allowed at the
+    // application level if not supported, not a 400 parsing error.
+    if (method.empty())
+        return false;
+
+    // Validate characters according to token rules (no CTLs or separators)
+    const std::string separators = "()<>@,;:\\\"/[]?={} \t";
+    for (size_t i = 0; i < method.length(); ++i)
+    {
+        unsigned char c = static_cast<unsigned char>(method[i]);
+        if (c <= 31 || c >= 127) // Control or non-ASCII
+            return false;
+        if (separators.find(c) != std::string::npos)
+            return false;
+    }
+    return true;
 }
 
 std::set<std::string> HTTPValidation::getValidMethods()
 {
+    // Retain legacy set for callers that want to list canonical methods,
+    // but do not use it for syntactic validation.
     std::set<std::string> methods;
     methods.insert("GET");
     methods.insert("POST");

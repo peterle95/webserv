@@ -40,16 +40,16 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
     for (size_t i = 0; i < lines.size(); ++i)
     {
         const std::string raw = lines[i];
-        DEBUG_PRINT("Line " << i << " raw: '" << raw << "'");
+        // DEBUG_PRINT("Line " << i << " raw: '" << raw << "'");
         std::string line = preprocessLine(raw);
-        DEBUG_PRINT("Line " << i << " preprocessed: '" << line << "'");
+        // DEBUG_PRINT("Line " << i << " preprocessed: '" << line << "'");
 
         // if (!line.empty())
         //     this->_lines.push_back(line);
 
         if (line.empty())
         {
-            DEBUG_PRINT("Line " << i << " skipped: empty after trim/comment");
+            // DEBUG_PRINT("Line " << i << " skipped: empty after trim/comment");
             continue;
         }
         // Detect location block
@@ -60,25 +60,25 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
             _locations[locPath] = LocationConfig();
             currentLocation = &_locations[locPath];
             currentLocation->path = locPath;
-            DEBUG_PRINT("Started location block for path: '" << locPath << "'");
+            // DEBUG_PRINT("Started location block for path: '" << locPath << "'");
             continue;
         }
         if (line == "}")
         {
             if (currentLocation)
             {
-                DEBUG_PRINT("Ended location block for path: '" << currentLocation->path << "'");
+                // DEBUG_PRINT("Ended location block for path: '" << currentLocation->path << "'");
                 currentLocation = NULL;
             }
             else
             {
-                DEBUG_PRINT("Line " << i << " skipped: unmatched '}'");
+                // DEBUG_PRINT("Line " << i << " skipped: unmatched '}'");
             }
             continue;
         }
 
         if (isBlockMarker(line)) {
-            DEBUG_PRINT("Line " << i << " skipped: brace/block marker");
+            // DEBUG_PRINT("Line " << i << " skipped: brace/block marker");
             continue;
         }
 
@@ -88,7 +88,7 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
         std::string key, val;
         if (!splitKeyVal(line, key, val))
             continue;
-        DEBUG_PRINT("Directive key='" << key << "' val='" << val << "'");
+        // DEBUG_PRINT("Directive key='" << key << "' val='" << val << "'");
 
         if (currentLocation)
         {
@@ -104,7 +104,7 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
 bool ConfigParser::parse(const std::string &path)
 {
     this->_configFile = path;
-    DEBUG_PRINT("Opening config file: '" << path << "'");
+    // DEBUG_PRINT("Opening config file: '" << path << "'");
 
     try {
         std::ifstream in(path.c_str());
@@ -118,10 +118,10 @@ bool ConfigParser::parse(const std::string &path)
         std::string line;
         while (std::getline(in, line))
             rawLines.push_back(line);
-        DEBUG_PRINT("Read " << rawLines.size() << " lines from file");
+        // DEBUG_PRINT("Read " << rawLines.size() << " lines from file");
 
         parseLines(rawLines);
-        DEBUG_PRINT("Finished parsing file: '" << path << "'");
+        // DEBUG_PRINT("Finished parsing file: '" << path << "'");
         return true;
     }
     catch (const ErrorHandler::Exception &e) {

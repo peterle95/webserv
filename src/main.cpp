@@ -14,276 +14,195 @@
 #include "HttpServer.hpp"
 #include "ConfigParser.hpp"
 
-void testhttpParsing()
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+static bool setServeOnce() {
+    return setenv("WEBSERV_ONCE", "1", 1) == 0;
+}
+
+static pid_t spawnServerOnce(const std::string &configPath)
 {
-    std::cout << RED << "=== Testing Improved HTTP Parser ===" << RESET << std::endl;
-    
-    // Example HTTP request
-    std::string testRequest = 
-        "GET /index.html HTTP/1.1\r\n"
-        "Host: localhost:8080\r\n"
-        "User-Agent: Mozilla/5.0 (Test Browser)\r\n"
-        "Accept: text/html,application/xhtml+xml\r\n"
-        "Accept-Language: en-US,en;q=0.9\r\n"
-        "Connection: keep-alive\r\n"
-        "Content-Type: application/x-www-form-urlencoded\r\n"
-        "Content-Length: 13\r\n"
-        "\r\n"
-        "key1=value1&key2=value2";
-    
-    // Create parser and test parsing
-    HTTPparser parser;
-    
-    std::cout << RED << "\n--- Testing Valid Request ---" << RESET << std::endl;
-    if (parser.parseRequest(testRequest))
+    pid_t pid = fork();
+    if (pid < 0)
+        return -1;
+
+    if (pid == 0)
     {
-        std::cout << "✓ Request parsed successfully!" << std::endl;
-        std::cout << "Method: " << parser.getMethod() << std::endl;
-        std::cout << "Path: " << parser.getPath() << std::endl;
-        std::cout << "Version: " << parser.getVersion() << std::endl;
-        std::cout << "Headers: " << parser.getHeaders().size() << " total" << std::endl;
-        std::cout << "Host: " << parser.getHeader("Host") << std::endl;
-        std::cout << "Content-Length: " << parser.getContentLength() << std::endl;
-        std::cout << "Body length: " << parser.getBody().length() << " characters" << std::endl;
+        // Child: start the server and serve a single connection
+        setServeOnce();
+        ConfigParser parserChild;
+        if (!parserChild.parse(configPath))
+            _exit(2);
+        HttpServer serverChild(parserChild);
+        int rc = serverChild.start();
+        _exit(rc);
     }
-    else
+    // Parent
+    return pid;
+}
+
+static int connectWithRetry(int port, int maxAttempts, int sleepMicros)
+{
+    int fd = -1;
+    for (int attempt = 0; attempt < maxAttempts; ++attempt)
     {
-        std::cout << "✗ Failed to parse request" << std::endl;
-        std::cout << "Error: " << parser.getErrorMessage() << std::endl;
-        std::cout << "Status: " << parser.getErrorStatusCode() << std::endl;
+        fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (fd < 0)
+            return -1;
+        struct sockaddr_in addr;
+        std::memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons((uint16_t)port);
+        inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+        if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == 0)
+            return fd;
+        close(fd);
+        usleep(sleepMicros);
     }
-    
-    // Test invalid request
-    std::cout << RED << "\n--- Testing Invalid Request ---" << RESET << std::endl;
-    std::string invalidRequest = "INVALID REQUEST LINE\r\n";
-    
-    HTTPparser parser2;
-    if (parser2.parseRequest(invalidRequest))
+    return -1;
+}
+
+static bool sendAll(int fd, const std::string &data)
+{
+    size_t off = 0;
+    while (off < data.size())
     {
-        std::cout << "✗ Should have failed but didn't!" << std::endl;
+        ssize_t n = send(fd, data.c_str() + off, data.size() - off, 0);
+        if (n > 0) { off += (size_t)n; continue; }
+        if (n < 0 && (errno == EINTR)) continue;
+        return false;
     }
-    else
+    return true;
+}
+
+static std::string recvAll(int fd)
+{
+    std::string out;
+    char buf[4096];
+    while (true)
     {
-        std::cout << "✓ Correctly rejected invalid request" << std::endl;
-        std::cout << "Error: " << parser2.getErrorMessage() << std::endl;
-        std::cout << "Status: " << parser2.getErrorStatusCode() << std::endl;
+        ssize_t n = recv(fd, buf, sizeof(buf), 0);
+        if (n > 0) out.append(buf, buf + n);
+        else if (n == 0) break;
+        else if (errno == EINTR) continue;
+        else break;
     }
-    
-    // Test directory traversal protection
-    std::cout << RED << "\n--- Testing Security Features ---" << RESET << std::endl;
-    std::string maliciousRequest = 
-        "GET /../../../etc/passwd HTTP/1.1\r\n"
-        "Host: localhost\r\n"
-        "\r\n";
-    
-    HTTPparser parser3;
-    if (parser3.parseRequest(maliciousRequest))
+    return out;
+}
+
+static bool assertContains(const std::string &hay, const std::string &needle)
+{
+    return hay.find(needle) != std::string::npos;
+}
+
+static bool runSingleRequestTest(const std::string &configPath, int port,
+                                 const std::string &request,
+                                 const std::string &expect)
+{
+    pid_t srv = spawnServerOnce(configPath);
+    if (srv < 0)
     {
-        std::cout << "✗ Security vulnerability: directory traversal not blocked!" << std::endl;
-    }
-    else
-    {
-        std::cout << "✓ Security check passed: directory traversal blocked" << std::endl;
-        std::cout << "Error: " << parser3.getErrorMessage() << std::endl;
+        std::cerr << "Failed to spawn server" << std::endl;
+        return false;
     }
 
-    // =============================================================
-    // Additional tests for HTTP body parsing
-    // =============================================================
-    std::cout << RED << "\n=== Additional HTTP Body Parsing Tests ===" << RESET << std::endl;
-
-    // 1) Fixed-length body (exact match)
-    std::cout << RED << "\n--- Fixed-Length Body: Exact Match ---" << RESET << std::endl;
-    std::string fixedExact =
-        "POST /submit HTTP/1.1\r\n"
-        "Host: localhost\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: 13\r\n"
-        "\r\n"
-        "hello=world!!"; // 13 bytes
-    HTTPparser p_fixedExact;
-    if (p_fixedExact.parseRequest(fixedExact))
+    int cfd = connectWithRetry(port, 50, 50 * 1000); // up to ~2.5s
+    if (cfd < 0)
     {
-        std::cout << "✓ Parsed fixed-length body" << std::endl;
-        std::cout << "Body length: " << p_fixedExact.getBody().length() << std::endl;
-        if (p_fixedExact.getBody().length() == 13)
-            std::cout << "✓ Body length matches Content-Length" << std::endl;
-        else
-            std::cout << "✗ Body length does not match Content-Length" << std::endl;
-    }
-    else
-    {
-        std::cout << "✗ Failed to parse fixed-length exact body" << std::endl;
-        std::cout << "Error: " << p_fixedExact.getErrorMessage() << std::endl;
+        std::cerr << "Client failed to connect" << std::endl;
+        int status; waitpid(srv, &status, 0);
+        return false;
     }
 
-    // 2) Fixed-length body (shorter than Content-Length)
-    std::cout << RED << "\n--- Fixed-Length Body: Too Short ---" << RESET << std::endl;
-    std::string fixedShort =
-        "POST /short HTTP/1.1\r\n"
-        "Host: localhost\r\n"
-        "Content-Length: 10\r\n"
-        "\r\n"
-        "short"; // only 5 bytes
-    HTTPparser p_fixedShort;
-    if (!p_fixedShort.parseRequest(fixedShort))
+    bool okSend = sendAll(cfd, request);
+    shutdown(cfd, SHUT_WR);
+    std::string resp = recvAll(cfd);
+    close(cfd);
+
+    int status; waitpid(srv, &status, 0);
+
+    if (!okSend)
     {
-        std::cout << "✓ Correctly rejected short body" << std::endl;
-        std::cout << "Error: " << p_fixedShort.getErrorMessage() << std::endl;
-        std::cout << "Status: " << p_fixedShort.getErrorStatusCode() << std::endl;
-    }
-    else
-    {
-        std::cout << "✗ Should have failed due to short body" << std::endl;
+        std::cerr << "Send failed" << std::endl;
+        return false;
     }
 
-    // 3) Fixed-length body (longer than Content-Length): parser reads only declared bytes
-    std::cout << RED << "\n--- Fixed-Length Body: Longer Than Declared ---" << RESET << std::endl;
-    std::string fixedLong =
-        "POST /long HTTP/1.1\r\n"
-        "Host: localhost\r\n"
-        "Content-Length: 5\r\n"
-        "\r\n"
-        "1234567"; // 7 bytes provided, expect body == "12345"
-    HTTPparser p_fixedLong;
-    if (p_fixedLong.parseRequest(fixedLong))
+    if (!assertContains(resp, expect))
     {
-        std::cout << "✓ Parsed fixed-length body (reads only declared bytes)" << std::endl;
-        std::cout << "Body: '" << p_fixedLong.getBody() << "' (len=" << p_fixedLong.getBody().length() << ")" << std::endl;
-        if (p_fixedLong.getBody() == "12345")
-            std::cout << "✓ Body content matches declared length" << std::endl;
-        else
-            std::cout << "✗ Body content mismatch" << std::endl;
+        std::cerr << "Unexpected response. Expected to contain: '" << expect << "'\n";
+        std::cerr << "Response was:\n" << resp << std::endl;
+        return false;
     }
-    else
+    return true;
+}
+
+static int runTests(const std::string &configPath)
+{
+    ConfigParser parser;
+    if (!parser.parse(configPath))
+        return 1;
+    int port = parser.getListenPort();
+
+    int failures = 0;
+
+    // Test 1: GET /
     {
-        std::cout << "✗ Failed to parse fixed-length longer body" << std::endl;
+        std::string req = "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n";
+        if (!runSingleRequestTest(configPath, port, req, "HTTP/1.1 200"))
+            ++failures;
     }
 
-    // 4) Chunked encoding (standard example)
-    std::cout << RED << "\n--- Chunked Body: Standard ---" << RESET << std::endl;
-    std::string chunked =
-        "POST /chunked HTTP/1.1\r\n"
-        "Host: localhost\r\n"
-        "Transfer-Encoding: chunked\r\n"
-        "\r\n"
-        "4\r\n"
-        "Wiki\r\n"
-        "5\r\n"
-        "pedia\r\n"
-        "0\r\n"
-        "\r\n";
-    HTTPparser p_chunked;
-    if (p_chunked.parseRequest(chunked))
+    // Test 2: Bad Request (malformed request line)
     {
-        std::cout << "✓ Parsed chunked body" << std::endl;
-        std::cout << "Body: '" << p_chunked.getBody() << "'" << std::endl;
-        if (p_chunked.getBody() == "Wikipedia")
-            std::cout << "✓ Body content correct (Wikipedia)" << std::endl;
-        else
-            std::cout << "✗ Body content incorrect" << std::endl;
-    }
-    else
-    {
-        std::cout << "✗ Failed to parse chunked body" << std::endl;
-        std::cout << "Error: " << p_chunked.getErrorMessage() << std::endl;
+        std::string req = "GARBAGE\r\n\r\n";
+        if (!runSingleRequestTest(configPath, port, req, "HTTP/1.1 400"))
+            ++failures;
     }
 
-    // 5) Chunked encoding with trailers
-    std::cout << RED << "\n--- Chunked Body: With Trailers ---" << RESET << std::endl;
-    std::string chunkedTrailers =
-        "POST /chunked HTTP/1.1\r\n"
-        "Host: localhost\r\n"
-        "Transfer-Encoding: chunked\r\n"
-        "\r\n"
-        "3\r\n"
-        "abc\r\n"
-        "2\r\n"
-        "de\r\n"
-        "0\r\n"
-        "Header-One: x\r\n"
-        "Header-Two: y\r\n"
-        "\r\n";
-    HTTPparser p_chunkedTrailers;
-    if (p_chunkedTrailers.parseRequest(chunkedTrailers))
+    // Test 3: Method Not Allowed (PUT)
     {
-        std::cout << "✓ Parsed chunked body with trailers" << std::endl;
-        if (p_chunkedTrailers.getBody() == "abcde")
-            std::cout << "✓ Body content correct (abcde)" << std::endl;
-        else
-            std::cout << "✗ Body content incorrect" << std::endl;
-    }
-    else
-    {
-        std::cout << "✗ Failed to parse chunked body with trailers" << std::endl;
-        std::cout << "Error: " << p_chunkedTrailers.getErrorMessage() << std::endl;
+        std::string req = "PUT / HTTP/1.1\r\nHost: localhost\r\n\r\n";
+        if (!runSingleRequestTest(configPath, port, req, "HTTP/1.1 405"))
+            ++failures;
     }
 
-    // 6) Chunked encoding with invalid size (non-hex)
-    std::cout << RED << "\n--- Chunked Body: Invalid Chunk Size ---" << RESET << std::endl;
-    std::string chunkedInvalid =
-        "POST /chunked HTTP/1.1\r\n"
-        "Host: localhost\r\n"
-        "Transfer-Encoding: chunked\r\n"
-        "\r\n"
-        "Z\r\n"  // invalid hex
-        "oops\r\n"
-        "0\r\n"
-        "\r\n";
-    HTTPparser p_chunkedInvalid;
-    if (!p_chunkedInvalid.parseRequest(chunkedInvalid))
-    {
-        std::cout << "✓ Correctly rejected invalid chunk size" << std::endl;
-        std::cout << "Error: " << p_chunkedInvalid.getErrorMessage() << std::endl;
-    }
-    else
-    {
-        std::cout << "✗ Should have failed for invalid chunk size" << std::endl;
-    }
-
-    // 7) No body with GET (no Content-Length/Transfer-Encoding)
-    std::cout << RED << "\n--- No Body with GET ---" << RESET << std::endl;
-    std::string getNoBody =
-        "GET /plain HTTP/1.1\r\n"
-        "Host: localhost\r\n"
-        "\r\n";
-    HTTPparser p_getNoBody;
-    if (p_getNoBody.parseRequest(getNoBody))
-    {
-        std::cout << "✓ Parsed GET without body" << std::endl;
-        if (p_getNoBody.getBody().empty())
-            std::cout << "✓ Body is empty as expected" << std::endl;
-        else
-            std::cout << "✗ Body should be empty" << std::endl;
-    }
-    else
-    {
-        std::cout << "✗ Failed to parse GET without body" << std::endl;
-    }
-    
-    std::cout << RED << "\n=== Test Complete ===" << RESET << std::endl;
-} 
+    std::cout << "Tests completed. Failures: " << failures << std::endl;
+    return failures == 0 ? 0 : 1;
+}
 
 // implement later try...catch blocks
 int main(int argc, char **argv)
 {
-    // Accept 0 or 1 argument. If none, use default config path.
+    // Mode selection
+    // Usage:
+    //   ./webserv                 -> normal server
+    //   ./webserv --run-tests     -> run basic client/response tests
+
     std::string configPath = "conf/default.conf";
+
+    if (argc >= 2 && std::string(argv[1]) == "--run-tests")
+    {
+        if (argc >= 3)
+            configPath = argv[2];
+        return runTests(configPath);
+    }
+
     if (argc == 2)
         configPath = argv[1];
     else if (argc > 2)
     {
-        std::cerr << "Usage: " << argv[0] << " conf/[config_file].conf" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [--run-tests] [conf/config_file.conf]" << std::endl;
         return 1;
     }
+
     ConfigParser parser;
     if (!parser.parse(configPath))
         return 1;
-    if(DEBUG)
-    {
-        // test http parsing
-        testhttpParsing();
-    }
     HttpServer server(parser);
     return server.start();
 }
