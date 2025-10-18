@@ -113,6 +113,40 @@ void Client::readRequest()
         {
             _request_buffer.append(buf, buf + n);
             DEBUG_PRINT("Received " << n << " bytes, total buffer: " << _request_buffer.size());
+            size_t header_end = _request_buffer.find("\r\n\r\n");
+            if (header_end != std::string::npos)
+            {
+                // Check for Content-Length to read the body if present
+                size_t contentLength = checkContentLength(_request_buffer, header_end);
+                if (contentLength > 0)
+                {
+                    // Total length = header end position + 4 (for CRLF) + body
+                    size_t totalLength = header_end + 4 + contentLength;
+
+                    // Read until we have the full body
+                    while (_request_buffer.size() < totalLength)
+                    {
+                        n = recv(_socket, buf, sizeof(buf), 0);
+                        if (n > 0)
+                        {
+                            _request_buffer.append(buf, buf + n);
+                        }
+                        else if (n == 0)
+                        {
+                            break; // peer closed
+                        }
+                        else if (n < 0)
+                        {
+                            if (errno == EINTR)
+                                continue;
+                            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                                continue;
+                            return; // fatal error
+                        }
+                    }
+                }
+                break;
+            }
             // Continue loop to drain socket
             continue;
         }
@@ -383,4 +417,25 @@ void Client::writeResponse()
     {
         DEBUG_PRINT(BLUE << "Response not fully sent, keeping in WRITING state" << RESET);
     }
+}
+
+size_t Client::checkContentLength(const std::string &request, size_t header_end)
+{
+    size_t contentLength = 0;
+    size_t pos = request.find("Content-Length:", 0);
+    if (pos != std::string::npos && pos < header_end)
+    {
+        pos += 15; // length of "Content-Length:"
+        while (pos < header_end && (request[pos] == ' ' || request[pos] == '\t'))
+            ++pos;
+        size_t end = pos;
+        while (end < header_end && std::isdigit(request[end]))
+            ++end;
+        if (end > pos)
+        {
+            std::stringstream ss(request.substr(pos, end - pos));
+            ss >> contentLength;
+        }
+    }
+    return contentLength;
 }
