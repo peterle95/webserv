@@ -2,12 +2,16 @@
 #include "Common.hpp"
 
 
+// Returns a string representing the given integer value as a two-digit number.
+// If the given value is less than 10, it is padded with a leading zero.
+// For example, twoDigits(5) returns "05".
 static std::string twoDigits(int v) {
     std::ostringstream oss;
     oss << std::setw(2) << std::setfill('0') << v;
     return oss.str();
 }
 
+/// Returns a string representing the current timestamp in the format "[YYYY-MM-DD HH:MM:SS]"
 std::string Logger::timestamp() {
     std::time_t t = std::time(NULL);
     std::tm *lt = std::localtime(&t);

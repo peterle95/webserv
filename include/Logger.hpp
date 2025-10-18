@@ -20,4 +20,4 @@ private:
     static std::string timestamp();
 };
 
-#endif // LOGGER_HPP
+#endif
