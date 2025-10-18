@@ -28,6 +28,8 @@ std::string Logger::timestamp() {
     return ts;
 }
 
+
+
 static void printLine(const std::string &prefix, const std::string &raw) {
 #ifdef DEBUG
     std::cout << RED << prefix << " " << RESET << raw << std::endl;
