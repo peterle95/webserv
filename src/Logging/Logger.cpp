@@ -1,10 +1,6 @@
 #include "Logger.hpp"
 #include "Common.hpp"
 
-#include <iostream>
-#include <sstream>
-#include <iomanip>
-#include <ctime>
 
 static std::string twoDigits(int v) {
     std::ostringstream oss;
