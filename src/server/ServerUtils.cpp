@@ -18,6 +18,7 @@ void HttpServer::setupSignalHandlers()
 /*Following functions have to be integrated with http response mechanism and logging*/
 void HttpServer::printStartupMessage(bool serveOnce)
 {
+    (void)serveOnce; // silence unused parameter warning when DEBUG is false
     std::cout << "Serving " << _root << "/" << _index
               << " on http://localhost:" << _port << "/" << std::endl;
 
