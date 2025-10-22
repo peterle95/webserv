@@ -1,28 +1,19 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Getters.cpp                                        :+:      :+:    :+:   */
+/*   ParseIndex.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/08/16 17:30:53 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/08/16 17:30:53 by pmolzer          ###   ########.fr       */
+/*   Created: 2025/08/19 15:05:00 by pmolzer           #+#    #+#             */
+/*   Updated: 2025/08/19 15:05:00 by pmolzer          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Common.hpp"
 
-const std::string &ConfigParser::getRoot() const
+void ServerConfig::parseIndex(const std::string &val, size_t /*lineNo*/, std::string *index)
 {
-    return _root;
-}
-
-const std::string &ConfigParser::getIndex() const
-{
-    return _index;
-}
-
-const std::vector<std::string> &ConfigParser::getLines() const
-{
-    return _lines;
+    *index = val;
+    DEBUG_PRINT("Applied index -> '" << *index << "'");
 }

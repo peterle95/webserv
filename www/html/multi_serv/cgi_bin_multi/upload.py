@@ -12,7 +12,7 @@ cgitb.enable()
 
 # Only allow POST method
 if os.environ.get("REQUEST_METHOD") != "POST":
-    print("Error: Method not allowed")
+    print("<body bgcolor='#f6fbff'>Error: Method not allowed</body>")
     sys.exit(0)
 
 # Get current working directory
@@ -41,13 +41,15 @@ for field in form.keys():
             with open(filepath, "wb") as f:
                 f.write(field_item.file.read())
 
-            file_url = f"http://localhost:8080/cgi-bin/cgi_upload/{filename}"
-            print(f"File uploaded successfully: <a href='{file_url}'>{filename}</a><br>")
+            file_url = f"http://vhost.main:8080/cgi_bin_multi/cgi_upload/{filename}"
+            print(f"<body bgcolor='#f6fbff'>File uploaded successfully: <a href='{file_url}'>{filename}</a><br>")
             file_uploaded = True
         except Exception as e:
             print(f"Error: Unable to save file {filename} ({e})<br>")
 
 if not file_uploaded:
-    print("Error: No file uploaded<br>")
+    print("<body bgcolor='#f6fbff'>Error: No file uploaded<br>")
 
-print('<p><a href="/index.html/">Back to Home</a></p>')
+print("<p><a href='/index_multi.html' style='color:#FF4800; font-weight:bold; font-size:1.1em; text-decoration:none;'>&#8592; Back to Home</a></p></body>")
+
+

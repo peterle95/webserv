@@ -19,12 +19,68 @@ void HttpServer::setupSignalHandlers()
 void HttpServer::printStartupMessage(bool serveOnce)
 {
     (void)serveOnce; // silence unused parameter warning when DEBUG is false
-    std::cout << "Serving " << _root << "/" << _index
-              << " on http://localhost:" << _port << "/" << std::endl;
+    std::cout << "\n"
+              << GREEN << "=== WebServ Server Started ===" << RESET << std::endl;
 
-    DEBUG_PRINT(RED << "HTTP Server started on port " << _port << RESET);
-    DEBUG_PRINT("Serving files from: " << RED << _root << "/" << _index << RESET);
+    if (_serverSockets.empty())
+    {
+        std::cout << RED << "ERROR: No sockets were created!" << RESET << std::endl;
+        return;
+    }
+
+    std::cout << "Active sockets: " << _serverSockets.size() << std::endl;
+    std::cout << std::endl;
+
+    // Group sockets by server for display
+    std::map<size_t, std::vector<int> > serverPorts; // serverIndex -> list of ports
+
+    for (size_t i = 0; i < _serverSockets.size(); ++i)
+    {
+        const ServerSocketInfo &socketInfo = _serverSockets[i];
+        serverPorts[socketInfo.serverIndex].push_back(socketInfo.port);
+    }
+
+    // Display each server that has working sockets
+    for (std::map<size_t, std::vector<int> >::iterator it = serverPorts.begin();
+         it != serverPorts.end(); ++it)
+    {
+        size_t serverIdx = it->first;
+        std::vector<int> &ports = it->second;
+
+        const ServerConfig &server = _servers[serverIdx];
+
+        std::cout << BLUE << "Server: " << server.getServerName() << RESET << std::endl;
+        std::cout << "  Root: " << server.getRoot() << "/" << server.getIndex() << std::endl;
+        std::cout << "  Available at: ";
+
+        // Use the configured server name, not hardcoded localhost
+        for (size_t j = 0; j < ports.size(); ++j)
+        {
+            std::string serverName = server.getServerName();
+
+            // Handle empty server names or use localhost as fallback
+            if (serverName.empty() || serverName == "_")
+            {
+                serverName = "localhost";
+            }
+
+            std::cout << GREEN << "http://" << serverName << ":" << ports[j] << "/" << RESET;
+            if (j < ports.size() - 1)
+                std::cout << ", ";
+        }
+        std::cout << std::endl
+                  << std::endl;
+    }
+
     DEBUG_PRINT("Mode: " << (serveOnce ? RED "Single-request (CI mode)" : "Multi-request (keep-alive)") << RESET);
+    std::cout << "Press Ctrl+C to stop the server." << std::endl;
+    std::cout << GREEN << "================================" << RESET << std::endl;
+    /*     std::cout << "Serving " << _root << "/" << _index
+                  << " on http://localhost:" << _port << "/" << std::endl;
+
+        DEBUG_PRINT(RED << "HTTP Server started on port " << _port << RESET);
+        DEBUG_PRINT("Serving files from: " << RED << _root << "/" << _index << RESET);
+        DEBUG_PRINT("Mode: " << (serveOnce ? RED "Single-request (CI mode)" : "Multi-request (keep-alive)") << RESET); */
 }
 
 std::string HttpServer::generateBadRequestResponse(bool keepAlive)

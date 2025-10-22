@@ -30,27 +30,27 @@ HTTPHeaders::~HTTPHeaders()
 // them in the internal map. Stops when an empty line is encountered.
 // iss: Input string stream containing header lines
 // return true if parsing was successful, false otherwise
-bool HTTPHeaders::parseHeaders(std::istringstream& iss)
+bool HTTPHeaders::parseHeaders(std::istringstream &iss)
 {
     // Reset any previous state. We'll accumulate headers in _headers map.
     reset();
     std::string line;
-    
+
     DEBUG_PRINT("Starting header parsing");
-    
+
     // Parse each header line until empty line
     while (std::getline(iss, line))
     {
         // Remove trailing CR if present
         trimTrailingCR(line);
-        
+
         // Empty line indicates end of headers
         if (isEmptyLine(line))
         {
             DEBUG_PRINT("Found empty line, headers complete");
             break;
         }
-        
+
         // Parse this header line
         if (!parseHeaderLine(line))
         {
@@ -58,16 +58,16 @@ bool HTTPHeaders::parseHeaders(std::istringstream& iss)
             return false;
         }
     }
-    
+
     // Validate the parsed headers for conflicts and basic consistency.
     // Example: both Content-Length and Transfer-Encoding present ->
     // Transfer-Encoding takes precedence.
     if (!validateHeaders())
         return false;
-    
+
     _isValid = true;
     DEBUG_PRINT("Successfully parsed " << _headers.size() << " headers");
-    
+
     return true;
 }
 
@@ -76,7 +76,7 @@ bool HTTPHeaders::parseHeaders(std::istringstream& iss)
 // Validates both name and value according to HTTP specifications.
 // line: The header line to parse
 // return true if parsing was successful, false otherwise
-bool HTTPHeaders::parseHeaderLine(const std::string& line)
+bool HTTPHeaders::parseHeaderLine(const std::string &line)
 {
     // Find the colon separator
     std::string::size_type colonPos = line.find(':');
@@ -85,26 +85,26 @@ bool HTTPHeaders::parseHeaderLine(const std::string& line)
         setError("Invalid header format, missing colon: " + line);
         return false;
     }
-    
+
     // Extract and trim name and value
     // The value portion may have leading spaces which we trim.
     std::string name = HTTPValidation::trim(line.substr(0, colonPos));
     std::string value = HTTPValidation::trim(line.substr(colonPos + 1));
-    
+
     // Validate header name
     if (!HTTPValidation::isValidHeaderName(name))
     {
         setError("Invalid header name: " + name);
         return false;
     }
-    
+
     // Validate header value
     if (!HTTPValidation::isValidHeaderValue(value))
     {
         setError("Invalid header value for " + name + ": " + value);
         return false;
     }
-    
+
     // Add the header
     return addHeader(name, value);
 }
@@ -113,34 +113,34 @@ bool HTTPHeaders::parseHeaderLine(const std::string& line)
 // name: Header name
 // value: Header value
 // return true if header was added successfully, false otherwise
-bool HTTPHeaders::addHeader(const std::string& name, const std::string& value)
+bool HTTPHeaders::addHeader(const std::string &name, const std::string &value)
 {
     if (name.empty())
         return false;
-    
+
     std::string lowerName = toLowercase(name);
-    
+
     // Store original case for potential future use
     _originalKeys[lowerName] = name;
-    
+
     // Store the header with lowercase key for case-insensitive lookup
     _headers[lowerName] = value;
-    
+
     // Process special headers that need additional parsing
     processSpecialHeaders(lowerName, value);
-    
+
     DEBUG_PRINT("Added header: [" << name << "] = [" << value << "]");
-    
+
     return true;
 }
 
 /**
  * @brief Process special headers that require additional handling
- * 
+ *
  * @param lowerName Header name in lowercase
  * @param value Header value
  */
-void HTTPHeaders::processSpecialHeaders(const std::string& lowerName, const std::string& value)
+void HTTPHeaders::processSpecialHeaders(const std::string &lowerName, const std::string &value)
 {
     if (lowerName == "content-length")
     {
@@ -158,6 +158,7 @@ void HTTPHeaders::processSpecialHeaders(const std::string& lowerName, const std:
     else if (lowerName == "host")
     {
         _host = value;
+        parseHostHeader(value);
     }
     else if (lowerName == "connection")
     {
@@ -166,12 +167,33 @@ void HTTPHeaders::processSpecialHeaders(const std::string& lowerName, const std:
 }
 
 /**
+ * @brief Parse Host header for CGI SERVER_NAME and SERVER_PORT
+ *
+ * @param hostValue The Host header value
+ */
+void HTTPHeaders::parseHostHeader(const std::string &hostValue)
+{
+    // Split host and port if port is specified
+    std::string::size_type colonPos = hostValue.find(':');
+    if (colonPos != std::string::npos)
+    {
+        _hostName = hostValue.substr(0, colonPos);
+        _hostPort = hostValue.substr(colonPos + 1);
+    }
+    else
+    {
+        _hostName = hostValue;
+        _hostPort = "80"; // Default HTTP port
+    }
+}
+
+/**
  * @brief Parse Content-Length header value
- * 
+ *
  * @param value The Content-Length value to parse
  * @return true if parsing was successful, false otherwise
  */
-bool HTTPHeaders::parseContentLength(const std::string& value)
+bool HTTPHeaders::parseContentLength(const std::string &value)
 {
     size_t length;
     if (HTTPValidation::isValidContentLength(value, length))
@@ -188,28 +210,28 @@ bool HTTPHeaders::parseContentLength(const std::string& value)
 
 /**
  * @brief Parse Transfer-Encoding header value
- * 
+ *
  * @param value The Transfer-Encoding value to parse
  * @return true if parsing was successful, false otherwise
  */
-bool HTTPHeaders::parseTransferEncoding(const std::string& value)
+bool HTTPHeaders::parseTransferEncoding(const std::string &value)
 {
     // Convert to lowercase for comparison
     std::string lowerValue = toLowercase(value);
-    
+
     // Check if chunked encoding is specified
     _isChunked = (lowerValue.find("chunked") != std::string::npos);
-    
+
     return true;
 }
 
 /**
  * @brief Check if a header exists (case-insensitive)
- * 
+ *
  * @param name Header name to check
  * @return true if header exists, false otherwise
  */
-bool HTTPHeaders::hasHeader(const std::string& name) const
+bool HTTPHeaders::hasHeader(const std::string &name) const
 {
     std::string lowerName = toLowercase(name);
     return _headers.find(lowerName) != _headers.end();
@@ -217,11 +239,11 @@ bool HTTPHeaders::hasHeader(const std::string& name) const
 
 /**
  * @brief Get a header value (case-insensitive)
- * 
+ *
  * @param name Header name to get
  * @return Header value, or empty string if not found
  */
-std::string HTTPHeaders::getHeader(const std::string& name) const
+std::string HTTPHeaders::getHeader(const std::string &name) const
 {
     std::string lowerName = toLowercase(name);
     std::map<std::string, std::string>::const_iterator it = _headers.find(lowerName);
@@ -232,10 +254,10 @@ std::string HTTPHeaders::getHeader(const std::string& name) const
 
 /**
  * @brief Remove a header (case-insensitive)
- * 
+ *
  * @param name Header name to remove
  */
-void HTTPHeaders::removeHeader(const std::string& name)
+void HTTPHeaders::removeHeader(const std::string &name)
 {
     std::string lowerName = toLowercase(name);
     _headers.erase(lowerName);
@@ -244,7 +266,7 @@ void HTTPHeaders::removeHeader(const std::string& name)
 
 /**
  * @brief Validate all parsed headers
- * 
+ *
  * @return true if all headers are valid, false otherwise
  */
 bool HTTPHeaders::validateHeaders() const
@@ -255,10 +277,10 @@ bool HTTPHeaders::validateHeaders() const
         // According to HTTP/1.1 spec, if both are present, Transfer-Encoding takes precedence
         DEBUG_PRINT("Warning: Both Content-Length and Transfer-Encoding: chunked present");
     }
-    
+
     // Additional validation could be added here
     // For example: checking for required headers, header value constraints, etc.
-    
+
     return true;
 }
 
@@ -282,10 +304,10 @@ void HTTPHeaders::reset()
 
 /**
  * @brief Set error state with message
- * 
+ *
  * @param message Error message to set
  */
-void HTTPHeaders::setError(const std::string& message)
+void HTTPHeaders::setError(const std::string &message)
 {
     _isValid = false;
     _errorMessage = message;
@@ -294,11 +316,11 @@ void HTTPHeaders::setError(const std::string& message)
 
 /**
  * @brief Convert string to lowercase
- * 
+ *
  * @param str String to convert
  * @return Lowercase version of the string
  */
-std::string HTTPHeaders::toLowercase(const std::string& str) const
+std::string HTTPHeaders::toLowercase(const std::string &str) const
 {
     std::string result = str;
     std::transform(result.begin(), result.end(), result.begin(), ::tolower);
@@ -307,10 +329,10 @@ std::string HTTPHeaders::toLowercase(const std::string& str) const
 
 /**
  * @brief Remove trailing carriage return if present
- * 
+ *
  * @param line String to trim
  */
-void HTTPHeaders::trimTrailingCR(std::string& line)
+void HTTPHeaders::trimTrailingCR(std::string &line)
 {
     if (!line.empty() && line[line.size() - 1] == '\r')
         line.erase(line.size() - 1);
@@ -318,11 +340,11 @@ void HTTPHeaders::trimTrailingCR(std::string& line)
 
 /**
  * @brief Check if line is empty (considering just spaces and CR)
- * 
+ *
  * @param line Line to check
  * @return true if line is effectively empty, false otherwise
  */
-bool HTTPHeaders::isEmptyLine(const std::string& line) const
+bool HTTPHeaders::isEmptyLine(const std::string &line) const
 {
     return line.empty() || line == "\r";
 }

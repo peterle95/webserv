@@ -14,17 +14,19 @@
 
 // constructor
 ConfigParser::ConfigParser()
-    : _configFile(""), _listenPort(8080), _root("html"), _index("index.html"), _serverName(""), _errorPage(), _clientMaxBodySize(1024 * 1024) // default 1 MiB
+    : _configFile(""), _root("html"), _index("index.html"), _clientMaxBodySize(1024 * 1024) // default 1 MiB
       ,
-      _host(""), _allowedMethods(), _lines()
+      _servers(),
+      _lines()
 {
 }
 
 // construct from lines
 ConfigParser::ConfigParser(const std::vector<std::string> &lines)
-    : _configFile(""), _listenPort(8080), _root("html"), _index("index.html"), _serverName(""), _errorPage(), _clientMaxBodySize(1024 * 1024) // default 1 MiB
+    : _configFile(""), _root("html"), _index("index.html"), _clientMaxBodySize(1024 * 1024) // default 1 MiB
       ,
-      _host(""), _allowedMethods(), _lines()
+      _servers(),
+      _lines()
 {
     parseLines(lines);
 }
@@ -33,10 +35,9 @@ ConfigParser::~ConfigParser() {}
 
 // helper: parse from given lines
 // Minimal validation with error throwing for invalid syntax/values
-void ConfigParser::parseLines(const std::vector<std::string>& lines)
+void ConfigParser::parseLines(const std::vector<std::string> &lines)
 {
-    this->_lines.clear();
-    LocationConfig *currentLocation = NULL;
+    // this->_lines.clear();
     for (size_t i = 0; i < lines.size(); ++i)
     {
         const std::string raw = lines[i];
@@ -52,32 +53,59 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
             // DEBUG_PRINT("Line " << i << " skipped: empty after trim/comment");
             continue;
         }
-        // Detect location block
-        if ((line.find("location") == 0) && (line.find("{") != std::string::npos))
+
+        // Detect server block
+        if ((line.find("server") == 0) && (line.find("{") != std::string::npos))
         {
-            size_t bracePos = line.find('{');
-            std::string locPath = trim(line.substr(8, bracePos - 8));
-            _locations[locPath] = LocationConfig();
-            currentLocation = &_locations[locPath];
-            currentLocation->path = locPath;
-            // DEBUG_PRINT("Started location block for path: '" << locPath << "'");
-            continue;
-        }
-        if (line == "}")
-        {
-            if (currentLocation)
+            DEBUG_PRINT("Line " << i << " found: server block");
+            std::vector<std::string> serverBlockLines;
+            int braceCount = 1; // We already found the opening brace
+            ++i;                // Move to the next line after "server {"
+
+            // Collect all lines until matching closing brace
+            while (i < lines.size() && braceCount > 0)
             {
-                // DEBUG_PRINT("Ended location block for path: '" << currentLocation->path << "'");
-                currentLocation = NULL;
+                std::string currentLine = preprocessLine(lines[i]);
+
+                // Skip empty lines but still count braces in non-empty lines
+                if (!currentLine.empty())
+                {
+                    // Count opening and closing braces
+                    for (size_t j = 0; j < currentLine.length(); ++j)
+                    {
+                        if (currentLine[j] == '{')
+                            braceCount++;
+                        else if (currentLine[j] == '}')
+                            braceCount--;
+                    }
+
+                    // Only add line if we haven't reached the final closing brace
+                    if (braceCount > 0)
+                    {
+                        serverBlockLines.push_back(currentLine);
+                    }
+                }
+                ++i;
             }
-            else
+
+            // Check if we properly closed the server block
+            if (braceCount != 0)
             {
-                // DEBUG_PRINT("Line " << i << " skipped: unmatched '}'");
+                // For now, just print debug message instead of throwing
+                DEBUG_PRINT("Warning: Unmatched braces in server block at line " << i);
             }
+
+            // Process the server block lines
+            ServerConfig serverConfig(_root, _index, _clientMaxBodySize);
+            serverConfig.parse(serverBlockLines);
+            _servers.push_back(serverConfig);
+
+            --i; // Adjust index since the outer loop will increment it
             continue;
         }
 
-        if (isBlockMarker(line)) {
+        if (isBlockMarker(line))
+        {
             // DEBUG_PRINT("Line " << i << " skipped: brace/block marker");
             continue;
         }
@@ -89,13 +117,6 @@ void ConfigParser::parseLines(const std::vector<std::string>& lines)
         if (!splitKeyVal(line, key, val))
             continue;
         // DEBUG_PRINT("Directive key='" << key << "' val='" << val << "'");
-
-        if (currentLocation)
-        {
-            // Handle location-specific directives
-            handleLocationDirective(currentLocation, key, val, i + 1);
-            continue;
-        }
         handleDirective(key, val, i + 1);
     }
 }
@@ -106,7 +127,8 @@ bool ConfigParser::parse(const std::string &path)
     this->_configFile = path;
     // DEBUG_PRINT("Opening config file: '" << path << "'");
 
-    try {
+    try
+    {
         std::ifstream in(path.c_str());
         if (!in.good())
         {
@@ -124,37 +146,19 @@ bool ConfigParser::parse(const std::string &path)
         // DEBUG_PRINT("Finished parsing file: '" << path << "'");
         return true;
     }
-    catch (const ErrorHandler::Exception &e) {
+    catch (const ErrorHandler::Exception &e)
+    {
         std::cerr << "[CONFIG ERROR] (" << ErrorHandler::codeToString(e.code()) << ") " << e.what() << std::endl;
         return false;
     }
 }
-
-const std::map<std::string, LocationConfig> &ConfigParser::getLocations() const
-{
-    return this->_locations;
-
-}
-
-const std::string& ConfigParser::getErrorPage(int status_code) const
-{
-    std::map<int, std::string>::const_iterator it = _errorPage.find(status_code);
-    if (it != _errorPage.end())
-        return it->second;
-    static const std::string empty = "";
-    return empty;
-}
-
 
 size_t ConfigParser::getClientMaxBodySize() const
 {
     return _clientMaxBodySize;
 }
 
-
-
-
-
-
-
-
+const std::vector<ServerConfig> &ConfigParser::getServers() const
+{
+    return _servers;
+}

@@ -1,6 +1,6 @@
 #include "Common.hpp"
 
-void ConfigParser::applyAutoindex(LocationConfig *loc, const std::string &val, size_t lineNumber)
+void ServerConfig::applyAutoindex(LocationConfig *loc, const std::string &val, size_t lineNumber)
 {
 	if (val == "on")
 		loc->autoindex = true;
@@ -17,7 +17,7 @@ void ConfigParser::applyAutoindex(LocationConfig *loc, const std::string &val, s
 	// DEBUG_PRINT("Set location autoindex -> " << (loc->autoindex ? "on" : "off"));
 }
 
-void ConfigParser::applyCgiPass(LocationConfig *loc, const std::string &val, size_t lineNumber)
+void ServerConfig::applyCgiPass(LocationConfig *loc, const std::string &val, size_t lineNumber)
 {
 	if (val == "on")
 		loc->cgiPass = true;
@@ -34,7 +34,7 @@ void ConfigParser::applyCgiPass(LocationConfig *loc, const std::string &val, siz
 	// DEBUG_PRINT("Set location cgi_pass -> " << (loc->cgiPass ? "on" : "off"));
 }
 
-void ConfigParser::applyCgiExtension(LocationConfig *loc, const std::string &val, size_t lineNumber)
+void ServerConfig::applyCgiExtension(LocationConfig *loc, const std::string &val, size_t lineNumber)
 {
 	if (val.empty() || val[0] != '.')
 	{
@@ -48,7 +48,7 @@ void ConfigParser::applyCgiExtension(LocationConfig *loc, const std::string &val
 	// DEBUG_PRINT("Set location cgi_extension -> '" << loc->cgiExtension << "'");
 }
 
-void ConfigParser::applyRedirect(LocationConfig *loc, const std::string &val, size_t lineNumber)
+void ServerConfig::applyRedirect(LocationConfig *loc, const std::string &val, size_t lineNumber)
 {
 	std::istringstream iss(val);
 	std::string statusCodeStr, url;
@@ -65,7 +65,7 @@ void ConfigParser::applyRedirect(LocationConfig *loc, const std::string &val, si
 	try
 	{
 		int num;
-		std::stringstream ss(statusCodeStr) ;
+		std::stringstream ss(statusCodeStr);
 		ss >> num;
 		statusCode = num;
 	}
@@ -92,7 +92,7 @@ void ConfigParser::applyRedirect(LocationConfig *loc, const std::string &val, si
 }
 
 // Handle location-specific directives
-void ConfigParser::handleLocationDirective(LocationConfig *currentLocation,
+void ServerConfig::handleLocationDirective(LocationConfig *currentLocation,
 										   const std::string &key,
 										   const std::string &val,
 										   size_t lineNumber)
@@ -109,7 +109,7 @@ void ConfigParser::handleLocationDirective(LocationConfig *currentLocation,
 		applyCgiPass(currentLocation, val, lineNumber);
 	else if (key == "cgi_extension")
 		applyCgiExtension(currentLocation, val, lineNumber);
-	else if(key == "redirect")
+	else if (key == "redirect")
 		applyRedirect(currentLocation, val, lineNumber);
 	else
 	{

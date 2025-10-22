@@ -4,20 +4,26 @@ CXXFLAGS = -g -Wall -Wextra -Werror -std=c++98 -Iinclude
 
 SRCS = src/main.cpp \
 		src/configParser/ConfigParser.cpp \
-		src/configParser/HandleLocationDirective.cpp \
+		src/configParser/serverConfig/HandleLocationDirective.cpp \
 		src/server/HttpServer.cpp \
 		src/configParser/Getters.cpp \
 		src/configParser/Trim.cpp \
 		src/error_handling/ErrorHandler.cpp \
 		src/error_handling/Getters.cpp \
+		src/configParser/ParserUtils.cpp \
 		src/configParser/ParserHelpers.cpp \
-		src/configParser/directives/ParseListen.cpp \
 		src/configParser/directives/ParseRoot.cpp \
 		src/configParser/directives/ParseIndex.cpp \
-		src/configParser/directives/ParseServerName.cpp \
 		src/configParser/directives/ParseClientMaxBodySize.cpp \
-		src/configParser/directives/ParseAllowedMethods.cpp \
-		src/configParser/directives/ParseErrorPage.cpp \
+		src/configParser/serverConfig/ServerConfig.cpp \
+		src/configParser/serverConfig/ParseListen.cpp \
+		src/configParser/serverConfig/ParseRoot.cpp \
+		src/configParser/serverConfig/ParseIndex.cpp \
+		src/configParser/serverConfig/ParseServerName.cpp \
+		src/configParser/serverConfig/ParseClientMaxBodySize.cpp \
+		src/configParser/serverConfig/ParseAllowedMethods.cpp \
+		src/configParser/serverConfig/ParseErrorPage.cpp \
+		src/configParser/serverConfig/ParserHelpers.cpp \
 		src/httpParser/HTTPparser.cpp \
 		src/httpParser/HTTPutils.cpp \
 		src/httpParser/HTTPmessageComponents/HTTPHeaders.cpp \

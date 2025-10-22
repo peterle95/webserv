@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload</title>
+</head>
+<body>
+    <body bgcolor="#f6fbff">
+        <table align="center" bgcolor="#ffffff" cellpadding="30" style="border-radius:18px; box-shadow:0 8px 32px #82a4fd22;">
+            <tr>
+                <td>
+                    <h1 align="center" style="color:#2871bbca;">File Upload</h1>
+                    <form action="upload.py" method="POST" enctype="multipart/form-data" style="text-align:center;">
+                        <label for="file" style="font-weight:bold; color:#333;">Select file to upload:</label><br>
+                        <input type="file" name="file" id="file" style="margin:8px 0 16px 0; padding:8px; border:1px solid #bcdff1; font-size:1em;"><br>
+                        <input type="hidden" name="timestamp">
+                        <input type="submit" value="Upload" style="background-color:#2871bbca; color:#fff; border:none; border-radius:6px; padding:12px 28px; font-size:1em; font-weight:bold; margin-top:10px;">
+                    </form>
+                    <div align="center" style="margin-top:30px;">
+                        <a href="/index_multi.html" style="color:#2871bbca; font-weight:bold; font-size:1.1em; text-decoration:none;">&#8592; Back to Home</a>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </body>
+</body>
+</html>

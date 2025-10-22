@@ -65,6 +65,8 @@ private:
     bool _isValid;                // Whether the request is valid
     std::string _errorMessage;    // Detailed error message
     std::string _currentFilePath; // Current file path for the request
+    std::string _serverName;      // Server name from Host header
+    std::string _serverPort;      // Server port from Host header
 
     // Helpers for body parsing and state management
     void setState(State s);
@@ -106,6 +108,10 @@ public:
     // Current file path accessors
     const std::string &getCurrentFilePath() const { return _currentFilePath; }
     void setCurrentFilePath(const std::string &path) { _currentFilePath = path; }
+
+    // Server name and port accessors
+    const std::string &getServerName() const { return _serverName; }
+    const std::string &getServerPort() const { return _serverPort; }
 
     // Reset parser to initial state
     void reset();
