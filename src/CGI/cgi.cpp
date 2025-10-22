@@ -61,6 +61,7 @@ CGI::~CGI()
 // Setup environment variables
 void CGI::setupEnvironment(const HTTPparser &request, const HttpServer &server)
 {
+	(void)server; // Unused parameter
 	const std::map<std::string, std::string> &headers = request.getHeaders();
 
 	// Required CGI environment variables
@@ -78,8 +79,8 @@ void CGI::setupEnvironment(const HTTPparser &request, const HttpServer &server)
 	env_["REQUEST_URI"] = request.getPath();
 	env_["SCRIPT_NAME"] = request.getPath();
 	env_["SCRIPT_FILENAME"] = script_path_;
-	env_["SERVER_NAME"] = headers.count("Host") > 0 ? headers.find("Host")->second : "localhost";
-	env_["SERVER_PORT"] = numberToString(server.getPort());
+	env_["SERVER_NAME"] = request.getServerName().empty() ? "localhost" : request.getServerName();
+	env_["SERVER_PORT"] = request.getServerPort().empty() ? "8080" : request.getServerPort();
 	env_["SERVER_PROTOCOL"] = "HTTP/1.1";
 	env_["SERVER_SOFTWARE"] = "webserv/1.0";
 	env_["CONTENT_LENGTH"] = numberToString(request_body_.size());

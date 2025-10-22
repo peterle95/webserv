@@ -14,8 +14,6 @@
 #include "Client.hpp"*/
 #include "Common.hpp"
 
-
-
 /*Response::Response()
 {
     _targetfile = "";
@@ -26,9 +24,9 @@
     _loc = "";
 }*/
 
-Response::Response(HttpServer &HttpServer, ConfigParser &ConfigParser): _HttpServer(HttpServer), _ConfigParser(ConfigParser)
-{   
-   // _ConfigParser = ConfigParser;
+Response::Response(HttpServer &HttpServer, ConfigParser &ConfigParser) : _HttpServer(HttpServer), _ConfigParser(ConfigParser)
+{
+    // _ConfigParser = ConfigParser;
     //_HTTPParser = HTTPparser;
     //_HttpServer = HttpServer;
     //_Cgi = cgi;
@@ -41,7 +39,6 @@ Response::Response(HttpServer &HttpServer, ConfigParser &ConfigParser): _HttpSer
     _loc = "";
     _targetfile = _HTTPParser.getCurrentFilePath();
 }
-
 
 void Response::appDate()
 {
@@ -61,13 +58,12 @@ void Response::appContentLen()
     size = _response_body.size() + _response_headers.size();
     ss << size;
     _response_headers.append((ss.str()) + "\r\n");
-    if(_response_body.empty())
+    if (_response_body.empty())
         _response_headers.append("Content-Length: 0\r\n");
     else
-    _response_headers.append("Content-Length: ");
+        _response_headers.append("Content-Length: ");
     ss << _response_body.size();
     _response_headers.append((ss.str() + "\r\n"));
-
 }
 
 // Sets the Content-Type header based on the file extension of the target file.
@@ -108,40 +104,39 @@ void Response::appContentType()
     }
 }
 
-
 // Generates a simple error message in the response body based on the provided HTTP status code.
 // Supported codes:
 void Response::builderror_body(int code)
 {
-    
-    if(code == 404)
-    _response_body.append(" Not Found");
-     else if(code == 413)
-    _response_body.append(" Payload Too Large");
+
+    if (code == 404)
+        _response_body.append(" Not Found");
+    else if (code == 413)
+        _response_body.append(" Payload Too Large");
 }
 
 void Response::statusLine()
 {
     _response_headers.append("HTTP/1.1 ");
-    //ss.str();
+    // ss.str();
     std::ostringstream oss;
     oss << _code;
     _response_headers.append(oss.str());
-    if(_code == 200)
+    if (_code == 200)
         _response_headers.append(" OK\r\n");
-    else if(_code == 404)
+    else if (_code == 404)
         _response_headers.append(" Not Found\r\n");
-    else if(_code == 500)
+    else if (_code == 500)
         _response_headers.append(" Internal Server Error\r\n");
-    else if(_code == 400)
+    else if (_code == 400)
         _response_headers.append(" Bad Request\r\n");
-    else if(_code == 403)
+    else if (_code == 403)
         _response_headers.append(" Forbidden\r\n");
-    else if(_code == 301)
+    else if (_code == 301)
         _response_headers.append(" Moved Permanently\r\n");
-    else if(_code == 302)
+    else if (_code == 302)
         _response_headers.append(" Found\r\n");
-    else if(_code == 405)
+    else if (_code == 405)
         _response_headers.append(" Method Not Allowed\r\n");
     else
         _response_headers.append(" Unknown Status\r\n");
@@ -149,21 +144,21 @@ void Response::statusLine()
 
 std::string Response::statusMessage(int code)
 {
-    if(code == 200)
+    if (code == 200)
         return "OK";
-    else if(code == 404)
+    else if (code == 404)
         return "Not Found";
-    else if(code == 500)
+    else if (code == 500)
         return "Internal Server Error";
-    else if(code == 400)
+    else if (code == 400)
         return "Bad Request";
-    else if(code == 403)
+    else if (code == 403)
         return "Forbidden";
-    else if(code == 301)
+    else if (code == 301)
         return "Moved Permanently";
-    else if(code == 302)
+    else if (code == 302)
         return "Found";
-    else if(code == 405)
+    else if (code == 405)
         return "Method Not Allowed";
     else
         return "Unknown Status";
@@ -171,7 +166,7 @@ std::string Response::statusMessage(int code)
 
 void Response::connection()
 {
-    if(_HttpServer.determineKeepAlive(_HTTPParser))
+    if (_HttpServer.determineKeepAlive(_HTTPParser))
         _response_headers.append(" Connection: keep-alive\r\n");
     else
         _response_headers.append(" Connection: close\r\n");
@@ -179,9 +174,9 @@ void Response::connection()
 
 void Response::server()
 {
- _response_headers.append(" Server: ");
- _response_headers.append("Webserv/1.1");
- _response_headers.append("\r\n");
+    _response_headers.append(" Server: ");
+    _response_headers.append("Webserv/1.1");
+    _response_headers.append("\r\n");
 }
 
 bool Response::isDirectory(std::string path)
@@ -203,7 +198,7 @@ bool Response::fileExists(const std::string& name)
 /*std::string Response::appRoot(std::string _path, std::string _target)
 {
     //if(request.path == )
-    
+
     if(!isDirectory(_path))
     {
         _code = 404;
@@ -215,82 +210,82 @@ bool Response::fileExists(const std::string& name)
         _code = 404;
         return _target = " ";
     }
-    else 
+    else
     return (_server.getRoot() + request.getPath());
 }*/
 
-//void Response::buildResponse()
+// void Response::buildResponse()
 //{
 
 int Response::appBody()
 {
-const LocationConfig *currentLocation =_HttpServer.getCurrentLocation();
-std::string _targetfile = _HttpServer.getFilePath(currentLocation->path);
- if(request.getMethod() == "GET")
- {
-    std::ifstream file(_targetfile.c_str());
-    if(file)
+    const LocationConfig *currentLocation = _HttpServer.getCurrentLocation();
+    std::string _targetfile = _HttpServer.getFilePath(currentLocation->path, 0); // Temporarily set to 0 for server index
+    if (request.getMethod() == "GET")
     {
-        std::ostringstream ss;
-        ss << file.rdbuf();
-        _response_body = ss.str();
-        file.close();
-        _code = 200;
-        return 0;
-    }
-    _code = 413;
-    return 1;
-}
-else if(request.getMethod() == "POST" &&  _ConfigParser.getClientMaxBodySize() < request.getBody().size())
-{
-    _code = 413;
-    return 1;
-}
-else if(request.getMethod() == "POST" && request.getPath().find("cgi-bin") != std::string::npos)
-{
-    if(currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty())
-    {
-     std::string cgiResponse;   
-     cgiResponse =_HttpServer.processCGI(request);
-     if(!cgiResponse.empty())
-     {
-        _response_body = cgiResponse;
-        _code = 200;
-        return 0;
-     }
-     else
-     {
-        _code = 500;
-        return 1;
-     }
-    return 0;
-    }
-}
-else if(request.getMethod() == "DELETE" && request.getPath().find("cgi-bin") != std::string::npos)
-{
-    if(fileExists(_targetfile.c_str()) && currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty())
-    {
-        std::string cgiResponse;
-        cgiResponse =_HttpServer.processCGI(request);
-        if(!cgiResponse.empty() && remove(_targetfile.c_str()) != 0)
+        std::ifstream file(_targetfile.c_str());
+        if (file)
         {
-            _code = 404; //Resource doesnt exist
-            return 1;
+            std::ostringstream ss;
+            ss << file.rdbuf();
+            _response_body = ss.str();
+            file.close();
+            _code = 200;
+            return 0;
+        }
+        _code = 413;
+        return 1;
+    }
+    else if (request.getMethod() == "POST" && _ConfigParser.getClientMaxBodySize() < request.getBody().size())
+    {
+        _code = 413;
+        return 1;
+    }
+    else if (request.getMethod() == "POST" && request.getPath().find("cgi-bin") != std::string::npos)
+    {
+        if (currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty())
+        {
+            std::string cgiResponse;
+            cgiResponse = _HttpServer.processCGI(request);
+            if (!cgiResponse.empty())
+            {
+                _response_body = cgiResponse;
+                _code = 200;
+                return 0;
+            }
+            else
+            {
+                _code = 500;
+                return 1;
+            }
+            return 0;
+        }
+    }
+    else if (request.getMethod() == "DELETE" && request.getPath().find("cgi-bin") != std::string::npos)
+    {
+        if (fileExists(_targetfile.c_str()) && currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty())
+        {
+            std::string cgiResponse;
+            cgiResponse = _HttpServer.processCGI(request);
+            if (!cgiResponse.empty() && remove(_targetfile.c_str()) != 0)
+            {
+                _code = 404; // Resource doesnt exist
+                return 1;
+            }
+            else
+            {
+                _code = 204; // No Content
+                return 0;
+            }
+            return 0;
         }
         else
         {
-            _code = 204; //No Content
-            return 0;
+            _code = 404;
+            return 1;
         }
-    return 0;
-   }
-   else
-   {
-    _code = 404;
+    }
     return 1;
-   }
-}
-return 1;
 }
 
 std::string Response::buildErrorPage(int code)
@@ -305,24 +300,25 @@ std::string Response::buildErrorPage(int code)
 
 void Response::builderror_responses(int code)
 {
-    std::string _errorPage =_ConfigParser.getErrorPage(code);
-    
-    if(_errorPage.empty())
+    //(void)code;
+    std::string _errorPage = _ConfigParser.getServers().at(0).getErrorPage(code); // Temporarily using the first server config
+
+    if (_errorPage.empty())
         buildErrorPage(code);
     else
     {
-       std::string path = _ConfigParser.getRoot() + _ConfigParser.getErrorPage(code).at(code);
-       if(fileExists(path))
-       {
-         std::ifstream file(path.c_str());
-         std::stringstream buffer;
-         buffer << file.rdbuf();
-        _response_body = buffer.str();
-        file.close();
-       }
-       else
-         buildErrorPage(404);
-    }    
+        std::string path = _ConfigParser.getServers().at(0).getRoot() + _ConfigParser.getServers().at(0).getErrorPage(code).at(code); // Temporarily using the first server config
+        if (fileExists(path))
+        {
+            std::ifstream file(path.c_str());
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            _response_body = buffer.str();
+            file.close();
+        }
+        else
+            buildErrorPage(404);
+    }
 }
 
 std::string Response::redirecUtil()
@@ -330,44 +326,44 @@ std::string Response::redirecUtil()
     std::string _response_headers;
     std::map<int, std::string> redirec = _HttpServer.getCurrentLocation()->redirect;
     std::map<int, std::string>::iterator it = redirec.begin();
-    if(it != redirec.end())
+    if (it != redirec.end())
     {
-    // Build redirect response headers
-       _response_headers.append(" HTTP/1.1 ");
+        // Build redirect response headers
+        _response_headers.append(" HTTP/1.1 ");
         // Create an output string stream to build the status code string
         std::ostringstream oss;
         oss << it->first;
         _response_headers.append(oss.str());
         std::string statusMsg = statusMessage(it->first);
         _response_headers.append(" " + statusMsg + "\r\n");
-        _response_headers.append(" Content-Length: 0\r\n");    
+        _response_headers.append(" Content-Length: 0\r\n");
         _response_headers.append("Location: " + it->second + "\r\n");
-        }
-      return _response_headers;
+    }
+    return _response_headers;
 }
 
 void Response::buildResponse()
 {
     // Handle error responses or body generation
-    if(reqErr() || appBody())
+    if (reqErr() || appBody())
     {
         // Build error body based on the response code
         builderror_body(_code);
     }
     // Handle autoindex (directory listing) if enabled
-    else if(_HttpServer.getCurrentLocation()->autoindex)
+    else if (_HttpServer.getCurrentLocation()->autoindex)
     {
         const LocationConfig *currentLocation = _HttpServer.getCurrentLocation();
-        std::string filePath = _HttpServer.getFilePath(currentLocation->path);
+        std::string filePath = _HttpServer.getFilePath(currentLocation->path, 0); // Temporarily set to 0 for server index
         generateDirectoryListing(filePath);
     }
     // Handle HTTP redirects if configured
-    else if(!_HttpServer.getCurrentLocation()->redirect.empty())
+    else if (!_HttpServer.getCurrentLocation()->redirect.empty())
     {
         std::string _response_headers;
         std::map<int, std::string> redirec = _HttpServer.getCurrentLocation()->redirect;
         std::map<int, std::string>::iterator it = redirec.begin();
-        if(it != redirec.end())
+        if (it != redirec.end())
         {
             // Build redirect response headers
             _response_headers.append(" HTTP/1.1 ");
@@ -376,17 +372,17 @@ void Response::buildResponse()
             _response_headers.append(oss.str());
             std::string statusMsg = statusMessage(it->first);
             _response_headers.append(" " + statusMsg + "\r\n");
-            _response_headers.append(" Content-Length: 0\r\n");    
+            _response_headers.append(" Content-Length: 0\r\n");
             _response_headers.append("Location: " + it->second + "\r\n");
             // Set the final response string
             _response_final = _response_headers + "\r\n";
         }
     }
     // Handle successful GET requests
-    else if(request.getMethod() == "GET" && _code == 200)
+    else if (request.getMethod() == "GET" && _code == 200)
     {
         // Set the final response string for successful GET
-        _response_final = _response_headers + "\r\n"; 
+        _response_final = _response_headers + "\r\n";
     }
 }
 
@@ -397,16 +393,15 @@ void Response::setHeaders()
     appContentLen();
     appContentType();
     connection();
-    //server();
+    // server();
 }
-
 
 // Checks if the request has an error status code set.
 // If so, sets the response code accordingly and returns it.
 // Otherwise, returns 0 indicating no error.
 int Response::reqErr()
 {
-    if(!request.getErrorStatusCode().empty())
+    if (!request.getErrorStatusCode().empty())
     {
         _code = std::atoi(request.getErrorStatusCode().c_str());
         return _code;
@@ -414,10 +409,10 @@ int Response::reqErr()
     return 0;
 }
 
- std::string Response::getResponse()
- {
+std::string Response::getResponse()
+{
     return _response_final;
- }
+}
 
 Response::~Response()
 {

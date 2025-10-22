@@ -21,7 +21,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-static bool setServeOnce() {
+static bool setServeOnce()
+{
     return setenv("WEBSERV_ONCE", "1", 1) == 0;
 }
 
@@ -59,7 +60,7 @@ static int connectWithRetry(int port, int maxAttempts, int sleepMicros)
         addr.sin_family = AF_INET;
         addr.sin_port = htons((uint16_t)port);
         inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-        if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == 0)
+        if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0)
             return fd;
         close(fd);
         usleep(sleepMicros);
@@ -73,8 +74,13 @@ static bool sendAll(int fd, const std::string &data)
     while (off < data.size())
     {
         ssize_t n = send(fd, data.c_str() + off, data.size() - off, 0);
-        if (n > 0) { off += (size_t)n; continue; }
-        if (n < 0 && (errno == EINTR)) continue;
+        if (n > 0)
+        {
+            off += (size_t)n;
+            continue;
+        }
+        if (n < 0 && (errno == EINTR))
+            continue;
         return false;
     }
     return true;
@@ -87,10 +93,14 @@ static std::string recvAll(int fd)
     while (true)
     {
         ssize_t n = recv(fd, buf, sizeof(buf), 0);
-        if (n > 0) out.append(buf, buf + n);
-        else if (n == 0) break;
-        else if (errno == EINTR) continue;
-        else break;
+        if (n > 0)
+            out.append(buf, buf + n);
+        else if (n == 0)
+            break;
+        else if (errno == EINTR)
+            continue;
+        else
+            break;
     }
     return out;
 }
@@ -115,7 +125,8 @@ static bool runSingleRequestTest(const std::string &configPath, int port,
     if (cfd < 0)
     {
         std::cerr << "Client failed to connect" << std::endl;
-        int status; waitpid(srv, &status, 0);
+        int status;
+        waitpid(srv, &status, 0);
         return false;
     }
 
@@ -124,7 +135,8 @@ static bool runSingleRequestTest(const std::string &configPath, int port,
     std::string resp = recvAll(cfd);
     close(cfd);
 
-    int status; waitpid(srv, &status, 0);
+    int status;
+    waitpid(srv, &status, 0);
 
     if (!okSend)
     {
@@ -135,7 +147,8 @@ static bool runSingleRequestTest(const std::string &configPath, int port,
     if (!assertContains(resp, expect))
     {
         std::cerr << "Unexpected response. Expected to contain: '" << expect << "'\n";
-        std::cerr << "Response was:\n" << resp << std::endl;
+        std::cerr << "Response was:\n"
+                  << resp << std::endl;
         return false;
     }
     return true;
@@ -146,7 +159,11 @@ static int runTests(const std::string &configPath)
     ConfigParser parser;
     if (!parser.parse(configPath))
         return 1;
-    int port = parser.getListenPort();
+    // Get first port from first server
+    const std::vector<ServerConfig> &servers = parser.getServers();
+    int port = 8080; // Default
+    if (!servers.empty() && !servers[0].getListenPorts().empty())
+        port = servers[0].getListenPorts()[0];
 
     int failures = 0;
 
@@ -206,4 +223,3 @@ int main(int argc, char **argv)
     HttpServer server(parser);
     return server.start();
 }
-

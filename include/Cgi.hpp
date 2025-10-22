@@ -46,7 +46,7 @@ private:
 
 public:
 	CGI(const HTTPparser &request, const HttpServer &server);
-	CGI();//default constructor added for response.ccp 
+	CGI(); // default constructor added for response.ccp
 	~CGI();
 
 	int execute();

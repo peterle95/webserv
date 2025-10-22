@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ParseServerName.cpp                                :+:      :+:    :+:   */
+/*   ParseRoot.cpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: pmolzer <pmolzer@student.42berlin.de>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,8 +12,8 @@
 
 #include "Common.hpp"
 
-void ConfigParser::parseServerName(const std::string &val, size_t /*lineNo*/)
+void ServerConfig::parseRoot(const std::string &val, size_t /*lineNo*/, std::string *root)
 {
-    this->_serverName = val;
-   // DEBUG_PRINT("Applied server_name -> '" << this->_serverName << "'");
+    *root = val;
+    DEBUG_PRINT("Applied root -> '" << *root << "'");
 }

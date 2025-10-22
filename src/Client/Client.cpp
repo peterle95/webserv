@@ -12,33 +12,37 @@ HttpServer::buildXResponse()
     ↓ (generates HTTP response string)
 Client::writeResponse()
     ↓ (sends to socket)
-    
+
 */
 static bool iequals(const std::string &a, const std::string &b)
 {
-    if (a.size() != b.size()) return false;
+    if (a.size() != b.size())
+        return false;
     for (size_t i = 0; i < a.size(); ++i)
     {
         char ca = static_cast<char>(std::tolower(a[i]));
         char cb = static_cast<char>(std::tolower(b[i]));
-        if (ca != cb) return false;
+        if (ca != cb)
+            return false;
     }
     return true;
 }
 
-Client::Client(int socket, HttpServer& server)
-    : _socket(socket)
-    , _server(server)
-    , _state(READING)
-    , _keep_alive(false)
-    , _peer_half_closed(false)
-    , _request_buffer()
-    , _response_buffer()
-    , _response_offset(0)
-    , _parser()
-    , _cgi_handler()
-    , _cgi_pid(-1)
-    , _cgi_started(false)
+Client::Client(int fd, HttpServer &server, size_t serverIndex, int serverPort)
+    : _socket(fd),
+      _server(server),
+      _state(READING),
+      _keep_alive(false),
+      _peer_half_closed(false),
+      _request_buffer(),
+      _response_buffer(),
+      _response_offset(0),
+      _parser(),
+      _cgi_handler(),
+      _cgi_pid(-1),
+      _cgi_started(false),
+      _serverIndex(serverIndex),
+      _serverPort(serverPort)
 {
     _cgi_pipe_in[0] = _cgi_pipe_in[1] = -1;
     _cgi_pipe_out[0] = _cgi_pipe_out[1] = -1;
@@ -60,10 +64,14 @@ Client::~Client()
     DEBUG_PRINT("Cleaning up CGI pipes");
 
     // Close CGI pipes if any
-    if (_cgi_pipe_in[0] != -1) close(_cgi_pipe_in[0]);
-    if (_cgi_pipe_in[1] != -1) close(_cgi_pipe_in[1]);
-    if (_cgi_pipe_out[0] != -1) close(_cgi_pipe_out[0]);
-    if (_cgi_pipe_out[1] != -1) close(_cgi_pipe_out[1]);
+    if (_cgi_pipe_in[0] != -1)
+        close(_cgi_pipe_in[0]);
+    if (_cgi_pipe_in[1] != -1)
+        close(_cgi_pipe_in[1]);
+    if (_cgi_pipe_out[0] != -1)
+        close(_cgi_pipe_out[0]);
+    if (_cgi_pipe_out[1] != -1)
+        close(_cgi_pipe_out[1]);
 }
 
 int Client::getSocket() const { return _socket; }
@@ -230,6 +238,19 @@ void Client::generateResponse()
         return;
     }
 
+    // Select correct server based on Host header
+    size_t selectedServerIndex = _server.selectServerForRequest(_parser, _serverPort);
+    if (selectedServerIndex == static_cast<size_t>(-1))
+    {
+        DEBUG_PRINT(RED << "No matching server block for Host/Port" << RESET);
+        _response_buffer = _server.generateBadRequestResponse(_keep_alive);
+        _response_offset = 0;
+        _state = WRITING;
+        return;
+    }
+    DEBUG_PRINT(CYAN << "Selected server index: " << selectedServerIndex
+                     << " for Host: '" << _parser.getHeader("Host") << "'" << RESET);
+
     const std::string method = _parser.getMethod();
     const std::string path = _parser.getPath();
 
@@ -239,7 +260,7 @@ void Client::generateResponse()
     DEBUG_PRINT("  Version: " << _parser.getVersion());
 
     // Map location and resolve filesystem path for this request
-    std::string filePath = _server.resolveFilePathFor(path);
+    std::string filePath = _server.resolveFilePathFor(path, selectedServerIndex);
     DEBUG_PRINT("Resolved file path: '" << filePath << "'");
 
     if (iequals(method, "GET"))

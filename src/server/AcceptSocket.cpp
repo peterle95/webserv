@@ -7,7 +7,8 @@
    - Monitors each client socket based on its state (READING/WRITING)
    - Delegates state transitions to Client::handleConnection()
 */
-int HttpServer::runAcceptLoop(int server_fd, bool serveOnce)
+
+int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &serverSockets, bool serveOnce)
 {
     size_t acceptedCount = 0;
 
@@ -18,11 +19,19 @@ int HttpServer::runAcceptLoop(int server_fd, bool serveOnce)
         FD_ZERO(&read_fds);
         FD_ZERO(&write_fds);
 
-        int max_fd = server_fd;
-        FD_SET(server_fd, &read_fds);
+        int max_fd = -1;
+
+        // Add ALL server sockets to read set (instead of single server_fd)
+        for (size_t i = 0; i < serverSockets.size(); ++i)
+        {
+            int server_fd = serverSockets[i].socket_fd;
+            FD_SET(server_fd, &read_fds);
+            if (server_fd > max_fd)
+                max_fd = server_fd;
+        }
 
         // Add client FDs based on their current state
-        for (std::map<int, Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+        for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it)
         {
             int cfd = it->first;
             Client *cl = it->second;
@@ -30,12 +39,14 @@ int HttpServer::runAcceptLoop(int server_fd, bool serveOnce)
             if (st == READING)
             {
                 FD_SET(cfd, &read_fds);
-                if (cfd > max_fd) max_fd = cfd;
+                if (cfd > max_fd)
+                    max_fd = cfd;
             }
             else if (st == WRITING)
             {
                 FD_SET(cfd, &write_fds);
-                if (cfd > max_fd) max_fd = cfd;
+                if (cfd > max_fd)
+                    max_fd = cfd;
             }
             // GENERATING_RESPONSE will be handled post-select without waiting on FDs
             // AWAITING_CGI not used in current synchronous CGI path
@@ -54,43 +65,53 @@ int HttpServer::runAcceptLoop(int server_fd, bool serveOnce)
             break;
         }
 
-        // Accept as many pending connections as possible
-        if (FD_ISSET(server_fd, &read_fds))
+        // Accept connections from ANY server socket that's ready
+        for (size_t i = 0; i < serverSockets.size(); ++i)
         {
-            while (true)
+            int server_fd = serverSockets[i].socket_fd;
+
+            if (FD_ISSET(server_fd, &read_fds))
             {
-                struct sockaddr_in cli;
-                socklen_t clilen = sizeof(cli);
-                int cfd = accept(server_fd, (struct sockaddr*)&cli, &clilen);
-                if (cfd < 0)
+                // Accept as many pending connections as possible on this server socket
+                while (true)
                 {
-                    if (errno == EINTR)
-                        continue;
-                    if (errno == EAGAIN || errno == EWOULDBLOCK)
+                    struct sockaddr_in cli;
+                    socklen_t clilen = sizeof(cli);
+                    int cfd = accept(server_fd, (struct sockaddr *)&cli, &clilen);
+                    if (cfd < 0)
+                    {
+                        if (errno == EINTR)
+                            continue;
+                        if (errno == EAGAIN || errno == EWOULDBLOCK)
+                            break;
+                        std::cerr << "accept() failed on server socket " << i << std::endl;
                         break;
-                    std::cerr << "accept() failed" << std::endl;
-                    break;
-                }
+                    }
 
-                if (!HttpServer::setNonBlocking(cfd))
-                {
-                    std::cerr << "Failed to set client socket non-blocking" << std::endl;
-                    close(cfd);
-                    continue;
-                }
+                    if (!HttpServer::setNonBlocking(cfd))
+                    {
+                        std::cerr << "Failed to set client socket non-blocking" << std::endl;
+                        close(cfd);
+                        continue;
+                    }
 
-                Client *cl = new Client(cfd, *this);
-                _clients[cfd] = cl;
-                ++acceptedCount;
-                DEBUG_PRINT("New connection accepted (fd: " << RED << cfd << RESET << ")");
+                    // Create client with server context information
+                    Client *cl = new Client(cfd, *this, serverSockets[i].serverIndex, serverSockets[i].port);
+                    _clients[cfd] = cl;
+                    ++acceptedCount;
+
+                    DEBUG_PRINT("New connection accepted on server '" 
+                    << _servers[serverSockets[i].serverIndex].getServerName()
+                    << "' port " << serverSockets[i].port << " (fd: " << RED << cfd << RESET << ")");
+                }
             }
         }
 
-        // Track clients to close after processing
+        // Track clients to close after processing (SAME as your existing code)
         std::vector<int> toClose;
 
-        // Process client I/O or generation steps
-        for (std::map<int, Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+        // Process client I/O or generation steps (SAME as your existing code)
+        for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it)
         {
             int cfd = it->first;
             Client *cl = it->second;
@@ -123,7 +144,7 @@ int HttpServer::runAcceptLoop(int server_fd, bool serveOnce)
         for (size_t i = 0; i < toClose.size(); ++i)
         {
             int fd = toClose[i];
-            std::map<int, Client*>::iterator it = _clients.find(fd);
+            std::map<int, Client *>::iterator it = _clients.find(fd);
             if (it != _clients.end())
             {
                 close(fd);
@@ -138,7 +159,7 @@ int HttpServer::runAcceptLoop(int server_fd, bool serveOnce)
     }
 
     // Cleanup remaining clients on shutdown
-    for (std::map<int, Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it)
     {
         close(it->first);
         delete it->second;

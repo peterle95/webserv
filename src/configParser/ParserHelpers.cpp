@@ -11,22 +11,21 @@
 /* ************************************************************************** */
 
 #include "Common.hpp"
+#include "ParserUtils.hpp"
 
 std::string ConfigParser::preprocessLine(const std::string &raw)
 {
-    std::string line = strip_comment(raw);
-    line = trim(line);
-    return line;
+    return ParserUtils::preprocessLine(raw);
 }
 
 bool ConfigParser::isBlockMarker(const std::string &line) const
 {
-    return (line == "}" || line.find('{') != std::string::npos);
+    return ParserUtils::isBlockMarker(line);
 }
 
 void ConfigParser::requireSemicolon(const std::string &line, size_t lineNo) const
 {
-    if (line.empty() || line[line.size() - 1] != ';') 
+    if (line.empty() || line[line.size() - 1] != ';')
     {
         std::string msg = ErrorHandler::makeLocationMsg("Missing ';' at end of directive", (int)lineNo, this->_configFile);
         throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_MISSING_SEMICOLON, (int)lineNo, this->_configFile);
@@ -35,39 +34,25 @@ void ConfigParser::requireSemicolon(const std::string &line, size_t lineNo) cons
 
 std::string ConfigParser::stripTrailingSemicolon(const std::string &line) const
 {
-    if (!line.empty() && line[line.size() - 1] == ';')
-        return line.substr(0, line.size() - 1);
-    return line;
+    return ParserUtils::stripTrailingSemicolon(line);
 }
 
 bool ConfigParser::splitKeyVal(const std::string &line, std::string &key, std::string &val) const
 {
-    std::string::size_type sp = line.find(' ');
-    if (sp == std::string::npos) return false;
-    key = trim(line.substr(0, sp));
-    val = trim(line.substr(sp + 1));
-    return true;
+    return ParserUtils::splitKeyVal(line, key, val);
 }
 
 void ConfigParser::handleDirective(const std::string &key, const std::string &val, size_t lineNo)
 {
-    if (key == "listen")
-        parseListen(val, lineNo);
-    else if (key == "root")
+    if (key == "root")
         parseRoot(val, lineNo, &this->_root);
     else if (key == "index")
         parseIndex(val, lineNo, &this->_index);
-    else if (key == "server_name")
-        parseServerName(val, lineNo);
     else if (key == "client_max_body_size")
         parseClientMaxBodySize(val, lineNo);
-    else if (key == "allowed_methods")
-        parseAllowedMethods(val, lineNo, &this->_allowedMethods);
-    else if (key == "error_page")
-        parseErrorPage(val, lineNo);
-    else {
+    else
+    {
         // Unknown directive: ignore non-fatally for now
         DEBUG_PRINT("Unknown directive '" << key << "' (ignored)");
     }
-    // TODO: implement more directives
 }

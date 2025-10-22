@@ -19,35 +19,35 @@ static int createSocket()
 
 static bool setSocketReusable(int server_fd)
 {
-    /*When a TCP connection is closed, the operating system doesn't immediately free up the port. 
-    Instead, it places the socket in a TIME_WAIT state for a short period (typically 30-120 seconds). 
-    This is a safety feature to ensure any delayed data packets from the old connection are 
+    /*When a TCP connection is closed, the operating system doesn't immediately free up the port.
+    Instead, it places the socket in a TIME_WAIT state for a short period (typically 30-120 seconds).
+    This is a safety feature to ensure any delayed data packets from the old connection are
     properly discarded and don't interfere with a new connection.
 
-    Without SO_REUSEADDR, if you stop your server (e.g., with Ctrl+C) 
-    and try to restart it right away, the bind() call will fail because the 
+    Without SO_REUSEADDR, if you stop your server (e.g., with Ctrl+C)
+    and try to restart it right away, the bind() call will fail because the
     OS still considers the port "in use" by the lingering TIME_WAIT socket. */
     int opt = 1;
     // tells the operating system's kernel to modify its default behavior.
-    // "Allow my program to bind() to this port, even if a connection on the 
+    // "Allow my program to bind() to this port, even if a connection on the
     // same port is stuck in the TIME_WAIT state."
     return setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == 0;
 }
 
-static void initializeAddress(struct sockaddr_in* addr, int port)
+static void initializeAddress(struct sockaddr_in *addr, int port)
 {
     // Zeros out the struct to ensure all fields are initialized, preventing unpredictable behavior.
     std::memset(addr, 0, sizeof(*addr));
-    
+
     // Sets the address family to AF_INET, specifying that the socket will use the IPv4 protocol.
     addr->sin_family = AF_INET;
-    
-    // Sets the IP address. INADDR_ANY is a special address (0.0.0.0) that 
-    // tells the socket to listen on all available network interfaces of the machine. 
+
+    // Sets the IP address. INADDR_ANY is a special address (0.0.0.0) that
+    // tells the socket to listen on all available network interfaces of the machine.
     // htonl() converts this value from the host's byte order to the standard network byte order.
     addr->sin_addr.s_addr = htonl(INADDR_ANY);
-    
-    // Sets the port number. htons() converts the port number from the host's 
+
+    // Sets the port number. htons() converts the port number from the host's
     // byte order to network byte order, which is crucial for interoperability across different systems.
     addr->sin_port = htons((uint16_t)port);
 }
@@ -56,15 +56,15 @@ static bool bindSocket(int server_fd, int port)
 {
     // Bind address
     struct sockaddr_in addr; // Declares a struct to hold address information for an IPv4 socket.
-    
+
     initializeAddress(&addr, port);
-    
-    if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+
+    if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
         std::cerr << "bind() failed on port " << port << std::endl;
         return false;
     }
-    
+
     return true;
 }
 
@@ -75,7 +75,7 @@ static bool startListening(int server_fd)
         std::cerr << "listen() failed" << std::endl;
         return false;
     }
-    
+
     return true;
 }
 
@@ -107,35 +107,35 @@ static bool configureSocket(int server_fd, int port)
         std::cerr << "Failed to set SO_REUSEADDR" << std::endl;
         return false;
     }
-    
+
     if (!bindSocket(server_fd, port))
         return false;
-    
+
     if (!startListening(server_fd))
         return false;
-    
+
     if (!HttpServer::setNonBlocking(server_fd))
     {
         std::cerr << "Failed to set server socket non-blocking" << std::endl;
         return false;
     }
-    
+
     return true;
 }
 
-int HttpServer::createAndBindSocket()
+int HttpServer::createAndBindSocket(int port)
 {
     int server_fd = createSocket();
     if (server_fd < 0)
     {
         return -1;
     }
-    
-    if (!configureSocket(server_fd, _port))
+
+    if (!configureSocket(server_fd, port))
     {
         close(server_fd);
         return -1;
     }
-    
+
     return server_fd;
 }

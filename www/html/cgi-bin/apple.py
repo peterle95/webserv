@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.11
+#!/usr/bin/env python3
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 import cgi
@@ -30,6 +30,6 @@ print("""<!DOCTYPE html>
 <p>Weight of Apples in kg: {}</p>
 <p>Price per Kilo: {}</p>
 <p>Total Price: {}</p>
-<p><a href="/cgi-bin/">Back to CGI Home</a></p>
+<p><a href="/index.html/">Back to Home</a></p>
 </body>
 </html>""".format(apples, price, total_price))
