@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Calculator</title>
+</head>
+<body>
+    <h1>Price Calculator (per kg)</h1>
+    <form action="/cgi-bin/price_calculator.py" method="POST">
+        <label for="weight">Weight (kg):</label>
+        <input type="number" id="weight" name="weight" required min="0.1" step="0.1">
+        <br><br>
+        <label for="price">Price per kg:</label>
+        <input type="number" id="price" name="price" required min="0" step="0.01">
+        <br><br>
+        <button type="submit">Calculate Total Price</button>
+    </form>
+</body>
+</html>
