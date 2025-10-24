@@ -6,7 +6,7 @@
 /*   By: pmolzer <pmolzer@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/13 14:20:00 by pmolzer           #+#    #+#             */
-/*   Updated: 2025/09/12 15:33:51 by pmolzer          ###   .fr       */
+/*   Updated: 2025/10/24 00:00:00 by pmolzer          ###   .fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -109,40 +109,38 @@ int HttpServer::start()
     for (size_t serverIdx = 0; serverIdx < _servers.size(); ++serverIdx)
     {
         const ServerConfig &serverConfig = _servers[serverIdx];
-        const std::vector<int> &ports = serverConfig.getListenPorts();
+        const std::vector<std::pair<std::string, int> > &listenAddresses = serverConfig.getListenAddresses();
 
         DEBUG_PRINT("Setting up server block " << serverIdx
                                                << " (" << serverConfig.getServerName() << ") with "
-                                               << ports.size() << " ports");
+                                               << listenAddresses.size() << " listen addresses");
 
-        // Create socket for each port in this server block
-        for (size_t portIdx = 0; portIdx < ports.size(); ++portIdx)
+        // Create socket for each host:port pair in this server block
+        for (size_t addrIdx = 0; addrIdx < listenAddresses.size(); ++addrIdx)
         {
-            int port = ports[portIdx];
+            const std::string &host = listenAddresses[addrIdx].first;
+            int port = listenAddresses[addrIdx].second;
 
-            // Temporarily set _port for createAndBindSocket() to use
-            //_port = port;
-
-            int server_fd = createAndBindSocket(port);
+            int server_fd = createAndBindSocket(host, port);
             if (server_fd < 0)
             {
                 std::cerr << "Failed to bind server " << serverIdx
-                          << " to port " << port << std::endl;
-                continue; // Try other ports
+                          << " to " << host << ":" << port << std::endl;
+                continue; // Try other addresses
             }
 
             if (!setNonBlocking(server_fd))
             {
                 close(server_fd);
                 std::cerr << "Failed to set non-blocking for server " << serverIdx
-                          << " port " << port << std::endl;
+                          << " " << host << ":" << port << std::endl;
                 continue;
             }
 
-            _serverSockets.push_back(ServerSocketInfo(server_fd, port, serverIdx));
+            _serverSockets.push_back(ServerSocketInfo(server_fd, host, port, serverIdx));
             std::cout << "Server block " << serverIdx
                       << " (" << serverConfig.getServerName()
-                      << ") listening on port " << port << std::endl;
+                      << ") listening on " << host << ":" << port << std::endl;
         }
     }
 
