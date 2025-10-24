@@ -9,17 +9,19 @@ import cgi # For CGI handling of python scripts
 if os.environ.get("REQUEST_METHOD", "") == "POST":
     cwd = os.getcwd()
     upload_dir = os.path.join(cwd, "cgi_upload")
-
+    
+    
     # Read POST data from stdin
     post_data = sys.stdin.read().strip()
-
+    #print("upload_dir:", upload_dir)
+    #print("filename:", post_data)
     # Extract filename (assuming same format: filename=<name>)
     if "filename=" in post_data:
         filename_to_delete = post_data.split("filename=", 1)[1].strip()
     else:
         filename_to_delete = ""
 
-    print(f"Filename to delete: {filename_to_delete}<br>")
+    #print(f"Filename to delete: {filename_to_delete}<br>")
 
     # Validate filename
     if not filename_to_delete:
@@ -28,7 +30,7 @@ if os.environ.get("REQUEST_METHOD", "") == "POST":
         sys.exit(0)
 
     file_path = os.path.join(upload_dir, filename_to_delete)
-
+    print("file_path:", file_path)
     # Check if file exists
     if not os.path.exists(file_path):
         print(f"Error: File '{filename_to_delete}' does not exist.<br>")
@@ -46,4 +48,4 @@ else:
     # Method not allowed
     print("Error: Method not allowed<br>")
 
-print('<p><a href="/index.html/">Back to Home</a></p>')
+print('<p><a href="/cgi-bin/">Back to CGI Home</a></p>')

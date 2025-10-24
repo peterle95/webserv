@@ -70,6 +70,8 @@ public:
 
     static bool setNonBlocking(int fd);
 
+    //int getPort() const { return _port; }
+    void mapCurrentLocationConfig(const std::string &path);//changed from private to public for access in cgi.cpp
     // int getPort() const { return _port; }
 
     // Start the non-blocking HTTP server with Client class state machine
