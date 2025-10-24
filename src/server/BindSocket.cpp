@@ -34,7 +34,7 @@ static bool setSocketReusable(int server_fd)
     return setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == 0;
 }
 
-static void initializeAddress(struct sockaddr_in *addr, int port)
+static void initializeAddress(struct sockaddr_in *addr, const std::string &host, int port)
 {
     // Zeros out the struct to ensure all fields are initialized, preventing unpredictable behavior.
     std::memset(addr, 0, sizeof(*addr));
@@ -42,26 +42,39 @@ static void initializeAddress(struct sockaddr_in *addr, int port)
     // Sets the address family to AF_INET, specifying that the socket will use the IPv4 protocol.
     addr->sin_family = AF_INET;
 
-    // Sets the IP address. INADDR_ANY is a special address (0.0.0.0) that
-    // tells the socket to listen on all available network interfaces of the machine.
-    // htonl() converts this value from the host's byte order to the standard network byte order.
-    addr->sin_addr.s_addr = htonl(INADDR_ANY);
+    // Parse the host string to determine the IP address
+    if (host == "0.0.0.0" || host.empty())
+    {
+        // INADDR_ANY (0.0.0.0) tells the socket to listen on all available network interfaces
+        addr->sin_addr.s_addr = htonl(INADDR_ANY);
+    }
+    else
+    {
+        // Convert the host string (e.g., "127.0.0.1" or "192.168.1.100") to network format
+        // inet_pton converts human-readable IP to binary network format
+        if (inet_pton(AF_INET, host.c_str(), &addr->sin_addr) <= 0)
+        {
+            std::cerr << "Invalid IP address: " << host << std::endl;
+            // Fall back to INADDR_ANY if the address is invalid
+            addr->sin_addr.s_addr = htonl(INADDR_ANY);
+        }
+    }
 
     // Sets the port number. htons() converts the port number from the host's
     // byte order to network byte order, which is crucial for interoperability across different systems.
     addr->sin_port = htons((uint16_t)port);
 }
 
-static bool bindSocket(int server_fd, int port)
+static bool bindSocket(int server_fd, const std::string &host, int port)
 {
     // Bind address
     struct sockaddr_in addr; // Declares a struct to hold address information for an IPv4 socket.
 
-    initializeAddress(&addr, port);
+    initializeAddress(&addr, host, port);
 
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
-        std::cerr << "bind() failed on port " << port << std::endl;
+        std::cerr << "bind() failed on " << host << ":" << port << std::endl;
         return false;
     }
 
@@ -100,7 +113,7 @@ bool HttpServer::setNonBlocking(int fd)
     return true;
 }
 
-static bool configureSocket(int server_fd, int port)
+static bool configureSocket(int server_fd, const std::string &host, int port)
 {
     if (!setSocketReusable(server_fd))
     {
@@ -108,7 +121,7 @@ static bool configureSocket(int server_fd, int port)
         return false;
     }
 
-    if (!bindSocket(server_fd, port))
+    if (!bindSocket(server_fd, host, port))
         return false;
 
     if (!startListening(server_fd))
@@ -123,7 +136,7 @@ static bool configureSocket(int server_fd, int port)
     return true;
 }
 
-int HttpServer::createAndBindSocket(int port)
+int HttpServer::createAndBindSocket(const std::string &host, int port)
 {
     int server_fd = createSocket();
     if (server_fd < 0)
@@ -131,11 +144,12 @@ int HttpServer::createAndBindSocket(int port)
         return -1;
     }
 
-    if (!configureSocket(server_fd, port))
+    if (!configureSocket(server_fd, host, port))
     {
         close(server_fd);
         return -1;
     }
 
+    std::cout << "Server socket bound to " << host << ":" << port << std::endl;
     return server_fd;
 }
