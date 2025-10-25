@@ -46,4 +46,4 @@ else:
     # Method not allowed
     print("Error: Method not allowed<br>")
 
-print('<p><a href="/index.html/">Back to Home</a></p>')
+print('<p><a href="/index.html">Back to Home</a></p>')

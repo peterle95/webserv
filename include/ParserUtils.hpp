@@ -4,15 +4,14 @@
 
 #include <string>
 
-namespace ParserUtils
+class ParserUtils
 {
-
+public:
 	// Stateless helpers shared by ConfigParser and ServerConfig
-	std::string preprocessLine(const std::string &raw);
-	bool isBlockMarker(const std::string &line);
-	std::string stripTrailingSemicolon(const std::string &line);
-	bool splitKeyVal(const std::string &line, std::string &key, std::string &val);
-
-} // namespace ParserUtils
+	static std::string preprocessLine(const std::string &raw);
+	static bool isBlockMarker(const std::string &line);
+	static std::string stripTrailingSemicolon(const std::string &line);
+	static bool splitKeyVal(const std::string &line, std::string &key, std::string &val);
+};
 
 #endif
