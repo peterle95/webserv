@@ -50,4 +50,4 @@ for field in form.keys():
 if not file_uploaded:
     print("Error: No file uploaded<br>")
 
-print('<p><a href="/index.html/">Back to Home</a></p>')
+print('<p><a href="/index.html">Back to Home</a></p>')
