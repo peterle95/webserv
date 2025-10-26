@@ -48,8 +48,6 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                 if (cfd > max_fd)
                     max_fd = cfd;
             }
-            // GENERATING_RESPONSE will be handled post-select without waiting on FDs
-            // AWAITING_CGI not used in current synchronous CGI path
         }
 
         struct timeval tv;
