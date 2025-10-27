@@ -3,7 +3,7 @@
 #define SERVERCONFIG_HPP
 
 #include <set>
-#include <netinet/in.h>
+#include <netinet/in.h> // For in_addr_t
 //  Location configuration structure to hold per-location settings
 struct LocationConfig
 {
@@ -30,7 +30,7 @@ private:
     std::string _root;
     std::string _index;
     std::string _serverName;
-    in_addr_t _host;
+    in_addr_t _host; // Host address in network byte order
     std::map<int, std::string> _errorPage;
 
     size_t _clientMaxBodySize;

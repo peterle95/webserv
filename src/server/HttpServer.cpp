@@ -124,6 +124,7 @@ int HttpServer::start()
             // Temporarily set _port for createAndBindSocket() to use
             //_port = port;
 
+            // Pass the host address to the socket creation function.
             int server_fd = createAndBindSocket(port, serverConfig.getHost());
             if (server_fd < 0)
             {
@@ -141,6 +142,7 @@ int HttpServer::start()
             }
 
             _serverSockets.push_back(ServerSocketInfo(server_fd, port, serverIdx));
+            // Convert the host address back to a string for logging.
             char hostStr[INET_ADDRSTRLEN];
             struct in_addr host_addr;
             host_addr.s_addr = serverConfig.getHost();

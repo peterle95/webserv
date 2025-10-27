@@ -34,6 +34,7 @@ static bool setSocketReusable(int server_fd)
     return setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == 0;
 }
 
+// Initializes the socket address structure with the specified host and port.
 static void initializeAddress(struct sockaddr_in *addr, int port, in_addr_t host)
 {
     // Zeros out the struct to ensure all fields are initialized, preventing unpredictable behavior.
@@ -50,6 +51,7 @@ static void initializeAddress(struct sockaddr_in *addr, int port, in_addr_t host
     addr->sin_port = htons((uint16_t)port);
 }
 
+// Binds the socket to the address created from the host and port.
 static bool bindSocket(int server_fd, int port, in_addr_t host)
 {
     // Bind address
@@ -98,6 +100,7 @@ bool HttpServer::setNonBlocking(int fd)
     return true;
 }
 
+// Configures the socket for reuse and binds it to the specified host and port.
 static bool configureSocket(int server_fd, int port, in_addr_t host)
 {
     if (!setSocketReusable(server_fd))
@@ -123,6 +126,7 @@ static bool configureSocket(int server_fd, int port, in_addr_t host)
     return true;
 }
 
+// Creates and binds a socket to the specified host and port.
 int HttpServer::createAndBindSocket(int port, in_addr_t host)
 {
     int server_fd = createSocket();
