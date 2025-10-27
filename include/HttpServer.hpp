@@ -47,7 +47,7 @@ private:
     void mapCurrentLocationConfig(const std::string &path, const int serverIndex);
 
     // Socket setup
-    int createAndBindSocket(int port);
+    int createAndBindSocket(int port, in_addr_t host);
     void setupSignalHandlers();
     void printStartupMessage(bool serveOnce);
 

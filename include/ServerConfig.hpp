@@ -3,6 +3,7 @@
 #define SERVERCONFIG_HPP
 
 #include <set>
+#include <netinet/in.h>
 //  Location configuration structure to hold per-location settings
 struct LocationConfig
 {
@@ -29,6 +30,7 @@ private:
     std::string _root;
     std::string _index;
     std::string _serverName;
+    in_addr_t _host;
     std::map<int, std::string> _errorPage;
 
     size_t _clientMaxBodySize;
@@ -45,6 +47,7 @@ private:
     void parseRoot(const std::string &val, size_t lineNo, std::string *root);
     void parseIndex(const std::string &val, size_t lineNo, std::string *index);
     void parseServerName(const std::string &val, size_t lineNo);
+    void parseHost(const std::string &val, size_t lineNo);
     void parseClientMaxBodySize(const std::string &val, size_t lineNo);
     void parseAllowedMethods(const std::string &val, size_t lineNo, std::set<std::string> *allowedMethods = NULL);
     void parseErrorPage(const std::string &val, size_t lineNo);
@@ -77,6 +80,7 @@ public:
 
     // ServerName addition -Shruti
     const std::string &getServerName() const;
+    in_addr_t getHost() const;
     const std::map<std::string, LocationConfig> &getLocations() const;
     size_t getClientMaxBodySize() const;
     const std::string &getErrorPage(int status_code) const;

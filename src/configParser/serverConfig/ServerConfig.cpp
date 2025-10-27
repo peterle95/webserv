@@ -1,11 +1,17 @@
 
 
 #include "Common.hpp"
+#include <arpa/inet.h>
+#include <sstream>
 
 // constructor
 ServerConfig::ServerConfig(const std::string &root, const std::string &index, size_t clientMaxBodySize)
     : _configFile(""), _ports(), _hosts(), _root(root), _index(index), _serverName(""), _errorPage(), _clientMaxBodySize(clientMaxBodySize), _allowedMethods()
 {
+    // Default host to 127.0.0.1
+    if (inet_pton(AF_INET, "127.0.0.1", &_host) != 1) {
+        throw std::runtime_error("Failed to set default host");
+    }
     // Initialize default listen address
     //_listenAddresses.push_back(std::make_pair("0.0.0.0", 8080));
 }
@@ -133,6 +139,25 @@ const std::string &ServerConfig::getRoot() const
 const std::string &ServerConfig::getIndex() const
 {
     return _index;
+}
+
+in_addr_t ServerConfig::getHost() const
+{
+    return _host;
+}
+
+void ServerConfig::parseHost(const std::string &val, size_t lineNo)
+{
+    std::string hostStr = val;
+    if (hostStr == "localhost") {
+        hostStr = "127.0.0.1";
+    }
+
+    if (inet_pton(AF_INET, hostStr.c_str(), &_host) != 1) {
+        std::stringstream ss;
+        ss << "Invalid host format at line " << lineNo;
+        throw std::runtime_error(ss.str());
+    }
 }
 // Get all host:port pairs (recommended method)
 /* const std::vector<std::pair<std::string, int>> &ServerConfig::getListenAddresses() const

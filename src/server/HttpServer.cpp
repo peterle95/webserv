@@ -105,6 +105,7 @@ const LocationConfig *HttpServer::getCurrentLocation()
 
 int HttpServer::start()
 {
+
     // Iterate through all server blocks
     for (size_t serverIdx = 0; serverIdx < _servers.size(); ++serverIdx)
     {
@@ -123,7 +124,7 @@ int HttpServer::start()
             // Temporarily set _port for createAndBindSocket() to use
             //_port = port;
 
-            int server_fd = createAndBindSocket(port);
+            int server_fd = createAndBindSocket(port, serverConfig.getHost());
             if (server_fd < 0)
             {
                 std::cerr << "Failed to bind server " << serverIdx
@@ -140,9 +141,13 @@ int HttpServer::start()
             }
 
             _serverSockets.push_back(ServerSocketInfo(server_fd, port, serverIdx));
+            char hostStr[INET_ADDRSTRLEN];
+            struct in_addr host_addr;
+            host_addr.s_addr = serverConfig.getHost();
+            inet_ntop(AF_INET, &host_addr, hostStr, INET_ADDRSTRLEN);
             std::cout << "Server block " << serverIdx
                       << " (" << serverConfig.getServerName()
-                      << ") listening on port " << port << std::endl;
+                      << ") listening on " << hostStr << ":" << port << std::endl;
         }
     }
 
