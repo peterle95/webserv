@@ -36,7 +36,7 @@ private:
 	pid_t cgi_pid_;
 
 	// Private helper functions
-	void setupEnvironment(const HTTPparser &request, const HttpServer &server);
+	void setupEnvironment(const HTTPparser &request);
 	char **createEnvArray() const;
 	char **createArgsArray() const;
 	void setupPipes();
@@ -45,7 +45,7 @@ private:
 	static std::string numberToString(int number);
 
 public:
-	CGI(const HTTPparser &request, const HttpServer &server);
+	CGI(const HTTPparser &request);
 	CGI(); // default constructor added for response.ccp
 	~CGI();
 
