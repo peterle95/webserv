@@ -26,7 +26,7 @@ CGI::CGI()
 }
 
 // Constructor
-CGI::CGI(const HTTPparser &request, const HttpServer &server)
+CGI::CGI(const HTTPparser &request)
 	: cgi_pid_(-1)
 {
 	// Initialize pipes to invalid values
@@ -37,19 +37,11 @@ CGI::CGI(const HTTPparser &request, const HttpServer &server)
 
 	script_path_ = request.getCurrentFilePath();
 
-	// determineInterpreter();
 	// Use /usr/bin/env to find the Python interpreter in the user's PATH for portability
 	interpreter_path_ = "/usr/bin/env";
 	request_body_ = request.getBody();
 
-	// Handle chunked encoding if needed
-	const std::map<std::string, std::string> &headers = request.getHeaders();
-	if (headers.find("Transfer-Encoding") != headers.end() &&
-		headers.find("Transfer-Encoding")->second == "chunked")
-	{
-		handleChunkedBody();
-	}
-	setupEnvironment(request, server);
+	setupEnvironment(request);
 }
 
 // Destructor
@@ -59,9 +51,8 @@ CGI::~CGI()
 }
 
 // Setup environment variables
-void CGI::setupEnvironment(const HTTPparser &request, const HttpServer &server)
+void CGI::setupEnvironment(const HTTPparser &request)
 {
-	(void)server; // Unused parameter
 	const std::map<std::string, std::string> &headers = request.getHeaders();
 
 	// Required CGI environment variables
@@ -89,53 +80,14 @@ void CGI::setupEnvironment(const HTTPparser &request, const HttpServer &server)
 	for (std::map<std::string, std::string>::const_iterator it = headers.begin();
 		 it != headers.end(); ++it)
 	{
+		// Skip transfer-encoding as it's server-internal framing
+		if (it->first == "transfer-encoding")
+			continue;
 		std::string env_name = "HTTP_" + it->first;
 		std::replace(env_name.begin(), env_name.end(), '-', '_');
 		std::transform(env_name.begin(), env_name.end(), env_name.begin(), ::toupper);
 		env_[env_name] = it->second;
 	}
-}
-
-// Handle chunked request body
-void CGI::handleChunkedBody()
-{
-	request_body_ = decodeChunkedBody(request_body_);
-	env_["CONTENT_LENGTH"] = numberToString(request_body_.size());
-}
-
-// Decode chunked body
-std::string CGI::decodeChunkedBody(const std::string &body)
-{
-	std::string unchunked;
-	size_t pos = 0;
-	size_t body_size = body.size();
-
-	while (pos < body_size)
-	{
-		// Find chunk size line
-		size_t line_end = body.find("\r\n", pos);
-		if (line_end == std::string::npos)
-			break;
-
-		std::string size_line = body.substr(pos, line_end - pos);
-		char *endptr;
-		long chunk_size = strtol(size_line.c_str(), &endptr, 16);
-
-		if (chunk_size == 0)
-			break; // Last chunk
-		if (endptr == size_line.c_str())
-			break; // Invalid chunk size
-
-		// Move to chunk data
-		pos = line_end + 2;
-		if (pos + chunk_size > body_size)
-			break;
-
-		unchunked.append(body.substr(pos, chunk_size));
-		pos += chunk_size + 2; // Skip CRLF (\r\n) after chunk
-	}
-
-	return unchunked;
 }
 
 // Create environment array for execve
@@ -289,13 +241,28 @@ int CGI::execute()
 		close(pipe_in_[0]);	 // Close read end of input pipe
 		close(pipe_out_[1]); // Close write end of output pipe
 
-		// Write request body to CGI stdin
+		// Write entire request body to CGI stdin (handle partial writes)
 		if (!request_body_.empty())
 		{
-			ssize_t written = write(pipe_in_[1], request_body_.c_str(), request_body_.size());
-			if (written == -1)
+			const char *data = request_body_.data();
+			size_t to_write = request_body_.size();
+			while (to_write > 0)
 			{
-				std::cerr << "Warning: Failed to write request body to CGI" << std::endl;
+				ssize_t n = write(pipe_in_[1], data, to_write);
+				if (n > 0)
+				{
+					data += n;
+					to_write -= static_cast<size_t>(n);
+				}
+				else if (n == -1 && errno == EINTR)
+				{
+					continue; // Retry if interrupted by signal
+				}
+				else
+				{
+					std::cerr << "Warning: Failed to write request body to CGI" << std::endl;
+					break;
+				}
 			}
 		}
 		close(pipe_in_[1]); // Close write end after writing
