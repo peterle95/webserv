@@ -158,15 +158,11 @@ int HttpServer::start()
         std::cerr << "No sockets could be created for any server block" << std::endl;
         return 1;
     }
-    // Use environment variable to control serve-once mode
-    // This allows running the server in a single-request mode for testing
-    const char *onceEnv = std::getenv("WEBSERV_ONCE");
-    bool serveOnce = (onceEnv && std::string(onceEnv) == "1");
-
-    printStartupMessage(serveOnce);
+    // Serve-once testing mode removed; starting normal multi-request server
+    printStartupMessage();
 
     // Call the aligned accept loop
-    int result = runMultiServerAcceptLoop(_serverSockets, serveOnce);
+    int result = runMultiServerAcceptLoop(_serverSockets);
 
     // Cleanup
     for (size_t i = 0; i < _serverSockets.size(); ++i)

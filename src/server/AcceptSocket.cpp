@@ -8,7 +8,7 @@
    - Delegates state transitions to Client::handleConnection()
 */
 
-int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &serverSockets, bool serveOnce)
+int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &serverSockets)
 {
     size_t acceptedCount = 0;
 
@@ -151,9 +151,7 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
             }
         }
 
-        // Serve-once mode: stop after serving a single connection when no clients remain active
-        if (serveOnce && acceptedCount >= 1 && _clients.empty())
-            break;
+        // Serve-once mode removed; always continue until shutdown
     }
 
     // Cleanup remaining clients on shutdown
