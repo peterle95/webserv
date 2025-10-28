@@ -150,8 +150,6 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                 _clients.erase(it);
             }
         }
-
-        // Serve-once mode removed; always continue until shutdown
     }
 
     // Cleanup remaining clients on shutdown
