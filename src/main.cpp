@@ -195,10 +195,6 @@ static int runTests(const std::string &configPath)
 // implement later try...catch blocks
 int main(int argc, char **argv)
 {
-    // Mode selection
-    // Usage:
-    //   ./webserv                 -> normal server
-    //   ./webserv --run-tests     -> run basic client/response tests
 
     std::string configPath = "conf/default.conf";
 
