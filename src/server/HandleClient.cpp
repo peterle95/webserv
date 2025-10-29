@@ -84,7 +84,7 @@ void HttpServer::handleClient(int client_fd)
         }
     }
 
-    HTTPparser parser;
+    /*HTTPparser parser;
     parser.parseRequest(request);
     bool keepAlive = determineKeepAlive(parser);
 
@@ -162,7 +162,7 @@ void HttpServer::handleClient(int client_fd)
         if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
             continue;
         break; // other error
-    }
+    }*/
 
     // NOTE: Keep-alive not supported yet
 }

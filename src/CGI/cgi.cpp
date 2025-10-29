@@ -26,7 +26,7 @@ CGI::CGI()
 }
 
 // Constructor
-CGI::CGI(const HTTPparser &request, const HttpServer &server)
+CGI::CGI(const HTTPparser &request,  HttpServer &server)
 	: cgi_pid_(-1)
 {
 	// Initialize pipes to invalid values
@@ -35,8 +35,10 @@ CGI::CGI(const HTTPparser &request, const HttpServer &server)
 	pipe_out_[0] = -1;
 	pipe_out_[1] = -1;
 
-	script_path_ = request.getCurrentFilePath();
-	//const LocationConfig *config = server.getCurrentLocation()	;
+	//script_path_
+	script_path_ = server.getFilePath(request.getPath(), server.selectServerForRequest(request, std::atoi(request.getServerPort().c_str())));
+	/*std::string request_path = request.getPath();
+	const LocationConfig *config = server.getCurrentLocation()	;*/
     
 	// determineInterpreter();
 	// Use /usr/bin/env to find the Python interpreter in the user's PATH for portability

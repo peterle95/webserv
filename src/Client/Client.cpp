@@ -14,7 +14,7 @@ Client::writeResponse()
     ↓ (sends to socket)
 
 */
-static bool iequals(const std::string &a, const std::string &b)
+/*static bool iequals(const std::string &a, const std::string &b)
 {
     if (a.size() != b.size())
         return false;
@@ -26,11 +26,13 @@ static bool iequals(const std::string &a, const std::string &b)
             return false;
     }
     return true;
-}
+}*/
 
-Client::Client(int fd, HttpServer &server, size_t serverIndex, int serverPort)
-    : _socket(fd),
+Client::Client(int fd, HttpServer *server, Response *response, size_t serverIndex, int serverPort)
+    : _socket(fd), 
+      
       _server(server),
+       _response(response),
       _state(READING),
       _keep_alive(false),
       _peer_half_closed(false),
@@ -43,6 +45,7 @@ Client::Client(int fd, HttpServer &server, size_t serverIndex, int serverPort)
       _cgi_started(false),
       _serverIndex(serverIndex),
       _serverPort(serverPort)
+      
 {
     _cgi_pipe_in[0] = _cgi_pipe_in[1] = -1;
     _cgi_pipe_out[0] = _cgi_pipe_out[1] = -1;
@@ -213,20 +216,47 @@ void Client::readRequest()
 
 void Client::generateResponse()
 {
+   
     DEBUG_PRINT(BLUE << "=== GENERATING RESPONSE ===" << RESET);
     DEBUG_PRINT("Request buffer size: " << _request_buffer.size());
 
     // Parse the HTTP request
     DEBUG_PRINT(MAGENTA << "*** ENTERING HTTP PARSER ***" << RESET);
     bool ok = _parser.parseRequest(_request_buffer);
-    _keep_alive = _server.determineKeepAlive(_parser);
+    _keep_alive = _server->determineKeepAlive(_parser);
 
     DEBUG_PRINT("Parsing result: " << (ok ? "SUCCESS" : "FAILED"));
     DEBUG_PRINT("Parser valid: " << (_parser.isValid() ? "YES" : "NO"));
     DEBUG_PRINT("Keep-alive: " << (_keep_alive ? "YES" : "NO"));
 
     DEBUG_PRINT(MAGENTA << "*** EXITING HTTP PARSER ***" << RESET);
-    if (!ok || !_parser.isValid())
+    if(ok && _parser.isValid())
+    {
+        DEBUG_PRINT(GREEN << "Request parsed successfully" << RESET);
+        // Ensure _response refers to a Response instance configured for this server
+        // The original code `Response(_server, _server->_configParser);` created a
+        // temporary and did nothing — replace that with either an assignment
+        // into the existing object or allocate one if the pointer is null.
+        if (_response == NULL)
+        {
+            _response = new Response(_server->selectServerForRequest(_parser, _serverPort),_server ,_parser, _server->_configParser);
+        }
+        else
+        {
+            // Use assignment to reinitialize the existing Response object
+            _response = new Response(_server->selectServerForRequest(_parser, _serverPort),_server,_parser,_server->_configParser);
+        }
+
+        _response->setRequest(_parser.getMethod());
+        _response->buildResponse();
+        _response_buffer =_response->getResponse();
+        Logger::logResponse(_response_buffer);
+        _response_offset = 0;
+        DEBUG_PRINT("Transitioning to WRITING state");
+        _state = WRITING;
+        return;
+    }
+   /* if (!ok || !_parser.isValid())
     {
         DEBUG_PRINT(RED << "Request parsing failed: " << _parser.getErrorMessage() << RESET);
         DEBUG_PRINT("Generating BAD REQUEST response");
@@ -333,7 +363,7 @@ void Client::generateResponse()
         DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
         _state = WRITING;
         return;
-    }
+    }*/
 }
 
 void Client::startCgi()
@@ -369,7 +399,7 @@ void Client::writeResponse()
     DEBUG_PRINT(BLUE << "=== WRITING RESPONSE ===" << RESET);
     DEBUG_PRINT("Response buffer size: " << _response_buffer.size());
     DEBUG_PRINT("Bytes already sent: " << _response_offset);
-
+    
     while (_response_offset < _response_buffer.size())
     {
         ssize_t sent = send(_socket,

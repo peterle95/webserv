@@ -4,13 +4,6 @@
 
 #include "Common.hpp"
 
-struct ServerConfig
-{   
-    int listenPort;
-    int port;
-    /* data */
-};
-
 //  Location configuration structure to hold per-location settings
 struct LocationConfig
 {
