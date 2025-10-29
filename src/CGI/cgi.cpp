@@ -1,6 +1,5 @@
 #include "Cgi.hpp"
 #include "Common.hpp"
-#include "IOUtils.hpp" // Added: use IO wrappers (io_write/io_read) to avoid direct errno checks after write/read
 
 // Utility function to convert number to string
 std::string CGI::numberToString(int number)
@@ -249,26 +248,17 @@ int CGI::execute()
 			size_t to_write = request_body_.size();
 			while (to_write > 0)
 			{
-				// Changed: replaced direct write + errno handling with io_write wrapper.
-				// This loop handles partial writes and differentiates would-block, closed, and error
-				// using IOStatus without checking errno after write, meeting evaluation criteria.
-				IOResult w = io_write(pipe_in_[1], data, to_write);
-				if (w.status == IO_OK)
+				ssize_t n = write(pipe_in_[1], data, to_write);
+				if (n > 0)
 				{
-					data += w.bytes;
-					to_write -= static_cast<size_t>(w.bytes);
+					data += n;
+					to_write -= static_cast<size_t>(n);
 				}
-				else if (w.status == IO_WOULD_BLOCK)
+				else if (n == -1 && errno == EINTR)
 				{
-					// Non-blocking pipe would block; retry later in loop
-					continue;
+					continue; // Retry if interrupted by signal
 				}
-				else if (w.status == IO_CLOSED)
-				{
-					std::cerr << "Warning: CGI stdin closed while writing" << std::endl;
-					break;
-				}
-				else // IO_ERROR
+				else
 				{
 					std::cerr << "Warning: Failed to write request body to CGI" << std::endl;
 					break;
@@ -291,32 +281,12 @@ std::string CGI::readResponse()
 
 	std::string response;
 	char buffer[CGI_BUFFER_SIZE];
+	ssize_t bytes_read;
 
 	// Read until EOF (handles cases without Content-Length)
-	for (;;)
+	while ((bytes_read = read(pipe_out_[0], buffer, sizeof(buffer))) > 0)
 	{
-		// Changed: replaced direct read + errno handling with io_read wrapper.
-		// This avoids checking errno after read and correctly distinguishes
-		// IO_OK, IO_WOULD_BLOCK, IO_CLOSED, and IO_ERROR to pass evaluation.
-		IOResult r = io_read(pipe_out_[0], buffer, sizeof(buffer));
-		if (r.status == IO_OK)
-		{
-			response.append(buffer, r.bytes);
-			continue;
-		}
-		if (r.status == IO_WOULD_BLOCK)
-		{
-			// No more data available right now
-			break;
-		}
-		if (r.status == IO_CLOSED)
-		{
-			// EOF
-			break;
-		}
-		// IO_ERROR
-		std::cerr << "Error: reading CGI output failed" << std::endl;
-		return "HTTP/1.1 500 Internal Server Error\r\n\r\nCGI read error";
+		response.append(buffer, bytes_read);
 	}
 
 	close(pipe_out_[0]);
