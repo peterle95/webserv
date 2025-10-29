@@ -28,6 +28,7 @@ void ConfigParser::requireSemicolon(const std::string &line, size_t lineNo) cons
     if (line.empty() || line[line.size() - 1] != ';')
     {
         std::string msg = ErrorHandler::makeLocationMsg("Missing ';' at end of directive", (int)lineNo, this->_configFile);
+        msg += "\nInvalid line: \"" + line + "\"";
         throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_MISSING_SEMICOLON, (int)lineNo, this->_configFile);
     }
 }

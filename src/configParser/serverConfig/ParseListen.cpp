@@ -28,6 +28,14 @@ void ServerConfig::parseListen(const std::string &val, size_t lineNo)
     // Store as host:port pair (primary storage)
     // this->_listenAddresses.push_back(std::make_pair(host, port));
 
+    // Avoid adding duplicate port entries. If the port is already present, skip it.
+	// Might need to be updated if multiple IP is supported
+    if (std::find(this->_ports.begin(), this->_ports.end(), port) != this->_ports.end())
+    {
+        DEBUG_PRINT("Port " << port << " already present; skipping duplicate listen entry");
+        return;
+    }
+
     this->_hosts.push_back(host);
     this->_ports.push_back(port);
 
