@@ -105,6 +105,12 @@ const LocationConfig *HttpServer::getCurrentLocation()
 
 int HttpServer::start()
 {
+    // Pre-validation: Check all configurations before attempting to start any servers
+    if (!validateConfiguration())
+    {
+        std::cerr << "Validation of Config File failed. Server will not start." << std::endl;
+        return 1;
+    }
 
     // Iterate through all server blocks
     for (size_t serverIdx = 0; serverIdx < _servers.size(); ++serverIdx)
@@ -175,6 +181,116 @@ int HttpServer::start()
     }
     return result;
 }
+
+// Pre-validation to check all configurations before server startup
+bool HttpServer::validateConfiguration()
+{
+    std::cout << "Running pre-validation on " << _servers.size() << " server blocks..." << std::endl;
+
+    bool allValid = true;
+    std::map<int, size_t> portToServerIndex;
+
+    for (size_t serverIdx = 0; serverIdx < _servers.size(); ++serverIdx)
+    {
+        const ServerConfig &serverConfig = _servers[serverIdx];
+        const std::vector<int> &ports = serverConfig.getListenPorts();
+
+        std::cout << "Validating server block " << serverIdx + 1
+                  << " (" << serverConfig.getServerName() << ")..." << std::endl;
+
+        // First Check: Port conflicts
+        // TODO: Will need to be revisited if multiple hosts (IP) per port is handled
+        for (size_t portIdx = 0; portIdx < ports.size(); ++portIdx)
+        {
+            int port = ports[portIdx];
+
+            if (portToServerIndex.find(port) != portToServerIndex.end())
+            {
+                if (portToServerIndex[port] != serverIdx)
+                {
+                    std::cerr << "ERROR: Port " << port << " is used by multiple server blocks ("
+                              << "server " << portToServerIndex[port] + 1 << " and server " << serverIdx + 1 << ")" << std::endl;
+                    allValid = false;
+                }
+                else
+                {
+                    std::cerr << "WARNING: Duplicate port " << port << " found in server block " << serverIdx + 1 << std::endl;
+                }
+            }
+            else
+            {
+                portToServerIndex[port] = serverIdx;
+            }
+        }
+
+        // Second Check: Root directory exists and is accessible
+        const std::string &rootDir = serverConfig.getRoot();
+        if (!rootDir.empty())
+        {
+            struct stat statBuf;
+            if (stat(rootDir.c_str(), &statBuf) == -1)
+            {
+                std::cerr << "ERROR: Root directory does not exist: " << rootDir
+                          << " (server block " << serverIdx + 1 << ")" << std::endl;
+                allValid = false;
+            }
+            else if (!S_ISDIR(statBuf.st_mode))
+            {
+                std::cerr << "ERROR: Root path is not a directory: " << rootDir
+                          << " (server block " << serverIdx + 1 << ")" << std::endl;
+                allValid = false;
+            }
+            else if (access(rootDir.c_str(), R_OK) == -1)
+            {
+                std::cerr << "ERROR: Root directory is not readable: " << rootDir
+                          << " (server block " << serverIdx + 1 << ")" << std::endl;
+                allValid = false;
+            }
+        }
+
+        // Third Check: Index file exists if specified
+        const std::string &indexFile = serverConfig.getIndex();
+        if (!indexFile.empty() && !rootDir.empty())
+        {
+            std::string indexPath = rootDir + "/" + indexFile;
+            if (access(indexPath.c_str(), R_OK) != 0)
+            {
+                std::cerr << "WARNING: Index file not accessible: " << indexPath
+                          << " (server block " << serverIdx + 1 << ")" << std::endl;
+                // This is a warning, not a fatal error
+            }
+        }
+
+        // Fourth Check: Valid port range
+        for (size_t portIdx = 0; portIdx < ports.size(); ++portIdx)
+        {
+            int port = ports[portIdx];
+            if (port < 1 || port > 65535)
+            {
+                std::cerr << "ERROR: Invalid port number: " << port
+                          << " (server block " << serverIdx + 1 << ")" << std::endl;
+                allValid = false;
+            }
+        }
+
+        if (allValid)
+        {
+            std::cout << "Server block " << serverIdx + 1 << " passed validation." << std::endl;
+        }
+    }
+
+    if (allValid)
+    {
+        std::cout << "All server blocks passed validation." << std::endl;
+    }
+    else
+    {
+        std::cerr << "One or more server blocks failed validation." << std::endl;
+    }
+
+    return allValid;
+}
+
 // Case-insensitive string equality for ASCII
 static inline bool iequals(const std::string &a, const std::string &b)
 {
@@ -193,32 +309,49 @@ static inline bool iequals(const std::string &a, const std::string &b)
 size_t HttpServer::selectServerForRequest(const HTTPparser &parser, const int serverPort)
 {
     std::string host;
-    std::string portStr;
 
     host = parser.getServerName();
-    portStr = parser.getServerPort();
 
-    // Iterate through server configs to find a matching server name and port
+    std::vector<size_t> candidates;
     for (size_t i = 0; i < _servers.size(); ++i)
     {
         const ServerConfig &serverConfig = _servers[i];
-        const std::string &serverName = serverConfig.getServerName();
         const std::vector<int> &listenPorts = serverConfig.getListenPorts();
-
-        // Check if server name matches
-        if (iequals(serverName, host))
+        for (size_t j = 0; j < listenPorts.size(); ++j)
         {
-            // Check if the server listens on the requested port
-            for (size_t j = 0; j < listenPorts.size(); ++j)
+            if (listenPorts[j] == serverPort)
             {
-                if (listenPorts[j] == serverPort)
-                {
-                    return i; // Found matching server
-                }
+                candidates.push_back(i);
+                break; // a server only needs to match the port once
             }
         }
     }
 
-    // No matching server found, default to first server block
-    return static_cast<size_t>(-1);
+    if (candidates.empty())
+    {
+        return static_cast<size_t>(-1);
+    }
+
+    // If exactly one server listens on the port, return it.
+    if (candidates.size() == 1)
+    {
+        return candidates[0];
+    }
+
+    // TODO: Since we already check if there is any duplicate port during validation, we could remove this check, or update it to consider multiple hosts (IP) per port.
+    // Multiple servers listen on the same port — prefer server_name match if Host header provided
+
+    if (!host.empty())
+    {
+        for (size_t idx = 0; idx < candidates.size(); ++idx)
+        {
+            size_t srvIdx = candidates[idx];
+            const std::string &serverName = _servers[srvIdx].getServerName();
+            if (iequals(serverName, host))
+                return srvIdx;
+        }
+    }
+
+    // Fallback: return the first candidate (configuration order decides default)
+    return candidates[0];
 }
