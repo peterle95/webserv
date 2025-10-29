@@ -1,6 +1,7 @@
 NAME = webserv
 CXX = c++
 CXXFLAGS = -g -Wall -Wextra -Werror -std=c++98 -Iinclude
+#CXXFLAGS = -g3 -O0 -DDEBUG=1 -Wall -Wextra -Werror -std=c++17 -Iinclude
 
 SRCS = src/main.cpp \
 		src/configParser/ConfigParser.cpp \
@@ -39,6 +40,7 @@ SRCS = src/main.cpp \
 		src/httpResponse/HttpResponse.cpp \
 		src/httpResponse/HttpResponseUtils.cpp \
 		src/Logging/Logger.cpp \
+		src/IOUtils/IOUtils.cpp \
 		
 
 OBJS = $(SRCS:.cpp=.o)

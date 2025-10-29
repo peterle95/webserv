@@ -85,7 +85,7 @@ public:
 
     // State management
     State getState() const { return _state; }
-    bool isValid() const { return _isValid; }
+    bool isValid() const { return _isValid; }//changed for testing
     const std::string &getErrorMessage() const { return _errorMessage; }
     const std::string &getErrorStatusCode() const { return _errorStatusCode; }
 

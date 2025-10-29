@@ -56,6 +56,7 @@
         "span": "cpp",
         "cinttypes": "cpp",
         "*.tcc": "cpp",
-        "cerrno": "cpp"
+        "cerrno": "cpp",
+        "iomanip": "cpp"
     }
 }

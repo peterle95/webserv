@@ -23,7 +23,7 @@ HttpServer::HttpServer(ConfigParser &configParser) : _configParser(configParser)
 HttpServer::~HttpServer() {}
 
 // Map the current location config based on the request path
-void HttpServer::mapCurrentLocationConfig(const std::string &path, const int serverIndex)
+const LocationConfig *HttpServer::mapCurrentLocationConfig(const std::string &path, const int serverIndex)
 {
     const std::map<std::string, LocationConfig> &locations = _servers[serverIndex].getLocations();
 
@@ -36,24 +36,24 @@ void HttpServer::mapCurrentLocationConfig(const std::string &path, const int ser
         const std::string &locationPath = it->first;
 
         // Check if the request path starts with this location path
-        if (path.size() >= locationPath.size() &&
-            path.substr(0, locationPath.size()) == locationPath)
-        {
+        bool matches = (path.size() >= locationPath.size() &&
+            path.substr(0, locationPath.size()) == locationPath);
+        
             // If this is a longer match than what we've found so far, use it
-            if (locationPath.size() > longestMatchLength)
+            if (matches && locationPath.size() > longestMatchLength)
             {
                 longestMatchLength = locationPath.size();
                 bestLocation = &it->second;
             }
+            // Set the best matching location, or keep current if no match found
+            /*if (locationPath.size() > longestMatchLength )
+            {
+                _currentLocation = bestLocation;
+            }*/
         }
-    }
-
-    // Set the best matching location, or keep current if no match found
-    if (bestLocation != NULL)
-    {
         _currentLocation = bestLocation;
+        return _currentLocation;
     }
-}
 
 // Get the full file path based on the request path and
 //    current location config
@@ -77,6 +77,8 @@ std::string HttpServer::getFilePath(const std::string &path, const int serverInd
         {
             if (!_currentLocation->index.empty())
                 filePath = _servers[serverIndex].getRoot() + path + _currentLocation->index;
+            else if(_currentLocation->autoindex)
+                filePath = _servers[serverIndex].getRoot() + path;
             else
                 filePath = _servers[serverIndex].getRoot() + path + _servers[serverIndex].getIndex(); // fallback to server index
         }
@@ -93,8 +95,10 @@ std::string HttpServer::getFilePath(const std::string &path, const int serverInd
 // Public helper to resolve file path for a request path and map location
 std::string HttpServer::resolveFilePathFor(const std::string &path, const int serverIndex)
 {
-    mapCurrentLocationConfig(path, serverIndex);
-    return getFilePath(path, serverIndex);
+    const LocationConfig *config = mapCurrentLocationConfig(path, serverIndex);
+    if(!config->path.empty())
+       return getFilePath(path, serverIndex);
+     return "" ;
 }
 
 // for use in response.cpp return the current location config
@@ -164,15 +168,16 @@ int HttpServer::start()
         std::cerr << "No sockets could be created for any server block" << std::endl;
         return 1;
     }
-    // Use environment variable to control serve-once mode
+       // Use environment variable to control serve-once mode
     // This allows running the server in a single-request mode for testing
     const char *onceEnv = std::getenv("WEBSERV_ONCE");
     bool serveOnce = (onceEnv && std::string(onceEnv) == "1");
 
     printStartupMessage(serveOnce);
+    // Serve-once testing mode removed; starting normal multi-request server
 
     // Call the aligned accept loop
-    int result = runMultiServerAcceptLoop(_serverSockets, serveOnce);
+    int result = runMultiServerAcceptLoop(_serverSockets);
 
     // Cleanup
     for (size_t i = 0; i < _serverSockets.size(); ++i)
