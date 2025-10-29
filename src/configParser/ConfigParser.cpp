@@ -37,16 +37,12 @@ ConfigParser::~ConfigParser() {}
 // Minimal validation with error throwing for invalid syntax/values
 void ConfigParser::parseLines(const std::vector<std::string> &lines)
 {
-    // this->_lines.clear();
     for (size_t i = 0; i < lines.size(); ++i)
     {
         const std::string raw = lines[i];
         // DEBUG_PRINT("Line " << i << " raw: '" << raw << "'");
         std::string line = preprocessLine(raw);
         // DEBUG_PRINT("Line " << i << " preprocessed: '" << line << "'");
-
-        // if (!line.empty())
-        //     this->_lines.push_back(line);
 
         if (line.empty())
         {
