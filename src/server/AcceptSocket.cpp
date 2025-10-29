@@ -8,7 +8,7 @@
    - Delegates state transitions to Client::handleConnection()
 */
 
-int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &serverSockets, Response *_response, bool serveOnce)
+int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &serverSockets)
 {
     size_t acceptedCount = 0;
 
@@ -48,8 +48,6 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                 if (cfd > max_fd)
                     max_fd = cfd;
             }
-            // GENERATING_RESPONSE will be handled post-select without waiting on FDs
-            // AWAITING_CGI not used in current synchronous CGI path
         }
 
         struct timeval tv;
@@ -152,10 +150,6 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                 _clients.erase(it);
             }
         }
-
-        // Serve-once mode: stop after serving a single connection when no clients remain active
-        if (serveOnce && acceptedCount >= 1 && _clients.empty())
-            break;
     }
 
     // Cleanup remaining clients on shutdown

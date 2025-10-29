@@ -37,25 +37,25 @@ private:
     // int _port;
     std::string _root;
     std::string _index;
-    
-    const LocationConfig *_currentLocation;
     std::vector<ServerConfig> _servers; // Store multiple server configs
     // Active clients keyed by socket fd
     std::map<int, Client *> _clients;
     std::vector<ServerSocketInfo> _serverSockets;
     Response *_response;
+    const LocationConfig * _currentLocation;
+    // Config parser reference
    // Response &_response;
 
     
 
     // Socket setup
-    int createAndBindSocket(int port);
+    int createAndBindSocket(int port, in_addr_t host);
     void setupSignalHandlers();
-    void printStartupMessage(bool serveOnce);
+    void printStartupMessage();
 
     // Accept loop for incoming connections
-    int runAcceptLoop(int server_fd, bool serveOnce);
-    int runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &serverSockets, Response *_response, bool serveOnce);
+    //int runAcceptLoop(int server_fd);
+    int runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &serverSockets);
 
 public:
     HttpServer(ConfigParser &configParser);

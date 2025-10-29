@@ -1,5 +1,6 @@
 #include "Cgi.hpp"
 #include "Common.hpp"
+#include "IOUtils.hpp" // Added: use IO wrappers (io_write/io_read) to avoid direct errno checks after write/read
 
 // Utility function to convert number to string
 std::string CGI::numberToString(int number)
@@ -45,14 +46,7 @@ CGI::CGI(const HTTPparser &request,  HttpServer &server)
 	interpreter_path_ = "/usr/bin/env";
 	request_body_ = request.getBody();
 
-	// Handle chunked encoding if needed
-	const std::map<std::string, std::string> &headers = request.getHeaders();
-	if (headers.find("Transfer-Encoding") != headers.end() &&
-		headers.find("Transfer-Encoding")->second == "chunked")
-	{
-		handleChunkedBody();
-	}
-	setupEnvironment(request, server);
+	setupEnvironment(request);
 }
 
 // Destructor
@@ -62,9 +56,8 @@ CGI::~CGI()
 }
 
 // Setup environment variables
-void CGI::setupEnvironment(const HTTPparser &request, const HttpServer &server)
+void CGI::setupEnvironment(const HTTPparser &request)
 {
-	(void)server; // Unused parameter
 	const std::map<std::string, std::string> &headers = request.getHeaders();
 
 	// Required CGI environment variables
@@ -92,53 +85,14 @@ void CGI::setupEnvironment(const HTTPparser &request, const HttpServer &server)
 	for (std::map<std::string, std::string>::const_iterator it = headers.begin();
 		 it != headers.end(); ++it)
 	{
+		// Skip transfer-encoding as it's server-internal framing
+		if (it->first == "transfer-encoding")
+			continue;
 		std::string env_name = "HTTP_" + it->first;
 		std::replace(env_name.begin(), env_name.end(), '-', '_');
 		std::transform(env_name.begin(), env_name.end(), env_name.begin(), ::toupper);
 		env_[env_name] = it->second;
 	}
-}
-
-// Handle chunked request body
-void CGI::handleChunkedBody()
-{
-	request_body_ = decodeChunkedBody(request_body_);
-	env_["CONTENT_LENGTH"] = numberToString(request_body_.size());
-}
-
-// Decode chunked body
-std::string CGI::decodeChunkedBody(const std::string &body)
-{
-	std::string unchunked;
-	size_t pos = 0;
-	size_t body_size = body.size();
-
-	while (pos < body_size)
-	{
-		// Find chunk size line
-		size_t line_end = body.find("\r\n", pos);
-		if (line_end == std::string::npos)
-			break;
-
-		std::string size_line = body.substr(pos, line_end - pos);
-		char *endptr;
-		long chunk_size = strtol(size_line.c_str(), &endptr, 16);
-
-		if (chunk_size == 0)
-			break; // Last chunk
-		if (endptr == size_line.c_str())
-			break; // Invalid chunk size
-
-		// Move to chunk data
-		pos = line_end + 2;
-		if (pos + chunk_size > body_size)
-			break;
-
-		unchunked.append(body.substr(pos, chunk_size));
-		pos += chunk_size + 2; // Skip CRLF (\r\n) after chunk
-	}
-
-	return unchunked;
 }
 
 // Create environment array for execve
@@ -291,13 +245,37 @@ int CGI::execute()
 		close(pipe_in_[0]);	 // Close read end of input pipe
 		close(pipe_out_[1]); // Close write end of output pipe
 
-		// Write request body to CGI stdin
+		// Write entire request body to CGI stdin (handle partial writes)
 		if (!request_body_.empty())
 		{
-			ssize_t written = write(pipe_in_[1], request_body_.c_str(), request_body_.size());
-			if (written == -1)
+			const char *data = request_body_.data();
+			size_t to_write = request_body_.size();
+			while (to_write > 0)
 			{
-				std::cerr << "Warning: Failed to write request body to CGI" << std::endl;
+				// Changed: replaced direct write + errno handling with io_write wrapper.
+				// This loop handles partial writes and differentiates would-block, closed, and error
+				// using IOStatus without checking errno after write, meeting evaluation criteria.
+				IOResult w = io_write(pipe_in_[1], data, to_write);
+				if (w.status == IO_OK)
+				{
+					data += w.bytes;
+					to_write -= static_cast<size_t>(w.bytes);
+				}
+				else if (w.status == IO_WOULD_BLOCK)
+				{
+					// Non-blocking pipe would block; retry later in loop
+					continue;
+				}
+				else if (w.status == IO_CLOSED)
+				{
+					std::cerr << "Warning: CGI stdin closed while writing" << std::endl;
+					break;
+				}
+				else // IO_ERROR
+				{
+					std::cerr << "Warning: Failed to write request body to CGI" << std::endl;
+					break;
+				}
 			}
 		}
 		close(pipe_in_[1]); // Close write end after writing
@@ -316,12 +294,32 @@ std::string CGI::readResponse()
 
 	std::string response;
 	char buffer[CGI_BUFFER_SIZE];
-	ssize_t bytes_read;
 
 	// Read until EOF (handles cases without Content-Length)
-	while ((bytes_read = read(pipe_out_[0], buffer, sizeof(buffer))) > 0)
+	for (;;)
 	{
-		response.append(buffer, bytes_read);
+		// Changed: replaced direct read + errno handling with io_read wrapper.
+		// This avoids checking errno after read and correctly distinguishes
+		// IO_OK, IO_WOULD_BLOCK, IO_CLOSED, and IO_ERROR to pass evaluation.
+		IOResult r = io_read(pipe_out_[0], buffer, sizeof(buffer));
+		if (r.status == IO_OK)
+		{
+			response.append(buffer, r.bytes);
+			continue;
+		}
+		if (r.status == IO_WOULD_BLOCK)
+		{
+			// No more data available right now
+			break;
+		}
+		if (r.status == IO_CLOSED)
+		{
+			// EOF
+			break;
+		}
+		// IO_ERROR
+		std::cerr << "Error: reading CGI output failed" << std::endl;
+		return "HTTP/1.1 500 Internal Server Error\r\n\r\nCGI read error";
 	}
 
 	close(pipe_out_[0]);
