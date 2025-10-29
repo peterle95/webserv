@@ -272,7 +272,7 @@ int Response::appBody()
             std::string cgiResponse;
             if(fileExists(_targetfile) == true)
             {
-            cgiResponse = _HttpServer->processCGI(_HttpParser);
+            cgiResponse = _HttpServer->processCGI(_HttpParser,*_HttpServer);
             _response_body = cgiResponse;
             if (!cgiResponse.empty())
             {
@@ -293,7 +293,7 @@ int Response::appBody()
         if (currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty() && (_HttpServer->isMethodAllowed(("POST"))))
         {
             std::string cgiResponse;
-            cgiResponse = _HttpServer->processCGI(_HttpParser);
+            cgiResponse = _HttpServer->processCGI(_HttpParser,*_HttpServer);
             if (!cgiResponse.empty())
             {
                 //setHeaders();
@@ -400,13 +400,16 @@ void Response::buildResponse()
     // Handle error responses or body generation
     if (reqErr() || appBody())
     {
+        std::stringstream ss;
+        ss << _response_body.size();
+
         // Build error body based on the response code
         builderror_body(_code);
         _response_headers.append("HTTP/1.1 ");
         std::string statusMsg = statusMessage(_code);
         _response_headers.append(" " + statusMsg + "\r\n");
         _response_headers.append("Content-Length: ");
-        _response_headers.append(std::to_string(_response_body.size()) + "\r\n");
+        _response_headers.append(ss.str() + "\r\n");
         _response_headers.append("Connection: close\r\n");
         _response_headers.append("\r\n");
         _response_final = _response_headers + _response_body;
