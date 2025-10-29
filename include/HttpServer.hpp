@@ -47,13 +47,13 @@ private:
     void mapCurrentLocationConfig(const std::string &path, const int serverIndex);
 
     // Socket setup
-    int createAndBindSocket(int port);
+    int createAndBindSocket(int port, in_addr_t host);
     void setupSignalHandlers();
-    void printStartupMessage(bool serveOnce);
+    void printStartupMessage();
 
     // Accept loop for incoming connections
-    int runAcceptLoop(int server_fd, bool serveOnce);
-    int runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &serverSockets, bool serveOnce);
+    //int runAcceptLoop(int server_fd);
+    int runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &serverSockets);
 
 public:
     HttpServer(ConfigParser &configParser);

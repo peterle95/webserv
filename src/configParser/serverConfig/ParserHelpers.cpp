@@ -36,6 +36,8 @@ void ServerConfig::handleDirective(const std::string &key, const std::string &va
 {
     if (key == "listen")
         parseListen(val, lineNo);
+    else if (key == "host")
+        parseHost(val, lineNo);
     else if (key == "root")
         parseRoot(val, lineNo, &this->_root);
     else if (key == "index")

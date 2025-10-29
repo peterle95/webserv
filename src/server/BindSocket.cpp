@@ -34,7 +34,8 @@ static bool setSocketReusable(int server_fd)
     return setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == 0;
 }
 
-static void initializeAddress(struct sockaddr_in *addr, int port)
+// Initializes the socket address structure with the specified host and port.
+static void initializeAddress(struct sockaddr_in *addr, int port, in_addr_t host)
 {
     // Zeros out the struct to ensure all fields are initialized, preventing unpredictable behavior.
     std::memset(addr, 0, sizeof(*addr));
@@ -42,22 +43,21 @@ static void initializeAddress(struct sockaddr_in *addr, int port)
     // Sets the address family to AF_INET, specifying that the socket will use the IPv4 protocol.
     addr->sin_family = AF_INET;
 
-    // Sets the IP address. INADDR_ANY is a special address (0.0.0.0) that
-    // tells the socket to listen on all available network interfaces of the machine.
-    // htonl() converts this value from the host's byte order to the standard network byte order.
-    addr->sin_addr.s_addr = htonl(INADDR_ANY);
+    // Sets the IP address. 
+    addr->sin_addr.s_addr = host;
 
     // Sets the port number. htons() converts the port number from the host's
     // byte order to network byte order, which is crucial for interoperability across different systems.
     addr->sin_port = htons((uint16_t)port);
 }
 
-static bool bindSocket(int server_fd, int port)
+// Binds the socket to the address created from the host and port.
+static bool bindSocket(int server_fd, int port, in_addr_t host)
 {
     // Bind address
     struct sockaddr_in addr; // Declares a struct to hold address information for an IPv4 socket.
 
-    initializeAddress(&addr, port);
+    initializeAddress(&addr, port, host);
 
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
@@ -100,7 +100,8 @@ bool HttpServer::setNonBlocking(int fd)
     return true;
 }
 
-static bool configureSocket(int server_fd, int port)
+// Configures the socket for reuse and binds it to the specified host and port.
+static bool configureSocket(int server_fd, int port, in_addr_t host)
 {
     if (!setSocketReusable(server_fd))
     {
@@ -108,8 +109,10 @@ static bool configureSocket(int server_fd, int port)
         return false;
     }
 
-    if (!bindSocket(server_fd, port))
+    if (!bindSocket(server_fd, port, host))
+    {    
         return false;
+    }
 
     if (!startListening(server_fd))
         return false;
@@ -123,7 +126,8 @@ static bool configureSocket(int server_fd, int port)
     return true;
 }
 
-int HttpServer::createAndBindSocket(int port)
+// Creates and binds a socket to the specified host and port.
+int HttpServer::createAndBindSocket(int port, in_addr_t host)
 {
     int server_fd = createSocket();
     if (server_fd < 0)
@@ -131,7 +135,7 @@ int HttpServer::createAndBindSocket(int port)
         return -1;
     }
 
-    if (!configureSocket(server_fd, port))
+    if (!configureSocket(server_fd, port, host))
     {
         close(server_fd);
         return -1;

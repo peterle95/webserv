@@ -105,6 +105,7 @@ const LocationConfig *HttpServer::getCurrentLocation()
 
 int HttpServer::start()
 {
+
     // Iterate through all server blocks
     for (size_t serverIdx = 0; serverIdx < _servers.size(); ++serverIdx)
     {
@@ -123,7 +124,8 @@ int HttpServer::start()
             // Temporarily set _port for createAndBindSocket() to use
             //_port = port;
 
-            int server_fd = createAndBindSocket(port);
+            // Pass the host address to the socket creation function.
+            int server_fd = createAndBindSocket(port, serverConfig.getHost());
             if (server_fd < 0)
             {
                 std::cerr << "Failed to bind server " << serverIdx
@@ -140,9 +142,14 @@ int HttpServer::start()
             }
 
             _serverSockets.push_back(ServerSocketInfo(server_fd, port, serverIdx));
+            // Convert the host address back to a string for logging.
+            char hostStr[INET_ADDRSTRLEN];
+            struct in_addr host_addr;
+            host_addr.s_addr = serverConfig.getHost();
+            inet_ntop(AF_INET, &host_addr, hostStr, INET_ADDRSTRLEN);
             std::cout << "Server block " << serverIdx
                       << " (" << serverConfig.getServerName()
-                      << ") listening on port " << port << std::endl;
+                      << ") listening on " << hostStr << ":" << port << std::endl;
         }
     }
 
@@ -151,15 +158,11 @@ int HttpServer::start()
         std::cerr << "No sockets could be created for any server block" << std::endl;
         return 1;
     }
-    // Use environment variable to control serve-once mode
-    // This allows running the server in a single-request mode for testing
-    const char *onceEnv = std::getenv("WEBSERV_ONCE");
-    bool serveOnce = (onceEnv && std::string(onceEnv) == "1");
-
-    printStartupMessage(serveOnce);
+    // Serve-once testing mode removed; starting normal multi-request server
+    printStartupMessage();
 
     // Call the aligned accept loop
-    int result = runMultiServerAcceptLoop(_serverSockets, serveOnce);
+    int result = runMultiServerAcceptLoop(_serverSockets);
 
     // Cleanup
     for (size_t i = 0; i < _serverSockets.size(); ++i)
