@@ -97,7 +97,7 @@ static std::string recvAll(int fd)
             out.append(buf, buf + n);
         else if (n == 0)
             break;
-        else if (errno == EINTR)
+        else if (n < 0)
             continue;
         else
             break;

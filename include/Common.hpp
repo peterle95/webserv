@@ -41,7 +41,6 @@ macros used throughout the project.*/
 #include <sys/select.h>
 #include <cstring> // string operations: memset()
 #include <csignal> // signal handling: SIGINT, SIGTERM
-#include <cerrno> // error handling: errno
 #include <map>
 #include <set>
 #include <vector>

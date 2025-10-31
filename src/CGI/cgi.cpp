@@ -254,7 +254,7 @@ int CGI::execute()
 					data += n;
 					to_write -= static_cast<size_t>(n);
 				}
-				else if (n == -1 && errno == EINTR)
+				else if (n == -1) // errno after write not allowed
 				{
 					continue; // Retry if interrupted by signal
 				}

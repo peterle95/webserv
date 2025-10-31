@@ -145,11 +145,9 @@ void Client::readRequest()
                         }
                         else if (n < 0)
                         {
-                            if (errno == EINTR)
-                                continue;
-                            if (errno == EAGAIN || errno == EWOULDBLOCK)
-                                continue;
-                            return; // fatal error
+                            DEBUG_PRINT("Fatal read error: " << strerror(errno));
+                            _state = CLOSING;
+                            return;
                         }
                     }
                 }
@@ -167,16 +165,6 @@ void Client::readRequest()
         }
         if (n < 0)
         {
-            if (errno == EINTR)
-            {
-                DEBUG_PRINT("Read interrupted, retrying...");
-                continue;
-            }
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
-                DEBUG_PRINT("No more data available (EAGAIN/EWOULDBLOCK)");
-                break; // No more data for now
-            }
             DEBUG_PRINT("Fatal read error: " << strerror(errno));
             // Fatal error
             _state = CLOSING;
@@ -382,23 +370,19 @@ void Client::writeResponse()
             DEBUG_PRINT("Sent " << sent << " bytes, progress: " << _response_offset << "/" << _response_buffer.size());
             continue;
         }
-        if (sent < 0)
+        if (sent == 0)
         {
-            if (errno == EINTR)
-            {
-                DEBUG_PRINT("Send interrupted, retrying...");
-                continue;
-            }
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
-                DEBUG_PRINT("Send would block, returning to try later");
-                return; // try again later
-            }
+            // sent == 0 shouldn't happen for TCP unless closed; break
+            DEBUG_PRINT("Send returned 0, connection likely closed");
+            break;
+        }
+        else // sent < 0
+        {
             DEBUG_PRINT("Fatal send error: " << strerror(errno));
             _state = CLOSING; // fatal error
             return;
         }
-        // sent == 0 shouldn't happen for TCP unless closed; break
+        // sent == 0 shouldn't happen for TCP unless closed
         DEBUG_PRINT("Send returned 0, connection likely closed");
         break;
     }
