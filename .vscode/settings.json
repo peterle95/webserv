@@ -56,6 +56,12 @@
         "span": "cpp",
         "cinttypes": "cpp",
         "*.tcc": "cpp",
-        "cerrno": "cpp"
+        "cerrno": "cpp",
+        "chrono": "cpp",
+        "condition_variable": "cpp",
+        "ratio": "cpp",
+        "iomanip": "cpp",
+        "mutex": "cpp",
+        "thread": "cpp"
     }
 }
