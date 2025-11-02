@@ -402,18 +402,16 @@ void Client::writeResponse()
     DEBUG_PRINT("Response buffer size: " << _response_buffer.size());
     DEBUG_PRINT("Bytes already sent: " << _response_offset);
 
-    // Changed: replaced direct send + errno handling with io_send wrapper.
-    // This checks both -1 and 0 outcomes via IOStatus and avoids reading errno.
     while (_response_offset < _response_buffer.size())
     {
-        IOResult s = io_send(_socket,
-                             _response_buffer.c_str() + _response_offset,
-                             _response_buffer.size() - _response_offset,
-                             0);
-        if (s.status == IO_OK)
+        ssize_t sent = send(_socket,
+                            _response_buffer.c_str() + _response_offset,
+                            _response_buffer.size() - _response_offset,
+                            0);
+        if (sent > 0)
         {
-            _response_offset += static_cast<size_t>(s.bytes);
-            DEBUG_PRINT("Sent " << s.bytes << " bytes, progress: " << _response_offset << "/" << _response_buffer.size());
+            _response_offset += static_cast<size_t>(sent);
+            DEBUG_PRINT("Sent " << sent << " bytes, progress: " << _response_offset << "/" << _response_buffer.size());
             continue;
         }
         if (sent == 0)
