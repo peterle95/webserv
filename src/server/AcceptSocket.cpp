@@ -91,9 +91,9 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                         close(cfd);
                         continue;
                     }
-
+                     //response.buildResponse();
                     // Create client with server context information
-                    Client *cl = new Client(cfd, *this, serverSockets[i].serverIndex, serverSockets[i].port);
+                    Client *cl = new Client(cfd, this, _response,serverSockets[i].serverIndex, serverSockets[i].port);
                     _clients[cfd] = cl;
 
                     DEBUG_PRINT("New connection accepted on server '" 
@@ -148,7 +148,6 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                 _clients.erase(it);
             }
         }
-
     }
 
     // Cleanup remaining clients on shutdown

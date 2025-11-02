@@ -13,12 +13,12 @@
 #ifndef HTTPSERVER_HPP
 #define HTTPSERVER_HPP
 
-#include "ConfigParser.hpp"
-
-#include "HTTPparser.hpp"
-#include <map>
+#include "Common.hpp"
 
 class Client; // forward declaration
+//class ConfigParser;
+class HTTPparser;
+class Response;
 
 class HttpServer
 {
@@ -37,14 +37,16 @@ private:
     // int _port;
     std::string _root;
     std::string _index;
-    ConfigParser _configParser;
-    const LocationConfig *_currentLocation;
     std::vector<ServerConfig> _servers; // Store multiple server configs
     // Active clients keyed by socket fd
     std::map<int, Client *> _clients;
     std::vector<ServerSocketInfo> _serverSockets;
+    Response *_response;
+    const LocationConfig * _currentLocation;
+    // Config parser reference
+   // Response &_response;
 
-    void mapCurrentLocationConfig(const std::string &path, const int serverIndex);
+    
 
     // Socket setup
     int createAndBindSocket(int port, in_addr_t host);
@@ -58,19 +60,23 @@ private:
 
 public:
     HttpServer(ConfigParser &configParser);
-    // HttpServer();//As a default constructor for HTTPResponse
+    HttpServer();//As a default constructor for HTTPResponse
+   ConfigParser _configParser;//changed from private to public for access in response.cpp
     ~HttpServer();
 
     std::string getFilePath(const std::string &path, const int serverIndex); // changed from private for response.cpp
     bool determineKeepAlive(const HTTPparser &parser);                       // changed from private to public for access in response.cpp
     const LocationConfig *getCurrentLocation();
-    std::string processCGI(HTTPparser &parser); // changed from private to public for access in response.cpp
+    std::string processCGI(HTTPparser &parser, HttpServer &server); // changed from private to public for access in response.cpp
 
     // Helper: map location for path and return resolved file path
     std::string resolveFilePathFor(const std::string &path, const int serverIndex);
 
     static bool setNonBlocking(int fd);
 
+    //int getPort() const { return _port; }
+    //void mapCurrentLocationConfig(const std::string &path);//changed from private to public for access in cgi.cpp
+    const LocationConfig *mapCurrentLocationConfig(const std::string &path, const int serverIndex);//changed from private to public for access in response.cpp
     // int getPort() const { return _port; }
 
     // Start the non-blocking HTTP server with Client class state machine
@@ -84,6 +90,9 @@ public:
     std::string generatePostResponse(const std::string &body, bool keepAlive);
     bool isMethodAllowed(const std::string &method);
     size_t selectServerForRequest(const HTTPparser &parser, const int serverPort);
+
+    void handleClient(int client_fd);
+    size_t checkContentLength(const std::string &request, size_t header_end);
 };
 
 #endif

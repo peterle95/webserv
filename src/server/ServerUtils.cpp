@@ -71,13 +71,15 @@ void HttpServer::printStartupMessage()
                   << std::endl;
     }
 
+    DEBUG_PRINT("Mode: Multi-request (keep-alive)" << RESET);
     std::cout << "Press Ctrl+C to stop the server." << std::endl;
     std::cout << GREEN << "================================" << RESET << std::endl;
     /*     std::cout << "Serving " << _root << "/" << _index
                   << " on http://localhost:" << _port << "/" << std::endl;
 
         DEBUG_PRINT(RED << "HTTP Server started on port " << _port << RESET);
-        DEBUG_PRINT("Serving files from: " << RED << _root << "/" << _index << RESET); */
+        DEBUG_PRINT("Serving files from: " << RED << _root << "/" << _index << RESET);
+        DEBUG_PRINT("Mode: Multi-request (keep-alive)" << RESET); */
 }
 
 std::string HttpServer::generateBadRequestResponse(bool keepAlive)

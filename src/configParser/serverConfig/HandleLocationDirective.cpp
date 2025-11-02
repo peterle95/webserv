@@ -109,7 +109,7 @@ void ServerConfig::handleLocationDirective(LocationConfig *currentLocation,
 		applyCgiPass(currentLocation, val, lineNumber);
 	else if (key == "cgi_extension")
 		applyCgiExtension(currentLocation, val, lineNumber);
-	else if (key == "redirect")
+	else if (key == "return")
 		applyRedirect(currentLocation, val, lineNumber);
 	else
 	{

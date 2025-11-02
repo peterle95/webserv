@@ -29,7 +29,7 @@ int main(int argc, char **argv)
         configPath = argv[1];
     else if (argc > 2)
     {
-        std::cerr << "Usage: " << argv[0] << " [config_file]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [conf/config_file.conf]" << std::endl;
         return 1;
     }
 

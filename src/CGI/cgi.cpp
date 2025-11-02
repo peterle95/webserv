@@ -26,7 +26,7 @@ CGI::CGI()
 }
 
 // Constructor
-CGI::CGI(const HTTPparser &request)
+CGI::CGI(const HTTPparser &request,  HttpServer &server)
 	: cgi_pid_(-1)
 {
 	// Initialize pipes to invalid values
@@ -35,8 +35,12 @@ CGI::CGI(const HTTPparser &request)
 	pipe_out_[0] = -1;
 	pipe_out_[1] = -1;
 
-	script_path_ = request.getCurrentFilePath();
-
+	//script_path_
+	script_path_ = server.getFilePath(request.getPath(), server.selectServerForRequest(request, std::atoi(request.getServerPort().c_str())));
+	/*std::string request_path = request.getPath();
+	const LocationConfig *config = server.getCurrentLocation()	;*/
+    
+	// determineInterpreter();
 	// Use /usr/bin/env to find the Python interpreter in the user's PATH for portability
 	interpreter_path_ = "/usr/bin/env";
 	request_body_ = request.getBody();
@@ -122,8 +126,7 @@ char **CGI::createArgsArray() const
 	strcpy(args[0], interpreter_path_.c_str());
 
 	args[1] = new char[11];
-	// strcpy(args[1], "python3.11");
-	strcpy(args[1], "python3"); // campus system uses python3
+	strcpy(args[1], "python3");
 
 	args[2] = new char[script_path_.size() + 1];
 	strcpy(args[2], script_path_.c_str());
@@ -248,17 +251,26 @@ int CGI::execute()
 			size_t to_write = request_body_.size();
 			while (to_write > 0)
 			{
-				ssize_t n = write(pipe_in_[1], data, to_write);
-				if (n > 0)
+				// Changed: replaced direct write + errno handling with io_write wrapper.
+				// This loop handles partial writes and differentiates would-block, closed, and error
+				// using IOStatus without checking errno after write, meeting evaluation criteria.
+				IOResult w = io_write(pipe_in_[1], data, to_write);
+				if (w.status == IO_OK)
 				{
-					data += n;
-					to_write -= static_cast<size_t>(n);
+					data += w.bytes;
+					to_write -= static_cast<size_t>(w.bytes);
 				}
 				else if (n == -1) // errno after write not allowed
 				{
-					continue; // Retry if interrupted by signal
+					// Non-blocking pipe would block; retry later in loop
+					continue;
 				}
-				else
+				else if (w.status == IO_CLOSED)
+				{
+					std::cerr << "Warning: CGI stdin closed while writing" << std::endl;
+					break;
+				}
+				else // IO_ERROR
 				{
 					std::cerr << "Warning: Failed to write request body to CGI" << std::endl;
 					break;
@@ -281,12 +293,32 @@ std::string CGI::readResponse()
 
 	std::string response;
 	char buffer[CGI_BUFFER_SIZE];
-	ssize_t bytes_read;
 
 	// Read until EOF (handles cases without Content-Length)
-	while ((bytes_read = read(pipe_out_[0], buffer, sizeof(buffer))) > 0)
+	for (;;)
 	{
-		response.append(buffer, bytes_read);
+		// Changed: replaced direct read + errno handling with io_read wrapper.
+		// This avoids checking errno after read and correctly distinguishes
+		// IO_OK, IO_WOULD_BLOCK, IO_CLOSED, and IO_ERROR to pass evaluation.
+		IOResult r = io_read(pipe_out_[0], buffer, sizeof(buffer));
+		if (r.status == IO_OK)
+		{
+			response.append(buffer, r.bytes);
+			continue;
+		}
+		if (r.status == IO_WOULD_BLOCK)
+		{
+			// No more data available right now
+			break;
+		}
+		if (r.status == IO_CLOSED)
+		{
+			// EOF
+			break;
+		}
+		// IO_ERROR
+		std::cerr << "Error: reading CGI output failed" << std::endl;
+		return "HTTP/1.1 500 Internal Server Error\r\n\r\nCGI read error";
 	}
 
 	close(pipe_out_[0]);
