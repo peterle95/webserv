@@ -24,6 +24,9 @@
 #include <cstdlib>
 #include "Client.hpp"*/
 
+class HttpServer;
+class ConfigParser;
+
 
 class Response
 {
@@ -35,17 +38,24 @@ class Response
     std::string _response_headers;
     std::string _response_final;
     std::string _loc;
+    std::string _request;
     int _code;
-    HTTPparser _HTTPParser;
-    HttpServer _HttpServer;
-    ConfigParser _ConfigParser;
     std::string root;
+    std::string _path;
+    int _ServerIndex;
+    HttpServer *_HttpServer;
+    HTTPparser _HttpParser;
     public:
     //Response();
-    Response(HttpServer &server, ConfigParser &configParser);
+    
+    //HTTPparser _HTTPParser;
+    //ConfigParser _ConfigParser;
+    
+    Response( int ServerIndex ,HttpServer *server ,  HTTPparser &HttpParser,ConfigParser &ConfigParser);
+    void setRequest(std::string request);
     ~Response();
     HTTPparser request;
-    //ConfigParser configParser;
+    ConfigParser _ConfigParser;
     void appDate();
     void appContentType();
     void appContentLen();
@@ -71,6 +81,7 @@ class Response
     std::string buildErrorPage(int code);
     std::string getResponse();
     std::string redirecUtil();
+    const Response &operator=(const Response& other);
 };
 
 #endif

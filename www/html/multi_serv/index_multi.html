@@ -9,7 +9,7 @@
       return window.location.protocol + '//' + window.location.host;
     }
 
-    window.onload = function() {
+      window.onload = function() {
       const base = getBaseUrl();
       const host = window.location.hostname;
       const port = window.location.port;
@@ -18,7 +18,10 @@
       document.getElementById('price_calculator-link').href = base + '/cgi_bin_multi/price_calculator.html';
       document.getElementById('upload-link').href = base + '/cgi_bin_multi/upload.html';
       document.getElementById('delete-link').href = base + '/cgi_bin_multi/delete.html';
-    };
+      document.getElementById('readirect-link').href = base + '/old-page';
+      document.getElementById('autoindex-link').href = base + '/cgi-bin';
+      console.log('Base URL set to: ' + base + '/cgi_bin_multi');
+  };
   </script>
 </head>
 <body>
@@ -53,6 +56,18 @@
                         <a id="delete-link" href="#" target="_blank" style="display:block; text-align:center; background:#ffe6e6; padding:30px 20px; border-radius:15px; box-shadow:0 8px 20px #0002; min-width:220px; text-decoration:none;">
                           <div style="font-size:3em; color:#F44336;">🗑️</div>
                           <div style="font-weight:bold; font-size:1.1em; color:#333;">Delete File</div>
+                        </a>
+                      </td>
+                      <td>
+                        <a id="readirect-link" href="#" target="_blank" style="display:block; text-align:center; background:#ffe6e6; padding:30px 20px; border-radius:15px; box-shadow:0 8px 20px #0002; min-width:220px; text-decoration:none;">
+                          <div style="font-size:3em; color:#F44336;">🗑️</div>
+                          <div style="font-weight:bold; font-size:1.1em; color:#333;">Readirect-link</div>
+                        </a>
+                      </td>
+                      <td>
+                        <a id="autoindex-link" href="#" target="_blank" style="display:block; text-align:center; background:#ffe6e6; padding:30px 20px; border-radius:15px; box-shadow:0 8px 20px #0002; min-width:220px; text-decoration:none;">
+                          <div style="font-size:3em; color:#F44336;">🗑️</div>
+                          <div style="font-weight:bold; font-size:1.1em; color:#333;">dir-listing</div>
                         </a>
                       </td>
                     </tr>
