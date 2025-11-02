@@ -119,14 +119,11 @@ void Client::readRequest()
     char buf[4096];
     while (true)
     {
-        // Changed: replaced direct recv + errno handling with io_recv wrapper.
-        // io_recv returns IOStatus so we correctly handle both 0 (closed) and -1 (errors)
-        // without checking errno after recv, satisfying the evaluation rule.
-        IOResult r = io_recv(_socket, buf, sizeof(buf), 0);
-        if (r.status == IO_OK)
+        ssize_t n = recv(_socket, buf, sizeof(buf), 0);
+        if (n > 0)
         {
-            _request_buffer.append(buf, buf + r.bytes);
-            DEBUG_PRINT("Received " << r.bytes << " bytes, total buffer: " << _request_buffer.size());
+            _request_buffer.append(buf, buf + n);
+            DEBUG_PRINT("Received " << n << " bytes, total buffer: " << _request_buffer.size());
             size_t header_end = _request_buffer.find("\r\n\r\n");
             if (header_end != std::string::npos)
             {
@@ -137,31 +134,23 @@ void Client::readRequest()
                     // Total length = header end position + 4 (for CRLF) + body
                     size_t totalLength = header_end + 4 + contentLength;
 
-                    // Changed: body read loop now uses io_recv and IOStatus to
-                    // correctly handle partial reads and would-block vs closed vs error.
+                    // Read until we have the full body
                     while (_request_buffer.size() < totalLength)
                     {
-                        IOResult r2 = io_recv(_socket, buf, sizeof(buf), 0);
-                        if (r2.status == IO_OK)
+                        n = recv(_socket, buf, sizeof(buf), 0);
+                        if (n > 0)
                         {
-                            _request_buffer.append(buf, buf + r2.bytes);
+                            _request_buffer.append(buf, buf + n);
                         }
-                        else if (r2.status == IO_WOULD_BLOCK)
+                        else if (n == 0)
                         {
-                            DEBUG_PRINT("No more data available while reading body (WOULD_BLOCK)");
-                            break; // No more data for now
-                        }
-                        else if (r2.status == IO_CLOSED)
-                        {
-                            DEBUG_PRINT("Peer closed during body read");
-                            _peer_half_closed = true;
                             break; // peer closed
                         }
-                        else // IO_ERROR
+                        else if (n < 0)
                         {
-                            DEBUG_PRINT("Fatal read error while reading body");
+                            DEBUG_PRINT("Fatal read error: " << strerror(errno));
                             _state = CLOSING;
-                            return; // fatal error
+                            return;
                         }
                     }
                 }
@@ -170,23 +159,20 @@ void Client::readRequest()
             // Continue loop to drain socket
             continue;
         }
-        if (r.status == IO_CLOSED)
+        if (n == 0)
         {
             DEBUG_PRINT("Connection closed by peer");
             // Mark half-close; don't close yet — attempt to parse and respond
             _peer_half_closed = true;
             break;
         }
-        if (r.status == IO_WOULD_BLOCK)
+        if (n < 0)
         {
-            DEBUG_PRINT("No more data available (WOULD_BLOCK)");
-            break; // No more data for now
+            DEBUG_PRINT("Fatal read error: " << strerror(errno));
+            // Fatal error
+            _state = CLOSING;
+            return;
         }
-        // IO_ERROR
-        DEBUG_PRINT("Fatal read error");
-        // Fatal error
-        _state = CLOSING;
-        return;
     }
 
     DEBUG_PRINT("Finished reading, buffer size: " << _request_buffer.size());
