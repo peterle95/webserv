@@ -1,0 +1,61 @@
+# .coderabbit.yaml
+# This file configures CodeRabbit's behavior for your repository.
+
+# General settings for CodeRabbit
+config:
+  # Specify the base branch for comparisons.
+  # CodeRabbit will compare pull requests against this branch.
+  base_branch: "main"
+
+  # Optional: Define paths to ignore for code reviews.
+  # CodeRabbit will not analyze files in these paths.
+  # For example:
+  # ignore_paths:
+  #   - "docs/**"
+  #   - "tests/**"
+  #   - "*.md"
+# Define review rules
+# You can customize these rules to suit your project's standards.
+reviews:
+  # Enable or disable automatic code reviews for pull requests.
+  enabled: true
+
+  # Optional: Specify a list of reviewers for different file types or paths.
+  # For example:
+  # reviewers:
+  #   - name: "frontend-team"
+  #     paths:
+  #       - "src/frontend/**"
+  #   - name: "backend-team"
+  #     paths:
+  #       - "src/backend/**"
+
+  # Optional: Set minimum approval requirements.
+  # For example:
+  # require_approvals: 1
+
+# Optional: Configure automatic suggestions or fixes
+# suggestions:
+#   enabled: true
+#   # You can add rules here to automatically suggest changes based on patterns.
+#   # For example:
+#   # rules:
+#   #   - pattern: "console.log"
+#   #     suggestion: "Consider using a proper logging library instead of console.log."
+
+# Optional: Define custom checks or linters
+# checks:
+#   - name: "Custom Linter"
+#     command: "npm run lint" # Replace with your linter command
+#     # You can specify paths to run this check on
+#     # paths:
+#     #   - "src/**/*.js"
+
+# Optional: Configure notifications
+# notifications:
+#   # For example, send notifications to a specific Slack channel
+#   # slack:
+#   #   channel: "#code-reviews"
+
+# You can find more advanced configuration options in the CodeRabbit documentation:
+# https://docs.coderabbit.ai/reference/yaml-template
