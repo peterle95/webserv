@@ -161,7 +161,7 @@ bool HTTPparser::parseBody(std::istringstream &iss)
         DEBUG_PRINT("Raw Request (first 200 chars): " << rawRequest.substr(0, 200));
 
         // We parse from a stringstream for simplicity. In a real server with
-        // non-blocking sockets, you would feed incremental buffers and maintain
+        // non-blocking sockets, feed incremental buffers and maintain
         // parsing state across calls.
         std::istringstream iss(rawRequest);
 

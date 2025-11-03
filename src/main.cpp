@@ -20,13 +20,11 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include "IOUtils.hpp" // Removed: IOUtils wrappers include (tests removed)
 
 int main(int argc, char **argv)
 {
     std::string configPath = "conf/default.conf";
 
-    // Removed: --run-tests support; main only starts the server
     if (argc == 2)
         configPath = argv[1];
     else if (argc > 2)

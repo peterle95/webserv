@@ -51,7 +51,7 @@ private:
     // Socket setup
     int createAndBindSocket(int port, in_addr_t host);
     void setupSignalHandlers();
-    void printStartupMessage(bool serveOnce);
+    void printStartupMessage();
     bool validateConfiguration();
 
     // Accept loop for incoming connections

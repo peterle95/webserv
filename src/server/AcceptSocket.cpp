@@ -10,7 +10,6 @@
 
 int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &serverSockets)
 {
-    size_t acceptedCount = 0;
 
     while (!g_stop)
     {
@@ -57,7 +56,7 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
         int ready = select(max_fd + 1, &read_fds, &write_fds, NULL, &tv);
         if (ready < 0)
         {
-            if (errno == EINTR)
+            if (errno == EINTR) // Interrupted by signal, retry
                 continue;
             std::cerr << "select() failed" << std::endl;
             break;
@@ -78,9 +77,9 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                     int cfd = accept(server_fd, (struct sockaddr *)&cli, &clilen);
                     if (cfd < 0)
                     {
-                        if (errno == EINTR)
+                        if (errno == EINTR) // Interrupted by signal, retry
                             continue;
-                        if (errno == EAGAIN || errno == EWOULDBLOCK)
+                        if (errno == EAGAIN || errno == EWOULDBLOCK) // No more connections available
                             break;
                         std::cerr << "accept() failed on server socket " << i << std::endl;
                         break;
@@ -96,7 +95,6 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                     // Create client with server context information
                     Client *cl = new Client(cfd, this, _response,serverSockets[i].serverIndex, serverSockets[i].port);
                     _clients[cfd] = cl;
-                    ++acceptedCount;
 
                     DEBUG_PRINT("New connection accepted on server '" 
                     << _servers[serverSockets[i].serverIndex].getServerName()
@@ -105,10 +103,10 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
             }
         }
 
-        // Track clients to close after processing (SAME as your existing code)
+        // Track clients to close after processing
         std::vector<int> toClose;
 
-        // Process client I/O or generation steps (SAME as your existing code)
+        // Process client I/O or generation steps
         for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it)
         {
             int cfd = it->first;

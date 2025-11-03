@@ -16,9 +16,8 @@ void HttpServer::setupSignalHandlers()
 }
 
 /*Following functions have to be integrated with http response mechanism and logging*/
-void HttpServer::printStartupMessage(bool serveOnce)
+void HttpServer::printStartupMessage()
 {
-      (void)serveOnce; // silence unused parameter warning when DEBUG is false
     std::cout << "\n"
               << GREEN << "=== WebServ Server Started ===" << RESET << std::endl;
 

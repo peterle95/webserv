@@ -40,8 +40,6 @@ SRCS = src/main.cpp \
 		src/httpResponse/HttpResponse.cpp \
 		src/httpResponse/HttpResponseUtils.cpp \
 		src/Logging/Logger.cpp \
-		src/IOUtils/IOUtils.cpp \
-		
 
 OBJS = $(SRCS:.cpp=.o)
 
