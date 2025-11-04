@@ -23,7 +23,7 @@ HttpServer::HttpServer(ConfigParser &configParser) : _configParser(configParser)
 HttpServer::~HttpServer() {}
 
 // Map the current location config based on the request path
-const LocationConfig *HttpServer::mapCurrentLocationConfig(const std::string &path, const int serverIndex)
+void HttpServer::mapCurrentLocationConfig(const std::string &path, const int serverIndex)
 {
     const std::map<std::string, LocationConfig> &locations = _servers[serverIndex].getLocations();
 
@@ -37,23 +37,22 @@ const LocationConfig *HttpServer::mapCurrentLocationConfig(const std::string &pa
 
         // Check if the request path starts with this location path
         bool matches = (path.size() >= locationPath.size() &&
-            path.substr(0, locationPath.size()) == locationPath);
-        
-            // If this is a longer match than what we've found so far, use it
-            if (matches && locationPath.size() > longestMatchLength)
-            {
-                longestMatchLength = locationPath.size();
-                bestLocation = &it->second;
-            }
-            // Set the best matching location, or keep current if no match found
-            /*if (locationPath.size() > longestMatchLength )
-            {
-                _currentLocation = bestLocation;
-            }*/
+                        path.substr(0, locationPath.size()) == locationPath);
+
+        // If this is a longer match than what we've found so far, use it
+        if (matches && locationPath.size() > longestMatchLength)
+        {
+            longestMatchLength = locationPath.size();
+            bestLocation = &it->second;
         }
-        _currentLocation = bestLocation;
-        return _currentLocation;
+        // Set the best matching location, or keep current if no match found
+        /*if (locationPath.size() > longestMatchLength )
+        {
+            _currentLocation = bestLocation;
+        }*/
     }
+    _currentLocation = bestLocation;
+}
 
 // Get the full file path based on the request path and
 //    current location config
@@ -77,7 +76,7 @@ std::string HttpServer::getFilePath(const std::string &path, const int serverInd
         {
             if (!_currentLocation->index.empty())
                 filePath = _servers[serverIndex].getRoot() + path + _currentLocation->index;
-            else if(_currentLocation->autoindex)
+            else if (_currentLocation->autoindex)
                 filePath = _servers[serverIndex].getRoot() + path;
             else
                 filePath = _servers[serverIndex].getRoot() + path + _servers[serverIndex].getIndex(); // fallback to server index
@@ -95,10 +94,8 @@ std::string HttpServer::getFilePath(const std::string &path, const int serverInd
 // Public helper to resolve file path for a request path and map location
 std::string HttpServer::resolveFilePathFor(const std::string &path, const int serverIndex)
 {
-    const LocationConfig *config = mapCurrentLocationConfig(path, serverIndex);
-    if(!config->path.empty())
-       return getFilePath(path, serverIndex);
-     return "" ;
+    mapCurrentLocationConfig(path, serverIndex);
+    return getFilePath(path, serverIndex);
 }
 
 // for use in response.cpp return the current location config
@@ -353,4 +350,14 @@ size_t HttpServer::selectServerForRequest(const HTTPparser &parser, const int se
 
     // Fallback: return the first candidate (configuration order decides default)
     return candidates[0];
+}
+
+size_t HttpServer::getServerMaxBodySize(size_t serverIndex)
+{
+    if (serverIndex < _servers.size())
+    {
+        return _servers[serverIndex].getClientMaxBodySize();
+    }
+    // Return a default value if the server index is invalid
+    return 1024 * 1024; // 1 MiB
 }

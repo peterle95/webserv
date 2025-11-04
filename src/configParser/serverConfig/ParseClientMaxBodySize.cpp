@@ -37,24 +37,24 @@ void ServerConfig::parseClientMaxBodySize(const std::string &val, size_t lineNo)
     long size;
     if (value[val.size() - 1] >= '0' && value[val.size() - 1] <= '9')
     {
-        value = val.substr(0, val.size() - 1);
+        // value = val.substr(0, val.size() - 1);
         size = std::atol(value.c_str());
     }
     else if (value[val.size() - 1] == 'k')
     {
-        value = value.substr(0, val.size() - 2);
+        value = value.substr(0, val.size() - 1);
         size = std::atol(value.c_str());
         size *= 1024;
     }
     else if (value[val.size() - 1] == 'm')
     {
-        value = value.substr(0, val.size() - 2);
+        value = value.substr(0, val.size() - 1);
         size = std::atol(value.c_str());
         size *= 1024 * 1024;
     }
     else if (value[val.size() - 1] == 'g')
     {
-        value = value.substr(0, val.size() - 2);
+        value = value.substr(0, val.size() - 1);
         size = std::atol(value.c_str());
         size *= 1024 * 1024 * 1024;
     }

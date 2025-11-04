@@ -24,7 +24,7 @@ if os.environ.get("REQUEST_METHOD", "") == "POST":
     # Validate filename
     if not filename_to_delete:
         print("Error: Filename not provided.<br>")
-        print('<p><a href="/index.html/">Back to Home</a></p>')
+        print('<p><a href="/index.html">Back to Home</a></p>')
         sys.exit(0)
 
     file_path = os.path.join(upload_dir, filename_to_delete)
@@ -32,7 +32,7 @@ if os.environ.get("REQUEST_METHOD", "") == "POST":
     # Check if file exists
     if not os.path.exists(file_path):
         print(f"Error: File '{filename_to_delete}' does not exist.<br>")
-        print('<p><a href="/index.html/">Back to Home</a></p>')
+        print('<p><a href="/index.html">Back to Home</a></p>')
         sys.exit(0)
 
     # Attempt to delete the file

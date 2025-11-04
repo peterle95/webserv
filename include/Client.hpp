@@ -21,7 +21,7 @@ class Client
 {
 public:
     // Constructor & Destructor
-    Client(int fd, HttpServer *_server, Response *response, size_t serverIndex, int serverPort);
+    Client(int fd, HttpServer &_server, Response *response, size_t serverIndex, int serverPort);
     ~Client();
 
     // Main handler method called by the server
@@ -45,9 +45,9 @@ private:
     size_t checkContentLength(const std::string &request, size_t header_end);
 
     // Member Variables
-    int _socket;            // The client's socket file descriptor
-    HttpServer *_server;    // Reference to the main server for config access
-    Response *_response; // Response object to build responses
+    int _socket;            // Thes client's socket file descriptor
+    HttpServer &_server;    // Reference to the main server for config access
+    Response *_response;    // Response object to build responses
     ClientState _state;     // The current state of the connection
     bool _keep_alive;       // Whether to keep the connection alive after response
     bool _peer_half_closed; // Peer performed shutdown(SHUT_WR); close after response

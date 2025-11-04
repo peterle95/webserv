@@ -61,7 +61,7 @@ static bool bindSocket(int server_fd, int port, in_addr_t host)
 
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
-        std::cerr << "bind() failed on port " << port << std::endl;
+        std::cerr << "bind() failed on port " << port << " host " << host << std::endl;
         return false;
     }
 
