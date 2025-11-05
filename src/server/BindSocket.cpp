@@ -61,7 +61,11 @@ static bool bindSocket(int server_fd, int port, in_addr_t host)
 
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
-        std::cerr << "bind() failed on port " << port << " host " << host << std::endl;
+        char host_str[INET_ADDRSTRLEN];
+        struct in_addr addr_struct;
+        addr_struct.s_addr = host;
+        inet_ntop(AF_INET, &addr_struct, host_str, INET_ADDRSTRLEN);
+        std::cerr << "bind() failed on port " << port << " host " << host_str << std::endl;
         return false;
     }
 
@@ -110,7 +114,7 @@ static bool configureSocket(int server_fd, int port, in_addr_t host)
     }
 
     if (!bindSocket(server_fd, port, host))
-    {    
+    {
         return false;
     }
 
