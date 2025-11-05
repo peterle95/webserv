@@ -43,15 +43,16 @@ class Response
     std::string root;
     std::string _path;
     int _ServerIndex;
-    HttpServer *_HttpServer;
+    HttpServer &_HttpServer;
     HTTPparser _HttpParser;
-    public:
-    //Response();
-    
-    //HTTPparser _HTTPParser;
-    //ConfigParser _ConfigParser;
-    
-    Response( int ServerIndex ,HttpServer *server ,  HTTPparser &HttpParser,ConfigParser &ConfigParser);
+
+public:
+    // Response();
+
+    // HTTPparser _HTTPParser;
+    // ConfigParser _ConfigParser;
+
+    Response(int ServerIndex, HttpServer &server, HTTPparser &HttpParser, ConfigParser &ConfigParser);
     void setRequest(std::string request);
     ~Response();
     HTTPparser request;

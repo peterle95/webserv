@@ -28,9 +28,9 @@ Client::writeResponse()
     return true;
 }*/
 
-Client::Client(int fd, HttpServer *server, Response *response, size_t serverIndex, int serverPort)
-    : _socket(fd), 
-      
+Client::Client(int fd, HttpServer &server, Response *response, size_t serverIndex, int serverPort)
+    : _socket(fd),
+
       _server(server),
        _response(response),
       _state(READING),
@@ -117,62 +117,84 @@ void Client::readRequest()
     DEBUG_PRINT("Buffer size before reading: " << _request_buffer.size());
 
     char buf[4096];
-    while (true)
+    ssize_t n = recv(_socket, buf, sizeof(buf), 0);
+    if (n > 0)
     {
-        ssize_t n = recv(_socket, buf, sizeof(buf), 0);
-        if (n > 0)
+        _request_buffer.append(buf, buf + n);
+        DEBUG_PRINT("Received " << n << " bytes, total buffer: " << _request_buffer.size());
+        size_t header_end = _request_buffer.find("\r\n\r\n");
+        DEBUG_PRINT(CYAN << "Current header end position: " << header_end << RESET);
+        if (header_end != std::string::npos)
         {
-            _request_buffer.append(buf, buf + n);
-            DEBUG_PRINT("Received " << n << " bytes, total buffer: " << _request_buffer.size());
-            size_t header_end = _request_buffer.find("\r\n\r\n");
-            if (header_end != std::string::npos)
+            // Check for Content-Length to read the body if present
+            size_t contentLength = checkContentLength(_request_buffer, header_end);
+            DEBUG_PRINT(CYAN << "Detected Content-Length: " << contentLength << RESET);
+            if (contentLength > 0)
             {
-                // Check for Content-Length to read the body if present
-                size_t contentLength = checkContentLength(_request_buffer, header_end);
-                if (contentLength > 0)
-                {
-                    // Total length = header end position + 4 (for CRLF) + body
-                    size_t totalLength = header_end + 4 + contentLength;
+                // Total length = header end position + 4 (for CRLF) + body
+                // size_t totalLength = header_end + 4 + contentLength;
 
-                    // Read until we have the full body
-                    while (_request_buffer.size() < totalLength)
+                // Check how many body bytes we have already
+                size_t have = 0;
+                if (_request_buffer.size() > header_end + 4)
+                    have = _request_buffer.size() - (header_end + 4);
+
+                if (have < contentLength)
+                {
+                    DEBUG_PRINT("Incomplete body: have " << have << " of " << contentLength << " bytes");
+                    if (_peer_half_closed)
                     {
-                        n = recv(_socket, buf, sizeof(buf), 0);
-                        if (n > 0)
-                        {
-                            _request_buffer.append(buf, buf + n);
-                        }
-                        else if (n == 0)
-                        {
-                            break; // peer closed
-                        }
-                        else if (n < 0)
-                        {
-                            DEBUG_PRINT("Fatal read error: " << strerror(errno));
-                            _state = CLOSING;
-                            return;
-                        }
+                        DEBUG_PRINT("Peer half-closed, will attempt to parse incomplete request");
+                        // fall through to parse attempt
+                    }
+                    else
+                    {
+                        DEBUG_PRINT("Need more body data; staying in READING state");
+                        return; // wait for next event (socket becomes readable)
                     }
                 }
-                break;
             }
-            // Continue loop to drain socket
-            continue;
         }
-        if (n == 0)
+        else
         {
-            DEBUG_PRINT("Connection closed by peer");
-            // Mark half-close; don't close yet — attempt to parse and respond
+            // Headers incomplete, need more data
+            return;
+        }
+    }
+    if (n == 0)
+    {
+        DEBUG_PRINT("Connection closed by peer");
+
+        // Check if we have valid HTTP headers before attempting to parse
+        size_t header_end = _request_buffer.find("\r\n\r\n");
+        if (header_end != std::string::npos)
+        {
+            // We have complete headers, mark half-close and try to parse
+            DEBUG_PRINT("Peer half-closed after sending headers; will attempt to parse");
             _peer_half_closed = true;
-            break;
         }
-        if (n < 0)
+        else if (!_request_buffer.empty())
         {
-            DEBUG_PRINT("Fatal read error: " << strerror(errno));
-            // Fatal error
+            // Peer closed without sending complete headers
+            // This is likely TLS/SSL data or invalid HTTP - close immediately
+            DEBUG_PRINT("Peer closed without sending complete HTTP headers; closing connection");
             _state = CLOSING;
             return;
         }
+        else
+        {
+            // Empty buffer and peer closed - just close
+            DEBUG_PRINT("Peer closed with no data; closing connection");
+            _state = CLOSING;
+            return;
+        }
+    }
+    else if (n < 0)
+    {
+        DEBUG_PRINT("Fatal read error: " << strerror(errno));
+        // Fatal error
+        _state = CLOSING;
+        return;
     }
 
     DEBUG_PRINT("Finished reading, buffer size: " << _request_buffer.size());
@@ -211,7 +233,7 @@ void Client::generateResponse()
     // Parse the HTTP request
     DEBUG_PRINT(MAGENTA << "*** ENTERING HTTP PARSER ***" << RESET);
     bool ok = _parser.parseRequest(_request_buffer);
-    _keep_alive = _server->determineKeepAlive(_parser);
+    _keep_alive = _server.determineKeepAlive(_parser);
 
     DEBUG_PRINT("Parsing result: " << (ok ? "SUCCESS" : "FAILED"));
     DEBUG_PRINT("Parser valid: " << (_parser.isValid() ? "YES" : "NO"));
@@ -221,19 +243,32 @@ void Client::generateResponse()
     if(ok && _parser.isValid())
     {
         DEBUG_PRINT(GREEN << "Request parsed successfully" << RESET);
+        // Select correct server based on Host header
+        size_t selectedServerIndex = _server.selectServerForRequest(_parser, _serverPort);
+        if (selectedServerIndex == static_cast<size_t>(-1))
+        {
+            DEBUG_PRINT(RED << "No matching server block for Host/Port" << RESET);
+            _response_buffer = _server.generateBadRequestResponse(_keep_alive);
+            _response_offset = 0;
+            _state = WRITING;
+            return;
+        }
+
+        DEBUG_PRINT(CYAN << "Selected server index: " << selectedServerIndex
+                         << " for Host: '" << _parser.getHeader("Host") << "'" << RESET);
+        const std::string path = _parser.getPath();
+
+        // Map location and resolve filesystem path for this request
+        std::string filePath = _server.resolveFilePathFor(path, selectedServerIndex);
+        _parser.setCurrentFilePath(filePath);
+        DEBUG_PRINT("Resolved file path: '" << filePath << "'");
+
         // Ensure _response refers to a Response instance configured for this server
         // The original code `Response(_server, _server->_configParser);` created a
         // temporary and did nothing — replace that with either an assignment
         // into the existing object or allocate one if the pointer is null.
-        if (_response == NULL)
-        {
-            _response = new Response(_server->selectServerForRequest(_parser, _serverPort),_server ,_parser, _server->_configParser);
-        }
-        else
-        {
-            // Use assignment to reinitialize the existing Response object
-            _response = new Response(_server->selectServerForRequest(_parser, _serverPort),_server,_parser,_server->_configParser);
-        }
+
+        _response = new Response(selectedServerIndex, _server, _parser, _server._configParser);
 
         _response->setRequest(_parser.getMethod());
         _response->buildResponse();
@@ -323,35 +358,58 @@ void Client::generateResponse()
                 _response_buffer = _server.generatePostResponse(cgiOut, _keep_alive);
             }
 
-            Logger::logResponse(_response_buffer);
-            _response_offset = 0;
-            DEBUG_PRINT(CYAN << "CGI response generated, size: " << _response_buffer.size() << RESET);
-            DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
-            _state = WRITING;
-            return;
-        }
-        else
-        {
-            DEBUG_PRINT(CYAN << "CGI not available, generating METHOD NOT ALLOWED" << RESET);
-            _response_buffer = _server.generateMethodNotAllowedResponse(_keep_alive);
-            Logger::logResponse(_response_buffer);
-            _response_offset = 0;
-            DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
-            _state = WRITING;
-            return;
-        }
-    }
-    else
+             Logger::logResponse(_response_buffer);
+             _response_offset = 0;
+             DEBUG_PRINT(CYAN << "CGI response generated, size: " << _response_buffer.size() << RESET);
+             DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
+             _state = WRITING;
+             return;
+         }
+         else
+         {
+             DEBUG_PRINT(CYAN << "CGI not available, generating METHOD NOT ALLOWED" << RESET);
+             _response_buffer = _server.generateMethodNotAllowedResponse(_keep_alive);
+             Logger::logResponse(_response_buffer);
+             _response_offset = 0;
+             DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
+             _state = WRITING;
+             return;
+         }
+     }
+     else
+     {
+         DEBUG_PRINT(CYAN << "Unknown method: " << RED << method << RESET);
+         DEBUG_PRINT(RED << "Generating METHOD NOT ALLOWED response" << RESET);
+         _response_buffer = _server.generateMethodNotAllowedResponse(_keep_alive);
+         Logger::logResponse(_response_buffer);
+         _response_offset = 0;
+         DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
+         _state = WRITING;
+         return;
+     }*/
+
+    // Handle parsing failure - send 400 Bad Request and close
+    DEBUG_PRINT(RED << "Request parsing failed" << RESET);
+    if (!_parser.getErrorMessage().empty())
     {
-        DEBUG_PRINT(CYAN << "Unknown method: " << RED << method << RESET);
-        DEBUG_PRINT(RED << "Generating METHOD NOT ALLOWED response" << RESET);
-        _response_buffer = _server.generateMethodNotAllowedResponse(_keep_alive);
-        Logger::logResponse(_response_buffer);
-        _response_offset = 0;
-        DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
-        _state = WRITING;
-        return;
-    }*/
+        DEBUG_PRINT("Error: " << _parser.getErrorMessage());
+    }
+
+    // Generate a simple 400 Bad Request response
+    std::ostringstream oss;
+    oss << "HTTP/1.1 400 Bad Request\r\n"
+        << "Content-Type: text/html\r\n"
+        << "Content-Length: 46\r\n"
+        << "Connection: close\r\n"
+        << "\r\n"
+        << "<html><body>400 Bad Request</body></html>";
+
+    _response_buffer = oss.str();
+    Logger::logResponse(_response_buffer);
+    _response_offset = 0;
+    _keep_alive = false; // Always close on bad request
+    DEBUG_PRINT("Transitioning to WRITING state (will close after response)");
+    _state = WRITING;
 }
 
 void Client::startCgi()
@@ -388,41 +446,10 @@ void Client::writeResponse()
     DEBUG_PRINT("Response buffer size: " << _response_buffer.size());
     DEBUG_PRINT("Bytes already sent: " << _response_offset);
 
-    while (_response_offset < _response_buffer.size())
-    {
-        ssize_t sent = send(_socket,
-                            _response_buffer.c_str() + _response_offset,
-                            _response_buffer.size() - _response_offset,
-                            0);
-        if (sent > 0)
-        {
-            _response_offset += static_cast<size_t>(sent);
-            DEBUG_PRINT("Sent " << sent << " bytes, progress: " << _response_offset << "/" << _response_buffer.size());
-            continue;
-        }
-        if (sent == 0)
-        {
-            // sent == 0 shouldn't happen for TCP unless closed; break
-            DEBUG_PRINT("Send returned 0, connection likely closed");
-            break;
-        }
-        else // sent < 0
-        {
-            DEBUG_PRINT("Fatal send error: " << strerror(errno));
-            _state = CLOSING; // fatal error
-            return;
-        }
-        // sent == 0 shouldn't happen for TCP unless closed
-        DEBUG_PRINT("Send returned 0, connection likely closed");
-        break;
-    }
-
-    DEBUG_PRINT(BLUE << "Response sending completed" << RESET);
-    DEBUG_PRINT("Total bytes sent: " << _response_offset);
-
+    // Check if response is already complete BEFORE attempting send
     if (_response_offset >= _response_buffer.size())
     {
-        DEBUG_PRINT(BLUE << "Response fully sent" << RESET);
+        DEBUG_PRINT(BLUE << "Response fully sent, handling completion" << RESET);
 
         // If the peer already half-closed its write side, close after sending
         if (_peer_half_closed)
@@ -447,10 +474,61 @@ void Client::writeResponse()
             DEBUG_PRINT("Keep-alive disabled, transitioning to CLOSING");
             _state = CLOSING;
         }
+        return;
     }
-    else
+
+    ssize_t sent = send(_socket,
+                        _response_buffer.c_str() + _response_offset,
+                        _response_buffer.size() - _response_offset,
+                        0);
+
+    if (sent > 0)
     {
-        DEBUG_PRINT(BLUE << "Response not fully sent, keeping in WRITING state" << RESET);
+        _response_offset += static_cast<size_t>(sent);
+        DEBUG_PRINT("Sent " << sent << " bytes, progress: " << _response_offset << "/" << _response_buffer.size());
+
+        // Check if we just completed the response
+        if (_response_offset >= _response_buffer.size())
+        {
+            DEBUG_PRINT(BLUE << "Response sending completed" << RESET);
+            DEBUG_PRINT("Total bytes sent: " << _response_offset);
+
+            if (_peer_half_closed)
+            {
+                DEBUG_PRINT("Peer half-closed earlier; transitioning to CLOSING");
+                _state = CLOSING;
+                return;
+            }
+
+            if (_keep_alive)
+            {
+                DEBUG_PRINT("Keep-alive enabled, resetting for next request");
+                _request_buffer.clear();
+                _response_buffer.clear();
+                _response_offset = 0;
+                _parser.reset();
+                _state = READING;
+            }
+            else
+            {
+                DEBUG_PRINT("Keep-alive disabled, transitioning to CLOSING");
+                _state = CLOSING;
+            }
+        }
+        else
+        {
+            DEBUG_PRINT(BLUE << "Response not fully sent, keeping in WRITING state" << RESET);
+        }
+    }
+    else if (sent == 0)
+    {
+        DEBUG_PRINT("Send returned 0, connection likely closed");
+        _state = CLOSING;
+    }
+    else // sent < 0
+    {
+        DEBUG_PRINT("Send failed, transitioning to CLOSING");
+        _state = CLOSING;
     }
 }
 

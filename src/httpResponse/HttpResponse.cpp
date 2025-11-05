@@ -1,6 +1,6 @@
 #include "Common.hpp"
 
-Response::Response(int ServerIndex ,HttpServer *HttpServer ,HTTPparser &HTTPParser, ConfigParser &ConfigParser) : _ServerIndex(ServerIndex) ,_HttpServer(HttpServer), _HttpParser(HTTPParser), _ConfigParser(ConfigParser)
+Response::Response(int ServerIndex, HttpServer &HttpServer, HTTPparser &HTTPParser, ConfigParser &ConfigParser) : _ServerIndex(ServerIndex), _HttpServer(HttpServer), _HttpParser(HTTPParser), _ConfigParser(ConfigParser)
 {
     _request = "";
     _targetfile = "";
@@ -51,7 +51,7 @@ void Response::appContentLen()
 {
     std::stringstream ss;
     int size;
-    size = _response_body.size();;
+    size = _response_body.size();
     ss << size;
    // _response_headers.append((ss.str()) + "\r\n");
     if (_response_body.empty())
@@ -91,13 +91,18 @@ void Response::appContentType()
         std::map<std::string, std::string>::iterator it = mime_types.find(fileExt);
         if (it != mime_types.end())
         {
-            // If found, set the Content-Type header accordingly
-            _response_headers.append("Content-Type: " + mime_types[fileExt] + "\r\n");
+            // If found, set the Content-Type header accordingly.
+            // For text-like mime types include a charset to ensure proper display of UTF-8 characters (emoji, accents, etc.).
+            std::string mime = it->second;
+            bool is_text = (mime.find("text/") == 0) || (mime == "application/javascript") || (mime == "application/json") || (mime == "application/xml");
+            if (is_text)
+                mime += "; charset=utf-8";
+            _response_headers.append("Content-Type: " + mime + "\r\n");
         }
         else
         {
-            // Default to text/html if extension is unknown
-            _response_headers.append("Content-Type: text/html\r\n");
+            // Default to text/html (with UTF-8 charset) if extension is unknown
+            _response_headers.append("Content-Type: text/html; charset=utf-8\r\n");
         }
     }
 }
@@ -164,7 +169,7 @@ std::string Response::statusMessage(int code)
 
 void Response::connection()
 {
-    if (_HttpServer->determineKeepAlive(_HttpParser) && _code == 200)
+    if (_HttpServer.determineKeepAlive(_HttpParser) && _code == 200)
         _response_headers.append("Connection: keep-alive\r\n");
     else
         _response_headers.append("Connection: close\r\n");
@@ -225,12 +230,8 @@ bool Response::isDirectory(std::string path)
 
 int Response::appBody()
 {
-    //_HttpServer->mapCurrentLocationConfig(_HttpParser.getPath(), _ServerIndex);
-    //const LocationConfig *currentLocation = _HttpServer->getCurrentLocation();
-    const LocationConfig *currentLocation = _HttpServer->mapCurrentLocationConfig(_HttpParser.getPath(), _ServerIndex);
-    //const LocationConfig *currentLocation = _HttpServer->getCurrentLocation();
-    //targetfile = _HttpServer->getFilePath(_HttpParser.getPath(), _ServerIndex); // Temporarily set to 0 for server index
-    _targetfile =_HttpServer->resolveFilePathFor(_HttpParser.getPath(), _ServerIndex);
+    const LocationConfig *currentLocation = _HttpServer.getCurrentLocation();
+    _targetfile = _HttpParser.getCurrentFilePath();
 
     // Handle autoindex (directory listing) if enabled
     if(currentLocation->redirect.size() > 0)
@@ -259,41 +260,18 @@ int Response::appBody()
             _code = 200;
             return 0;
     }
-    else if (_request == "POST" && _ConfigParser.getClientMaxBodySize() < request.getBody().size())
+    else if (_request == "POST" || _request == "DELETE")
     {
-        _code = 413;
-        return 1;
-    }
-
-    else if (_request == "POST" && _HttpParser.getPath().find("delete") != std::string::npos)
-    {
-        if ((currentLocation->cgiPass == true) && (!currentLocation->cgiExtension.empty()) && (_HttpServer->isMethodAllowed(("DELETE"))))
+        DEBUG_PRINT("Client Max Body Size: " << _HttpServer.getServerMaxBodySize(_ServerIndex) << ", Received Body Size: " << _HttpParser.getBody().size());
+        if (_HttpServer.getServerMaxBodySize(_ServerIndex) < _HttpParser.getBody().size())
         {
-            std::string cgiResponse;
-            if(fileExists(_targetfile) == true)
-            {
-            cgiResponse = _HttpServer->processCGI(_HttpParser,*_HttpServer);
-            _response_body = cgiResponse;
-            if (!cgiResponse.empty())
-            {
-                _code = 200; // Resource doesnt exist
-                return 0;
-            }
-            }
-            else
-            {
-                _code = 404; // No Content
-                return 1;
-            }
-            return 0;
+            _code = 413;
+            return 1;
         }
-    }   
-    else if (_request== "POST" )
-    {
-        if (currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty() && (_HttpServer->isMethodAllowed(("POST"))))
+        else if (currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty() && (_HttpServer.isMethodAllowed(_request)))
         {
             std::string cgiResponse;
-            cgiResponse = _HttpServer->processCGI(_HttpParser,*_HttpServer);
+            cgiResponse = _HttpServer.processCGI(_HttpParser);
             if (!cgiResponse.empty())
             {
                 //setHeaders();
@@ -307,29 +285,19 @@ int Response::appBody()
                 _code = 500;
                 return 1;
             }
-            return 0;
         }
-    }
-    else if (_request == "POST" && _HttpParser.getPath().find("delete") == std::string::npos)
-    {
-        std::ofstream file(_targetfile.c_str());
-        if (file.fail())
-        {
-            _code = 404;
-            return 1;
-        }
-        file << _HttpParser.getBody();
-        file.close();
-        _code = 200;
-        return 0;
-    }
         else
         {
-            _code = 404;
+            // Method not allowed
+            _code = 405;
             return 1;
         }
-    
-    return 1;
+    }
+    else
+    {
+        _code = 404;
+        return 1;
+    }
 }
 
 std::string Response::buildErrorPage(int code)
@@ -368,7 +336,7 @@ void Response::builderror_responses(int code)
 std::string Response::redirecUtil()
 {
     std::string _response_headers;
-    std::map<int, std::string> redirec = _HttpServer->getCurrentLocation()->redirect;
+    std::map<int, std::string> redirec = _HttpServer.getCurrentLocation()->redirect;
     std::map<int, std::string>::iterator it = redirec.begin();
     if (it != redirec.end())
     {
@@ -391,12 +359,8 @@ std::string Response::redirecUtil()
 
 void Response::buildResponse()
 {
-    //const LocationConfig *currentLocation = _HttpServer->getCurrentLocation();
-    //targetfile = _HttpServer->getFilePath(_HttpParser.getPath(), _ServerIndex); 
-    // Temporarily set to 0 for server index
-    //_HttpServer->mapCurrentLocationConfig(_HttpParser.getPath(), _ServerIndex);
-    _targetfile =_HttpServer->resolveFilePathFor(_HttpParser.getPath(), _ServerIndex);
-    
+    _targetfile = _HttpParser.getCurrentFilePath();
+
     // Handle error responses or body generation
     if (reqErr() || appBody())
     {
@@ -439,24 +403,47 @@ void Response::buildResponse()
     {
         // Set the final response string for successful GET
         setHeaders();
-        _response_final = _response_headers +_response_body;
+        _response_final = _response_headers + _response_body;
     }
     else
     {
         // For other methods or status codes, build error responses
         _response_final = _response_headers + _response_body;
-        std::cout << "Final Response:\n" << _response_body.size() << std::endl;
+        std::cout << "Final Response:\n"
+                  << _response_body.size() << std::endl;
     }
 }
 
 void Response::setHeaders()
 {
+    // start fresh
+    _response_headers.clear();
+
+    statusLine();
+
+    // Add standard headers
+    // server();
+    // appDate();
+
+    // Content-Type (ensure a default if appContentType didn't add one)
+    appContentType();
+    if (_response_headers.find("Content-Type:") == std::string::npos)
+        _response_headers.append("Content-Type: text/html; charset=utf-8\r\n");
+
+    appContentLen();
+
+    connection();
+    _response_headers.append("\r\n");
+}
+
+/* void Response::setHeaders()
+{
     statusLine();
     appContentType();
     appContentLen();
     connection();
-    _response_headers.append("\r\n");  
-}
+    _response_headers.append("\r\n");
+} */
 
 // Checks if the request has an error status code set.
 // If so, sets the response code accordingly and returns it.

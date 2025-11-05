@@ -35,29 +35,29 @@ void ConfigParser::parseClientMaxBodySize(const std::string &val, size_t lineNo)
     // Optionally print debug info
     std::string value = val;
     long size;
-    if(value[val.size() - 1] >= '0' && value[val.size() - 1] <= '9')
-    {
-        value = val.substr(0, val.size() - 1);
-        size = std::atol(value.c_str());
-    }
-    else if(value[val.size() - 1] == 'k')
-    {
-        value = value.substr(0, val.size() - 2);
-        size =std::atol(value.c_str());
-        size *=  1024;
 
-    }
-    else if(value[val.size() - 1] == 'm')
+    if (value[val.size() - 1] >= '0' && value[val.size() - 1] <= '9')
     {
-        value = value.substr(0, val.size() - 2);
+        // value = val.substr(0, val.size() - 1);
         size = std::atol(value.c_str());
-        size *=  1024 * 1024;
     }
-    else if(value[val.size() - 1] == 'g')
+    else if (value[val.size() - 1] == 'k')
     {
-        value = value.substr(0, val.size() - 2);
+        value = value.substr(0, val.size() - 1);
         size = std::atol(value.c_str());
-        size *=  1024 * 1024 * 1024;
+        size *= 1024;
+    }
+    else if (value[val.size() - 1] == 'm')
+    {
+        value = value.substr(0, val.size() - 1);
+        size = std::atol(value.c_str());
+        size *= 1024 * 1024;
+    }
+    else if (value[val.size() - 1] == 'g')
+    {
+        value = value.substr(0, val.size() - 1);
+        size = std::atol(value.c_str());
+        size *= 1024 * 1024 * 1024;
     }
     else
     {
@@ -66,7 +66,7 @@ void ConfigParser::parseClientMaxBodySize(const std::string &val, size_t lineNo)
         throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE, (int)lineNo, this->_configFile);
     }
 
-    if(size < 0)
+    if (size < 0)
     {
         std::string msg = ErrorHandler::makeLocationMsg("Negative value for client_max_body_size directive",
                                                         (int)lineNo, this->_configFile);
@@ -74,5 +74,4 @@ void ConfigParser::parseClientMaxBodySize(const std::string &val, size_t lineNo)
     }
     _clientMaxBodySize = size;
     DEBUG_PRINT("Set client_max_body_size to " << _clientMaxBodySize << " bytes");
-    
 }

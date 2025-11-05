@@ -45,8 +45,7 @@ private:
 	static std::string numberToString(int number);
 
 public:
-	//CGI(const HTTPparser &request);
-	CGI(const HTTPparser &request,  HttpServer &server);
+	CGI(const HTTPparser &request);
 	CGI(); // default constructor added for response.ccp
 	~CGI();
 

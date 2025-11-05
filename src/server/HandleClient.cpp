@@ -181,7 +181,7 @@ bool HttpServer::isMethodAllowed(const std::string &method)
 
 std::string HttpServer::processCGI(HTTPparser &parser)
 {
-    CGI cgi(parser, server);
+    CGI cgi(parser);
     int status = cgi.execute();
     if (status != 0)
     {
