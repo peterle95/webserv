@@ -97,10 +97,10 @@ const std::map<std::string, LocationConfig> &ServerConfig::getLocations() const
 
 const std::string &ServerConfig::getErrorPage(int status_code) const
 {
+    static const std::string empty = "";
     std::map<int, std::string>::const_iterator it = _errorPage.find(status_code);
     if (it != _errorPage.end())
         return it->second;
-    static const std::string empty = "";
     return empty;
 }
 

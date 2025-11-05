@@ -111,7 +111,9 @@ void Response::appContentType()
 // Supported codes:
 void Response::builderror_body(int code)
 {
-
+    std::ostringstream ss;
+    ss << code;
+    _response_body.append(ss.str());
     if (code == 404)
         _response_body.append(" Not Found");
     else if (code == 413)
@@ -241,7 +243,7 @@ int Response::appBody()
     }
     else if ( isDirectory(_targetfile) && currentLocation->autoindex)
     {
-        _response_body = generateDirectoryListing(_targetfile);
+        _response_body = generateDirectoryListing(_targetfile, _HttpParser.getPath());
         _code = 200;
         return 0;
     }
@@ -300,26 +302,35 @@ int Response::appBody()
     }
 }
 
-std::string Response::buildErrorPage(int code)
+void Response::buildErrorPage(int code)
 {
     std::ostringstream ss;
     ss <<  code;
     _code = code;
-  return ("<html><head><title>" + (ss.str()) +" " + statusMessage(code) +" Error</title></head>"
+    _response_final = ("<html><head><title>" + (ss.str()) +" " + statusMessage(code) +" Error</title></head>"
           "<body><h1>" + (ss.str()) + " " + statusMessage(code) + "" + "</h1>"
           "</body></html>");
+}
+
+int Response::stringToInt(const std::string &str)
+{
+    std::stringstream ss(str);
+    int num;
+    ss >> num;
+    return num;
 }
 
 void Response::builderror_responses(int code)
 {
     //(void)code;
-    std::string _errorPage = _ConfigParser.getServers().at(0).getErrorPage(code); // Temporarily using the first server config
+    size_t _srvIndx = _HttpServer->selectServerForRequest(_HttpParser, stringToInt(_HttpParser.getServerPort()));//server based on host and port
 
+    const std::string _errorPage = _ConfigParser.getServers().at(_srvIndx).getErrorPage(code);
     if (_errorPage.empty())
         buildErrorPage(code);
     else
     {
-        std::string path = _ConfigParser.getServers().at(0).getRoot() + _ConfigParser.getServers().at(0).getErrorPage(code).at(code); // Temporarily using the first server config
+        std::string path = _ConfigParser.getServers().at(_srvIndx).getRoot() + _ConfigParser.getServers().at(_srvIndx).getErrorPage(code); //server based on host and port
         if (fileExists(path))
         {
             std::ifstream file(path.c_str());
@@ -364,19 +375,24 @@ void Response::buildResponse()
     // Handle error responses or body generation
     if (reqErr() || appBody())
     {
-        std::stringstream ss;
+        setHeaders();
+        
+        builderror_responses(_code);
+        _response_final = _response_headers +_response_body;
+        /*std::stringstream ss;
         ss << _response_body.size();
 
         // Build error body based on the response code
-        builderror_body(_code);
+        
         _response_headers.append("HTTP/1.1 ");
+        builderror_body(_code);
         std::string statusMsg = statusMessage(_code);
         _response_headers.append(" " + statusMsg + "\r\n");
         _response_headers.append("Content-Length: ");
         _response_headers.append(ss.str() + "\r\n");
         _response_headers.append("Connection: close\r\n");
         _response_headers.append("\r\n");
-        _response_final = _response_headers + _response_body;
+        _response_final = _response_headers + _response_body;*/
     }
     /*else if (!_HttpServer->getCurrentLocation()->redirect.empty()) // Handle HTTP redirects if configured
     {
@@ -408,6 +424,7 @@ void Response::buildResponse()
     else
     {
         // For other methods or status codes, build error responses
+        setHeaders();
         _response_final = _response_headers + _response_body;
         std::cout << "Final Response:\n"
                   << _response_body.size() << std::endl;

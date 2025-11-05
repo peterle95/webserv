@@ -79,7 +79,8 @@ public:
     void server();
     //int buildResponse();
     //void appBody();
-    std::string buildErrorPage(int code);
+    int stringToInt(const std::string &str);
+    void buildErrorPage(int code);
     std::string getResponse();
     std::string redirecUtil();
     const Response &operator=(const Response& other);
