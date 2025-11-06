@@ -262,7 +262,7 @@ int Response::appBody()
             _code = 200;
             return 0;
     }
-    else if (_request == "POST" || _request == "DELETE")
+    else if (_request == "DELETE" || _request == "POST")
     {
         DEBUG_PRINT("Client Max Body Size: " << _HttpServer.getServerMaxBodySize(_ServerIndex) << ", Received Body Size: " << _HttpParser.getBody().size());
         if (_HttpServer.getServerMaxBodySize(_ServerIndex) < _HttpParser.getBody().size())
@@ -273,11 +273,14 @@ int Response::appBody()
         else if (currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty() && (_HttpServer.isMethodAllowed(_request)))
         {
             std::string cgiResponse;
+            if(fileExists(_targetfile) == true)
+            {
             cgiResponse = _HttpServer.processCGI(_HttpParser);
+            _response_body = cgiResponse;
             if (!cgiResponse.empty())
             {
                 //setHeaders();
-                _response_body = cgiResponse;
+               // _response_body = cgiResponse;
                 //_response_final = _response_body +_response_headers ;
                 _code = 200;
                 return 0;
@@ -287,19 +290,35 @@ int Response::appBody()
                 _code = 500;
                 return 1;
             }
-        }
-        else
-        {
+            }
+            else if(fileExists(_targetfile) == false)
+            {
+            _code = 404;
+            return 1;
+          }
+          /*else if(fileExists(_targetfile) == true && _HttpParser.getMethod() == "POST")
+          {
+            std::cout << "📄 Targetfile for POST .py: " << _targetfile << std::endl;
+            std::ofstream outfile(_targetfile.c_str());
+            outfile << _HttpParser.getBody();
+            outfile.close();
+            _code = 201;
+            return 0;
+          }*/
+         else{
             // Method not allowed
             _code = 405;
             return 1;
         }
+        }
+        
     }
     else
     {
         _code = 404;
         return 1;
     }
+  return 1;
 }
 
 void Response::buildErrorPage(int code)
@@ -323,7 +342,7 @@ int Response::stringToInt(const std::string &str)
 void Response::builderror_responses(int code)
 {
     //(void)code;
-    size_t _srvIndx = _HttpServer->selectServerForRequest(_HttpParser, stringToInt(_HttpParser.getServerPort()));//server based on host and port
+    size_t _srvIndx = _HttpServer.selectServerForRequest(_HttpParser, stringToInt(_HttpParser.getServerPort()));//server based on host and port
 
     const std::string _errorPage = _ConfigParser.getServers().at(_srvIndx).getErrorPage(code);
     if (_errorPage.empty())
@@ -453,14 +472,14 @@ void Response::setHeaders()
     _response_headers.append("\r\n");
 }
 
-/* void Response::setHeaders()
+ /*void Response::setHeaders()
 {
     statusLine();
     appContentType();
     appContentLen();
     connection();
     _response_headers.append("\r\n");
-} */
+}*/
 
 // Checks if the request has an error status code set.
 // If so, sets the response code accordingly and returns it.

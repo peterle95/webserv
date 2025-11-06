@@ -179,7 +179,7 @@ bool HttpServer::isMethodAllowed(const std::string &method)
     return _currentLocation->allowedMethods.find(method) != _currentLocation->allowedMethods.end();
 }
 
-std::string HttpServer::processCGI(HTTPparser &parser, HttpServer &server)
+std::string HttpServer::processCGI(HTTPparser &parser)
 {
     CGI cgi(parser);
     int status = cgi.execute();

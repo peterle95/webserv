@@ -60,7 +60,7 @@ private:
 
 public:
     HttpServer(ConfigParser &configParser);
-    HttpServer();               // As a default constructor for HTTPResponse
+    //HttpServer();               // As a default constructor for HTTPResponse
     ConfigParser _configParser; // changed from private to public for access in response.cpp
     ~HttpServer();
 

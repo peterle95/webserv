@@ -267,6 +267,10 @@ void Client::generateResponse()
         // The original code `Response(_server, _server->_configParser);` created a
         // temporary and did nothing — replace that with either an assignment
         // into the existing object or allocate one if the pointer is null.
+        if(_response!= NULL){
+            //delete _response;
+            _response = NULL;
+        }
 
         _response = new Response(selectedServerIndex, _server, _parser, _server._configParser);
 
@@ -279,6 +283,7 @@ void Client::generateResponse()
         _state = WRITING;
         return;
     }
+}
    /* if (!ok || !_parser.isValid())
     {
         DEBUG_PRINT(RED << "Request parsing failed: " << _parser.getErrorMessage() << RESET);
@@ -389,7 +394,7 @@ void Client::generateResponse()
      }*/
 
     // Handle parsing failure - send 400 Bad Request and close
-    DEBUG_PRINT(RED << "Request parsing failed" << RESET);
+    /*DEBUG_PRINT(RED << "Request parsing failed" << RESET);
     if (!_parser.getErrorMessage().empty())
     {
         DEBUG_PRINT("Error: " << _parser.getErrorMessage());
@@ -410,7 +415,7 @@ void Client::generateResponse()
     _keep_alive = false; // Always close on bad request
     DEBUG_PRINT("Transitioning to WRITING state (will close after response)");
     _state = WRITING;
-}
+}*/
 
 void Client::startCgi()
 {
