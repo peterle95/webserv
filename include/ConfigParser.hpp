@@ -46,8 +46,9 @@ private:
     void handleDirective(const std::string &key, const std::string &val, size_t lineNo);
 
 public:
-    ConfigParser();
+    //ConfigParser();
     // Construct directly from lines (e.g., read elsewhere)
+    ConfigParser(ConfigParser const &other);
     ConfigParser(const std::vector<std::string> &lines);
     const std::vector<std::string> &getLines() const;
     ~ConfigParser();

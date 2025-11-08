@@ -14,6 +14,10 @@
 #define HTTPSERVER_HPP
 
 #include "Common.hpp"
+#include "HttpResponse.hpp"
+#include "ConfigParser.hpp"
+#include "ServerConfig.hpp"
+#include "HTTPparser.hpp"
 
 class Client; // forward declaration
 // class ConfigParser;
@@ -41,7 +45,7 @@ private:
     // Active clients keyed by socket fd
     std::map<int, Client *> _clients;
     std::vector<ServerSocketInfo> _serverSockets;
-    Response *_response;
+   // Response _response;
     const LocationConfig *_currentLocation;
     // Config parser reference
     // Response &_response;

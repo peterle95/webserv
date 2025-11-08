@@ -21,6 +21,16 @@ ConfigParser::ConfigParser()
 {
 }
 
+ ConfigParser::ConfigParser(ConfigParser const &other)
+    : _configFile(other._configFile),
+      _root(other._root),
+      _index(other._index),
+      _clientMaxBodySize(other._clientMaxBodySize),
+      _servers(other._servers),
+      _lines(other._lines)
+{
+}
+
 // construct from lines
 ConfigParser::ConfigParser(const std::vector<std::string> &lines)
     : _configFile(""), _root("html"), _index("index.html"), _clientMaxBodySize(1024 * 1024) // default 1 MiB

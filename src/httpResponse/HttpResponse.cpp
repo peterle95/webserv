@@ -241,9 +241,14 @@ int Response::appBody()
         _response_headers = redirecUtil();
         return 0;
     }
-    else if ( isDirectory(_targetfile) && currentLocation->autoindex)
+    else if (isDirectory(_targetfile) && currentLocation->autoindex)
     {
         _response_body = generateDirectoryListing(_targetfile, _HttpParser.getPath());
+        if(_response_body.empty())
+        {
+            _code = 400;
+            return 1;
+        }
         _code = 200;
         return 0;
     }
@@ -272,9 +277,12 @@ int Response::appBody()
         }
         else if (currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty() && (_HttpServer.isMethodAllowed(_request)))
         {
-            std::string cgiResponse;
-            if(fileExists(_targetfile) == true)
+            if(fileExists(_targetfile) == false)
             {
+                _code = 404;
+                return 1;
+            }
+            std::string cgiResponse;
             cgiResponse = _HttpServer.processCGI(_HttpParser);
             _response_body = cgiResponse;
             if (!cgiResponse.empty())
@@ -290,12 +298,7 @@ int Response::appBody()
                 _code = 500;
                 return 1;
             }
-            }
-            else if(fileExists(_targetfile) == false)
-            {
-            _code = 404;
-            return 1;
-          }
+        }
           /*else if(fileExists(_targetfile) == true && _HttpParser.getMethod() == "POST")
           {
             std::cout << "📄 Targetfile for POST .py: " << _targetfile << std::endl;
@@ -304,21 +307,15 @@ int Response::appBody()
             outfile.close();
             _code = 201;
             return 0;
-          }*/
+          }
          else{
             // Method not allowed
             _code = 405;
             return 1;
-        }
-        }
-        
+        }*/
     }
-    else
-    {
-        _code = 404;
-        return 1;
-    }
-  return 1;
+    _code = 405;
+    return 1;
 }
 
 void Response::buildErrorPage(int code)
@@ -335,14 +332,15 @@ int Response::stringToInt(const std::string &str)
 {
     std::stringstream ss(str);
     int num;
-    ss >> num;
+    if(!(ss >> num))
+        return 0;
     return num;
 }
 
 void Response::builderror_responses(int code)
 {
     //(void)code;
-    size_t _srvIndx = _HttpServer.selectServerForRequest(_HttpParser, stringToInt(_HttpParser.getServerPort()));//server based on host and port
+    size_t _srvIndx = _ServerIndex;
 
     const std::string _errorPage = _ConfigParser.getServers().at(_srvIndx).getErrorPage(code);
     if (_errorPage.empty())

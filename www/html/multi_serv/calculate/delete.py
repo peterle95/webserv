@@ -2,8 +2,7 @@
 import warnings
 import sys
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-import os # For file operations and environment variables	
-import sys # For reading stdin and exiting
+import os # For file operations and environment variables
 import cgi # For CGI handling of python scripts
 
 # Check request method
@@ -30,7 +29,19 @@ if os.environ.get("REQUEST_METHOD", "") == "POST":
         print('<p><a href="/index_multi.html">Back to Home</a></p>')
         sys.exit(0)
 
+   if '..' in filename_to_delete or '/' in filename_to_delete or '\\' in filename_to_delete:
+        print("Error: Invalid filename.<br>")
+        print('<p><a href="/index_multi.html">Back to Home</a></p>')
+        sys.exit(0)
+
     file_path = os.path.join(upload_dir, filename_to_delete)
+
+    if not os.path.abspath(file_path).startswith(os.path.abspath(upload_dir)):
+        print("Error: Invalid filename path.<br>")
+        print('<p><a href="/index_multi.html">Back to Home</a></p>')
+        sys.exit(0)
+
+
     print("file_path:", file_path)
     # Check if file exists
     if not os.path.exists(file_path):

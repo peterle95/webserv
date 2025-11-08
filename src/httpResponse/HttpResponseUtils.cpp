@@ -9,7 +9,9 @@ std::string generateDirectoryListing(std::string path, std::string requestPath)
     DIR *dir = opendir(path.c_str());
     if(dir == NULL)
     {
-        std::cerr << "Error: Unable to open directory " << path << std::endl;
+        std::cerr << "Error: " << path << std::endl;
+        //distlist_page = "";
+        return "";
     }
     struct dirent *entry;
     distlist_page.append("<html>\n");
