@@ -48,6 +48,7 @@ private:
 public:
     ConfigParser();
     // Construct directly from lines (e.g., read elsewhere)
+    ConfigParser(ConfigParser const &other);
     ConfigParser(const std::vector<std::string> &lines);
     const std::vector<std::string> &getLines() const;
     ~ConfigParser();

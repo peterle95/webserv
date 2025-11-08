@@ -99,7 +99,7 @@ std::string HttpServer::generateBadRequestResponse(bool keepAlive)
 }
 
 // read file to string, return empty string on error. Uses binary mode to preserve file contents.
-static std::string readFileToString(const std::string &path)
+/*static std::string readFileToString(const std::string &path)
 {
     std::ifstream ifs(path.c_str(), std::ios::in | std::ios::binary);
     if (!ifs.good())
@@ -158,4 +158,4 @@ std::string HttpServer::generatePostResponse(const std::string &body, bool keepA
 
     DEBUG_PRINT("→ Sending 200 OK for POST request");
     return resp.str();
-}
+}*/

@@ -28,11 +28,10 @@ Client::writeResponse()
     return true;
 }*/
 
-Client::Client(int fd, HttpServer &server, Response *response, size_t serverIndex, int serverPort)
+Client::Client(int fd, HttpServer &server, size_t serverIndex, int serverPort)
     : _socket(fd),
 
       _server(server),
-       _response(response),
       _state(READING),
       _keep_alive(false),
       _peer_half_closed(false),
@@ -45,8 +44,10 @@ Client::Client(int fd, HttpServer &server, Response *response, size_t serverInde
       _cgi_started(false),
       _serverIndex(serverIndex),
       _serverPort(serverPort)
+     
       
 {
+     _response = NULL;
     _cgi_pipe_in[0] = _cgi_pipe_in[1] = -1;
     _cgi_pipe_out[0] = _cgi_pipe_out[1] = -1;
 
@@ -267,6 +268,10 @@ void Client::generateResponse()
         // The original code `Response(_server, _server->_configParser);` created a
         // temporary and did nothing — replace that with either an assignment
         // into the existing object or allocate one if the pointer is null.
+        if(_response){
+            delete _response;
+            _response = NULL;
+        }
 
         _response = new Response(selectedServerIndex, _server, _parser, _server._configParser);
 
@@ -279,7 +284,8 @@ void Client::generateResponse()
         _state = WRITING;
         return;
     }
-   /* if (!ok || !_parser.isValid())
+
+    if (!ok || !_parser.isValid())
     {
         DEBUG_PRINT(RED << "Request parsing failed: " << _parser.getErrorMessage() << RESET);
         DEBUG_PRINT("Generating BAD REQUEST response");
@@ -292,7 +298,7 @@ void Client::generateResponse()
     }
 
     // Select correct server based on Host header
-    size_t selectedServerIndex = _server.selectServerForRequest(_parser, _serverPort);
+   /* size_t selectedServerIndex = _server.selectServerForRequest(_parser, _serverPort);
     if (selectedServerIndex == static_cast<size_t>(-1))
     {
         DEBUG_PRINT(RED << "No matching server block for Host/Port" << RESET);
@@ -389,7 +395,7 @@ void Client::generateResponse()
      }*/
 
     // Handle parsing failure - send 400 Bad Request and close
-    DEBUG_PRINT(RED << "Request parsing failed" << RESET);
+    /*DEBUG_PRINT(RED << "Request parsing failed" << RESET);
     if (!_parser.getErrorMessage().empty())
     {
         DEBUG_PRINT("Error: " << _parser.getErrorMessage());
@@ -410,6 +416,7 @@ void Client::generateResponse()
     _keep_alive = false; // Always close on bad request
     DEBUG_PRINT("Transitioning to WRITING state (will close after response)");
     _state = WRITING;
+}*/
 }
 
 void Client::startCgi()

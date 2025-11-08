@@ -111,7 +111,9 @@ void Response::appContentType()
 // Supported codes:
 void Response::builderror_body(int code)
 {
-
+    std::ostringstream ss;
+    ss << code;
+    _response_body.append(ss.str());
     if (code == 404)
         _response_body.append(" Not Found");
     else if (code == 413)
@@ -239,9 +241,14 @@ int Response::appBody()
         _response_headers = redirecUtil();
         return 0;
     }
-    else if ( isDirectory(_targetfile) && currentLocation->autoindex)
+    else if (isDirectory(_targetfile) && currentLocation->autoindex)
     {
-        _response_body = generateDirectoryListing(_targetfile);
+        _response_body = generateDirectoryListing(_targetfile, _HttpParser.getPath());
+        if(_response_body.empty())
+        {
+            _code = 400;
+            return 1;
+        }
         _code = 200;
         return 0;
     }
@@ -260,7 +267,7 @@ int Response::appBody()
             _code = 200;
             return 0;
     }
-    else if (_request == "POST" || _request == "DELETE")
+    else if (_request == "DELETE" || _request == "POST")
     {
         DEBUG_PRINT("Client Max Body Size: " << _HttpServer.getServerMaxBodySize(_ServerIndex) << ", Received Body Size: " << _HttpParser.getBody().size());
         if (_HttpServer.getServerMaxBodySize(_ServerIndex) < _HttpParser.getBody().size())
@@ -270,12 +277,18 @@ int Response::appBody()
         }
         else if (currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty() && (_HttpServer.isMethodAllowed(_request)))
         {
+            if(fileExists(_targetfile) == false)
+            {
+                _code = 404;
+                return 1;
+            }
             std::string cgiResponse;
             cgiResponse = _HttpServer.processCGI(_HttpParser);
+            _response_body = cgiResponse;
             if (!cgiResponse.empty())
             {
                 //setHeaders();
-                _response_body = cgiResponse;
+               // _response_body = cgiResponse;
                 //_response_final = _response_body +_response_headers ;
                 _code = 200;
                 return 0;
@@ -286,40 +299,55 @@ int Response::appBody()
                 return 1;
             }
         }
-        else
-        {
+          /*else if(fileExists(_targetfile) == true && _HttpParser.getMethod() == "POST")
+          {
+            std::cout << "📄 Targetfile for POST .py: " << _targetfile << std::endl;
+            std::ofstream outfile(_targetfile.c_str());
+            outfile << _HttpParser.getBody();
+            outfile.close();
+            _code = 201;
+            return 0;
+          }
+         else{
             // Method not allowed
             _code = 405;
             return 1;
-        }
+        }*/
     }
-    else
-    {
-        _code = 404;
-        return 1;
-    }
+    _code = 405;
+    return 1;
 }
 
-std::string Response::buildErrorPage(int code)
+void Response::buildErrorPage(int code)
 {
     std::ostringstream ss;
     ss <<  code;
     _code = code;
-  return ("<html><head><title>" + (ss.str()) +" " + statusMessage(code) +" Error</title></head>"
+    _response_final = ("<html><head><title>" + (ss.str()) +" " + statusMessage(code) +" Error</title></head>"
           "<body><h1>" + (ss.str()) + " " + statusMessage(code) + "" + "</h1>"
           "</body></html>");
+}
+
+int Response::stringToInt(const std::string &str)
+{
+    std::stringstream ss(str);
+    int num;
+    if(!(ss >> num))
+        return 0;
+    return num;
 }
 
 void Response::builderror_responses(int code)
 {
     //(void)code;
-    std::string _errorPage = _ConfigParser.getServers().at(0).getErrorPage(code); // Temporarily using the first server config
+    size_t _srvIndx = _ServerIndex;
 
+    const std::string _errorPage = _ConfigParser.getServers().at(_srvIndx).getErrorPage(code);
     if (_errorPage.empty())
         buildErrorPage(code);
     else
     {
-        std::string path = _ConfigParser.getServers().at(0).getRoot() + _ConfigParser.getServers().at(0).getErrorPage(code).at(code); // Temporarily using the first server config
+        std::string path = _ConfigParser.getServers().at(_srvIndx).getRoot() + _ConfigParser.getServers().at(_srvIndx).getErrorPage(code); //server based on host and port
         if (fileExists(path))
         {
             std::ifstream file(path.c_str());
@@ -364,19 +392,24 @@ void Response::buildResponse()
     // Handle error responses or body generation
     if (reqErr() || appBody())
     {
-        std::stringstream ss;
+        setHeaders();
+        
+        builderror_responses(_code);
+        _response_final = _response_headers +_response_body;
+        /*std::stringstream ss;
         ss << _response_body.size();
 
         // Build error body based on the response code
-        builderror_body(_code);
+        
         _response_headers.append("HTTP/1.1 ");
+        builderror_body(_code);
         std::string statusMsg = statusMessage(_code);
         _response_headers.append(" " + statusMsg + "\r\n");
         _response_headers.append("Content-Length: ");
         _response_headers.append(ss.str() + "\r\n");
         _response_headers.append("Connection: close\r\n");
         _response_headers.append("\r\n");
-        _response_final = _response_headers + _response_body;
+        _response_final = _response_headers + _response_body;*/
     }
     /*else if (!_HttpServer->getCurrentLocation()->redirect.empty()) // Handle HTTP redirects if configured
     {
@@ -408,6 +441,7 @@ void Response::buildResponse()
     else
     {
         // For other methods or status codes, build error responses
+        setHeaders();
         _response_final = _response_headers + _response_body;
         std::cout << "Final Response:\n"
                   << _response_body.size() << std::endl;
@@ -436,14 +470,14 @@ void Response::setHeaders()
     _response_headers.append("\r\n");
 }
 
-/* void Response::setHeaders()
+ /*void Response::setHeaders()
 {
     statusLine();
     appContentType();
     appContentLen();
     connection();
     _response_headers.append("\r\n");
-} */
+}*/
 
 // Checks if the request has an error status code set.
 // If so, sets the response code accordingly and returns it.

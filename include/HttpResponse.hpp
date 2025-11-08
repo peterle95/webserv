@@ -26,7 +26,8 @@
 
 class HttpServer;
 class ConfigParser;
-
+//class HttpParser;
+#include "HTTPparser.hpp"
 
 class Response
 {
@@ -53,10 +54,11 @@ public:
     // ConfigParser _ConfigParser;
 
     Response(int ServerIndex, HttpServer &server, HTTPparser &HttpParser, ConfigParser &ConfigParser);
+    //Response();
     void setRequest(std::string request);
     ~Response();
     HTTPparser request;
-    ConfigParser _ConfigParser;
+    ConfigParser &_ConfigParser;
     void appDate();
     void appContentType();
     void appContentLen();
@@ -79,7 +81,8 @@ public:
     void server();
     //int buildResponse();
     //void appBody();
-    std::string buildErrorPage(int code);
+    int stringToInt(const std::string &str);
+    void buildErrorPage(int code);
     std::string getResponse();
     std::string redirecUtil();
     const Response &operator=(const Response& other);

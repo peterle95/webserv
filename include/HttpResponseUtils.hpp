@@ -2,6 +2,6 @@
 #define HTTPRESPONSEUTILS_HPP
 #include "Common.hpp"
 
-std::string generateDirectoryListing(std::string path);
+std::string generateDirectoryListing(std::string path,std::string requestPath);
 
 #endif

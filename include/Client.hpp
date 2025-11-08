@@ -21,7 +21,7 @@ class Client
 {
 public:
     // Constructor & Destructor
-    Client(int fd, HttpServer &_server, Response *response, size_t serverIndex, int serverPort);
+    Client(int fd, HttpServer &_server, size_t serverIndex, int serverPort);
     ~Client();
 
     // Main handler method called by the server
