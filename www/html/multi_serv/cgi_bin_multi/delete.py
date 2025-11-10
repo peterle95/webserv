@@ -5,6 +5,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 import os # For file operations and environment variables	
 import sys # For reading stdin and exiting
 import cgi # For CGI handling of python scripts
+import urllib.parse
 
 # Check request method
 if os.environ.get("REQUEST_METHOD", "") == "POST":
@@ -14,11 +15,14 @@ if os.environ.get("REQUEST_METHOD", "") == "POST":
     
     # Read POST data from stdin
     post_data = sys.stdin.read().strip()
-    #print("upload_dir:", upload_dir)
-    #print("filename:", post_data)
-    # Extract filename (assuming same format: filename=<name>)
-    if "filename=" in post_data:
-        filename_to_delete = post_data.split("filename=", 1)[1].strip()
+
+    # Parse form-encoded POST body into parameters
+    params = urllib.parse.parse_qs(post_data, keep_blank_values=True)
+    filename_to_delete = params.get("filename", [""])[0].strip()
+
+    # Ensure percent-encoded sequences are decoded
+    if filename_to_delete:
+        filename_to_delete = urllib.parse.unquote(filename_to_delete)
     else:
         filename_to_delete = ""
 
@@ -30,7 +34,7 @@ if os.environ.get("REQUEST_METHOD", "") == "POST":
         print('<p><a href="/index_multi.html">Back to Home</a></p>')
         sys.exit(0)
 
-     if '..' in filename_to_delete or '/' in filename_to_delete or '\\' in filename_to_delete:
+    if '..' in filename_to_delete or '/' in filename_to_delete or '\\' in filename_to_delete:
         print("Error: Invalid filename.<br>")
         print('<p><a href="/index_multi.html">Back to Home</a></p>')
         sys.exit(0)   
@@ -42,7 +46,7 @@ if os.environ.get("REQUEST_METHOD", "") == "POST":
         print('<p><a href="/index_multi.html">Back to Home</a></p>')
         sys.exit(0)
 
-    print("file_path:", file_path)
+    print(f"File path: {file_path}<br>")
     # Check if file exists
     if not os.path.exists(file_path):
         print(f"Error: File '{filename_to_delete}' does not exist.<br>")
@@ -60,4 +64,4 @@ else:
     # Method not allowed
     print("Error: Method not allowed<br>")
 
-print('<p><a href="/index_multi.html">Back to CGI Home</a></p>')
+print('<p><a href="/index_multi.html">Back to Home</a></p>')

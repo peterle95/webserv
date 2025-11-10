@@ -13,7 +13,8 @@ enum ClientState
     READING,
     GENERATING_RESPONSE,
     WRITING,
-    AWAITING_CGI,
+    CGI_WRITING_INPUT,
+    CGI_READING_OUTPUT,
     CLOSING
 };
 
@@ -35,14 +36,24 @@ public:
     size_t getServerIndex() const { return _serverIndex; }
     int getServerPort() const { return _serverPort; }
 
+    // CGI FD getters for select()
+    int getCgiInputFd() const { return _cgi_pipe_in[1]; }
+    int getCgiOutputFd() const { return _cgi_pipe_out[0]; }
+
 private:
     // Private methods for internal logic
     void readRequest();
     void generateResponse();
     void writeResponse();
-    void handleCgi();
-    void startCgi();
     size_t checkContentLength(const std::string &request, size_t header_end);
+
+    // non-blocking CGI helpers
+    void writeToCgi();
+    void readFromCgi();
+    void cleanup_cgi();
+    // Helpers for checking request completeness
+    bool hasChunked(const std::string &request, size_t header_end) const;
+    bool checkEnd(const std::string &request, size_t header_end) const;
 
     // Member Variables
     int _socket;            // Thes client's socket file descriptor
@@ -66,8 +77,13 @@ private:
     int _cgi_pipe_in[2];  // Pipe to send data TO the CGI script (parent writes to [1], child reads from [0])
     int _cgi_pipe_out[2]; // Pipe to receive data FROM the CGI script (child writes to [1], parent reads from [0])
     bool _cgi_started;    // Flag to indicate if the CGI process has been forked
-    size_t _serverIndex;  // Which server block this client belongs to
-    int _serverPort;      // Which port client connected to
+
+    size_t _cgi_input_offset;       // Bytes of request body sent to CGI so far
+    std::string _cgi_output_buffer; // Buffer to store output read from CGI
+
+    size_t _serverIndex; // Which server block this client belongs to
+    int _serverPort;     // Which port client connected to
+    int _status_code;    // HTTP status code for the response
 
     // Private copy constructor and assignment operator to prevent copying
     Client(const Client &other);

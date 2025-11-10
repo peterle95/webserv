@@ -1,6 +1,6 @@
 #include "Common.hpp"
 
-Response::Response(int ServerIndex, HttpServer &HttpServer, HTTPparser &HTTPParser, ConfigParser &ConfigParser) : _ServerIndex(ServerIndex), _HttpServer(HttpServer), _HttpParser(HTTPParser), _ConfigParser(ConfigParser)
+Response::Response(HttpServer &HttpServer, HTTPparser &HTTPParser, ConfigParser &ConfigParser) : _HttpServer(HttpServer), _HttpParser(HTTPParser), _ConfigParser(ConfigParser)
 {
     _request = "";
     _targetfile = "";
@@ -143,6 +143,8 @@ void Response::statusLine()
         _response_headers.append(" Found\r\n");
     else if (_code == 405)
         _response_headers.append(" Method Not Allowed\r\n");
+    else if (_code == 413)
+        _response_headers.append(" Payload Too Large\r\n");
     else
         _response_headers.append(" Unknown Status\r\n");
 }
@@ -165,6 +167,8 @@ std::string Response::statusMessage(int code)
         return "Found";
     else if (code == 405)
         return "Method Not Allowed";
+    else if (code == 413)
+        return "Payload Too Large";
     else
         return "Unknown Status";
 }
@@ -230,7 +234,7 @@ bool Response::isDirectory(std::string path)
     //return S_ISDIR(path_stat.st_mode);
 }
 
-int Response::appBody()
+int Response::appBody(const std::string &cgiOutput)
 {
     const LocationConfig *currentLocation = _HttpServer.getCurrentLocation();
     _targetfile = _HttpParser.getCurrentFilePath();
@@ -267,55 +271,43 @@ int Response::appBody()
             _code = 200;
             return 0;
     }
-    else if (_request == "DELETE" || _request == "POST")
+    else if (_request == "POST" || _request == "DELETE")
     {
-        DEBUG_PRINT("Client Max Body Size: " << _HttpServer.getServerMaxBodySize(_ServerIndex) << ", Received Body Size: " << _HttpParser.getBody().size());
-        if (_HttpServer.getServerMaxBodySize(_ServerIndex) < _HttpParser.getBody().size())
-        {
-            _code = 413;
-            return 1;
-        }
-        else if (currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty() && (_HttpServer.isMethodAllowed(_request)))
+        if (currentLocation->cgiPass == true && !currentLocation->cgiExtension.empty() && (_HttpServer.isMethodAllowed(_request)))
         {
             if(fileExists(_targetfile) == false)
             {
                 _code = 404;
                 return 1;
             }
-            std::string cgiResponse;
-            cgiResponse = _HttpServer.processCGI(_HttpParser);
-            _response_body = cgiResponse;
-            if (!cgiResponse.empty())
+            if (!cgiOutput.empty())
             {
-                //setHeaders();
-               // _response_body = cgiResponse;
-                //_response_final = _response_body +_response_headers ;
+
+                // CGI output is available, use it as the response body
+                _response_body = cgiOutput;
                 _code = 200;
                 return 0;
             }
             else
             {
+                // CGI output is expected but not available
                 _code = 500;
                 return 1;
             }
+            // Do NOT execute CGI here in the Response module for non-blocking flow.
         }
-          /*else if(fileExists(_targetfile) == true && _HttpParser.getMethod() == "POST")
-          {
-            std::cout << "📄 Targetfile for POST .py: " << _targetfile << std::endl;
-            std::ofstream outfile(_targetfile.c_str());
-            outfile << _HttpParser.getBody();
-            outfile.close();
-            _code = 201;
-            return 0;
-          }
-         else{
+        else
+        {
             // Method not allowed
             _code = 405;
             return 1;
-        }*/
+        }
     }
-    _code = 405;
-    return 1;
+    else
+    {
+        _code = 405;
+        return 1;
+    }
 }
 
 void Response::buildErrorPage(int code)
@@ -323,9 +315,10 @@ void Response::buildErrorPage(int code)
     std::ostringstream ss;
     ss <<  code;
     _code = code;
-    _response_final = ("<html><head><title>" + (ss.str()) +" " + statusMessage(code) +" Error</title></head>"
-          "<body><h1>" + (ss.str()) + " " + statusMessage(code) + "" + "</h1>"
-          "</body></html>");
+    _response_body = ("<html><head><title>" + (ss.str()) + " " + statusMessage(code) + " Error</title></head>"
+                                                                                       "<body><h1>" +
+                      (ss.str()) + " " + statusMessage(code) + "" + "</h1>"
+                                                                    "</body></html>");
 }
 
 int Response::stringToInt(const std::string &str)
@@ -384,20 +377,16 @@ std::string Response::redirecUtil()
     return _response_headers;
 }
 
-
-void Response::buildResponse()
+void Response::buildResponse(const std::string &cgiOutput)
 {
-    _targetfile = _HttpParser.getCurrentFilePath();
-
     // Handle error responses or body generation
-    if (reqErr() || appBody())
+    if (reqErr() || appBody(cgiOutput))
     {
-        setHeaders();
-        
         builderror_responses(_code);
-        _response_final = _response_headers +_response_body;
-        /*std::stringstream ss;
-        ss << _response_body.size();
+        setHeaders();
+        _response_final = _response_headers + _response_body;
+        /*         std::stringstream ss;
+                ss << _response_body.size();
 
         // Build error body based on the response code
         
@@ -484,16 +473,23 @@ void Response::setHeaders()
 // Otherwise, returns 0 indicating no error.
 int Response::reqErr()
 {
+    // Error code set from HTTPparser during request parsing
     if (!request.getErrorStatusCode().empty())
     {
         _code = std::atoi(request.getErrorStatusCode().c_str());
-        return _code;
+        return 1;
     }
+    // If response code indicates an error eg. from CGI checks, return 1
+    else if (_code != 200)
+        return 1;
     return 0;
 }
 
-std::string Response::getResponse()
+std::string Response::processResponse(std::string request, int code, const std::string &cgiOutput)
 {
+    setStatusCode(code);
+    setRequest(request);
+    buildResponse(cgiOutput);
     return _response_final;
 }
 

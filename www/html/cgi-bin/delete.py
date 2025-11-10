@@ -4,19 +4,23 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 import os # For file operations and environment variables	
 import sys # For reading stdin and exiting
 import cgi # For CGI handling of python scripts
+import urllib.parse
 
 # Check request method
 if os.environ.get("REQUEST_METHOD", "") == "POST":
     cwd = os.getcwd()
     upload_dir = os.path.join(cwd, "cgi_upload")
-
+    
+    
     # Read POST data from stdin
     post_data = sys.stdin.read().strip()
 
-    # Extract filename (assuming same format: filename=<name>)
-    if "filename=" in post_data:
-        filename_to_delete = post_data.split("filename=", 1)[1].strip()
-    else:
+    # Parse form-encoded POST body into parameters
+    params = urllib.parse.parse_qs(post_data, keep_blank_values=True)
+    filename_to_delete = params.get("filename", [""])[0].strip()
+
+    # Values from parse_qs are already percent-decoded.
+    if not filename_to_delete:
         filename_to_delete = ""
 
     print(f"Filename to delete: {filename_to_delete}<br>")
@@ -27,7 +31,17 @@ if os.environ.get("REQUEST_METHOD", "") == "POST":
         print('<p><a href="/index.html">Back to Home</a></p>')
         sys.exit(0)
 
+    if '..' in filename_to_delete or '/' in filename_to_delete or '\\' in filename_to_delete:
+        print("Error: Invalid filename.<br>")
+        print('<p><a href="/index.html">Back to Home</a></p>')
+        sys.exit(0)   
+
     file_path = os.path.join(upload_dir, filename_to_delete)
+
+    if not os.path.abspath(file_path).startswith(os.path.abspath(upload_dir)):
+        print("Error: Invalid filename path.<br>")
+        print('<p><a href="/index.html">Back to Home</a></p>')
+        sys.exit(0)
 
     # Check if file exists
     if not os.path.exists(file_path):

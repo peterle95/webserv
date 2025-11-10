@@ -32,6 +32,7 @@ Client::Client(int fd, HttpServer &server, size_t serverIndex, int serverPort)
     : _socket(fd),
 
       _server(server),
+      _response(NULL),
       _state(READING),
       _keep_alive(false),
       _peer_half_closed(false),
@@ -43,11 +44,10 @@ Client::Client(int fd, HttpServer &server, size_t serverIndex, int serverPort)
       _cgi_pid(-1),
       _cgi_started(false),
       _serverIndex(serverIndex),
-      _serverPort(serverPort)
-     
-      
+      _serverPort(serverPort),
+      _status_code(200)
+
 {
-     _response = NULL;
     _cgi_pipe_in[0] = _cgi_pipe_in[1] = -1;
     _cgi_pipe_out[0] = _cgi_pipe_out[1] = -1;
 
@@ -76,6 +76,12 @@ Client::~Client()
         close(_cgi_pipe_out[0]);
     if (_cgi_pipe_out[1] != -1)
         close(_cgi_pipe_out[1]);
+    // Delete response object if created
+    if (_response != NULL)
+    {
+        delete _response;
+        _response = NULL;
+    }
 }
 
 int Client::getSocket() const { return _socket; }
@@ -86,28 +92,32 @@ ClientState Client::getState() const { return _state; }
 void Client::handleConnection()
 {
     DEBUG_PRINT(BLUE << "=== HANDLE CONNECTION ===" << RESET);
-    DEBUG_PRINT("Current state: " << (_state == READING ? "READING" :
-                                   _state == GENERATING_RESPONSE ? "GENERATING_RESPONSE" :
-                                   _state == WRITING ? "WRITING" :
-                                   _state == AWAITING_CGI ? "AWAITING_CGI" :
-                                   _state == CLOSING ? "CLOSING" : "UNKNOWN"));
+    DEBUG_PRINT("Current state: " << (_state == READING ? "READING" : _state == GENERATING_RESPONSE ? "GENERATING_RESPONSE"
+                                                                  : _state == WRITING               ? "WRITING"
+                                                                  : _state == CLOSING               ? "CLOSING"
+                                                                  : _state == CGI_READING_OUTPUT    ? "CGI_READING_OUTPUT"
+                                                                  : _state == CGI_WRITING_INPUT     ? "CGI_WRITING_INPUT"
+                                                                                                    : "UNKNOWN"));
 
     switch (_state)
     {
-        case READING:              
-            readRequest(); 
-            break;
-        case GENERATING_RESPONSE:  
-            generateResponse(); 
-            break;
-        case WRITING:              
-            writeResponse(); 
-            break;
-        case AWAITING_CGI:         
-            handleCgi(); 
-            break;
-        case CLOSING:              
-            default: 
+    case READING:
+        readRequest();
+        break;
+    case GENERATING_RESPONSE:
+        generateResponse();
+        break;
+    case CGI_WRITING_INPUT:
+        writeToCgi();
+        break;
+    case CGI_READING_OUTPUT:
+        readFromCgi();
+        break;
+    case WRITING:
+        writeResponse();
+        break;
+    case CLOSING:
+    default:
         break; // Server will close
     }
 }
@@ -130,8 +140,17 @@ void Client::readRequest()
             // Check for Content-Length to read the body if present
             size_t contentLength = checkContentLength(_request_buffer, header_end);
             DEBUG_PRINT(CYAN << "Detected Content-Length: " << contentLength << RESET);
-            if (contentLength > 0)
+            bool isChunked = hasChunked(_request_buffer, header_end);
+            if (contentLength > 0 || isChunked)
             {
+                size_t maxBodySize = _server.getServerMaxBodySize(_serverIndex);
+                if (maxBodySize != 0 && contentLength > maxBodySize)
+                {
+
+                    DEBUG_PRINT(RED << "Warning:Request body exceeds maximum allowed size" << RESET);
+                    // Set status code, but continue reading to drain the socket
+                    _status_code = 413;
+                }
                 // Total length = header end position + 4 (for CRLF) + body
                 // size_t totalLength = header_end + 4 + contentLength;
 
@@ -140,7 +159,7 @@ void Client::readRequest()
                 if (_request_buffer.size() > header_end + 4)
                     have = _request_buffer.size() - (header_end + 4);
 
-                if (have < contentLength)
+                if ((!isChunked && have < contentLength) || (isChunked && checkEnd(_request_buffer, header_end) == false))
                 {
                     DEBUG_PRINT("Incomplete body: have " << have << " of " << contentLength << " bytes");
                     if (_peer_half_closed)
@@ -227,30 +246,52 @@ void Client::readRequest()
 
 void Client::generateResponse()
 {
-   
+    bool ok = false;
     DEBUG_PRINT(BLUE << "=== GENERATING RESPONSE ===" << RESET);
     DEBUG_PRINT("Request buffer size: " << _request_buffer.size());
 
     // Parse the HTTP request
     DEBUG_PRINT(MAGENTA << "*** ENTERING HTTP PARSER ***" << RESET);
-    bool ok = _parser.parseRequest(_request_buffer);
-    _keep_alive = _server.determineKeepAlive(_parser);
+    if (_status_code != 200)
+    {
+        DEBUG_PRINT(RED << "Skipping parsing due to pre-set error code: " << _status_code << RESET);
+        _keep_alive = false; // Always close on bad request
+    }
+    else
+    {
+        ok = _parser.parseRequest(_request_buffer);
+        _keep_alive = _server.determineKeepAlive(_parser);
+    }
 
     DEBUG_PRINT("Parsing result: " << (ok ? "SUCCESS" : "FAILED"));
     DEBUG_PRINT("Parser valid: " << (_parser.isValid() ? "YES" : "NO"));
     DEBUG_PRINT("Keep-alive: " << (_keep_alive ? "YES" : "NO"));
 
     DEBUG_PRINT(MAGENTA << "*** EXITING HTTP PARSER ***" << RESET);
-    if(ok && _parser.isValid())
+    if (_response != NULL)
+    {
+        delete _response;
+        _response = NULL;
+    }
+    // Response object must be created regardless of whether parsing is successful or not, to handle error responses
+    _response = new Response(_server, _parser, _server._configParser);
+    if (ok && _parser.isValid())
     {
         DEBUG_PRINT(GREEN << "Request parsed successfully" << RESET);
+
         // Select correct server based on Host header
         size_t selectedServerIndex = _server.selectServerForRequest(_parser, _serverPort);
+        if (_response)
+            _response->setServerIndex(selectedServerIndex);
         if (selectedServerIndex == static_cast<size_t>(-1))
         {
             DEBUG_PRINT(RED << "No matching server block for Host/Port" << RESET);
-            _response_buffer = _server.generateBadRequestResponse(_keep_alive);
+            _status_code = 400;
+            if (_response)
+                _response_buffer = _response->processResponse(_parser.getMethod(), _status_code, "");
+            Logger::logResponse(_response_buffer);
             _response_offset = 0;
+            DEBUG_PRINT("Transitioning to WRITING state");
             _state = WRITING;
             return;
         }
@@ -264,187 +305,90 @@ void Client::generateResponse()
         _parser.setCurrentFilePath(filePath);
         DEBUG_PRINT("Resolved file path: '" << filePath << "'");
 
-        // Ensure _response refers to a Response instance configured for this server
-        // The original code `Response(_server, _server->_configParser);` created a
-        // temporary and did nothing — replace that with either an assignment
-        // into the existing object or allocate one if the pointer is null.
-        if(_response){
-            delete _response;
-            _response = NULL;
-        }
-
-        _response = new Response(selectedServerIndex, _server, _parser, _server._configParser);
-
-        _response->setRequest(_parser.getMethod());
-        _response->buildResponse();
-        _response_buffer =_response->getResponse();
-        Logger::logResponse(_response_buffer);
-        _response_offset = 0;
-        DEBUG_PRINT("Transitioning to WRITING state");
-        _state = WRITING;
-        return;
-    }
-
-    if (!ok || !_parser.isValid())
-    {
-        DEBUG_PRINT(RED << "Request parsing failed: " << _parser.getErrorMessage() << RESET);
-        DEBUG_PRINT("Generating BAD REQUEST response");
-        _response_buffer = _server.generateBadRequestResponse(false);
-        Logger::logResponse(_response_buffer);
-        _response_offset = 0;
-        DEBUG_PRINT("Transitioning to WRITING state");
-        _state = WRITING;
-        return;
-    }
-
-    // Select correct server based on Host header
-   /* size_t selectedServerIndex = _server.selectServerForRequest(_parser, _serverPort);
-    if (selectedServerIndex == static_cast<size_t>(-1))
-    {
-        DEBUG_PRINT(RED << "No matching server block for Host/Port" << RESET);
-        _response_buffer = _server.generateBadRequestResponse(_keep_alive);
-        _response_offset = 0;
-        _state = WRITING;
-        return;
-    }
-    DEBUG_PRINT(CYAN << "Selected server index: " << selectedServerIndex
-                     << " for Host: '" << _parser.getHeader("Host") << "'" << RESET);
-
-    const std::string method = _parser.getMethod();
-    const std::string path = _parser.getPath();
-
-    DEBUG_PRINT("Parsed request:");
-    DEBUG_PRINT("  Method: " << RED << method << RESET);
-    DEBUG_PRINT("  Path: " << RED << path << RESET);
-    DEBUG_PRINT("  Version: " << _parser.getVersion());
-
-    // Map location and resolve filesystem path for this request
-    std::string filePath = _server.resolveFilePathFor(path, selectedServerIndex);
-    DEBUG_PRINT("Resolved file path: '" << filePath << "'");
-
-    if (iequals(method, "GET"))
-    {
-        DEBUG_PRINT(GREEN << "Handling GET request" << RESET);
-        _response_buffer = _server.generateGetResponse(filePath, _keep_alive);
-        Logger::logResponse(_response_buffer);
-        _response_offset = 0;
-        DEBUG_PRINT("GET response generated, size: " << _response_buffer.size());
-        DEBUG_PRINT("Transitioning to WRITING state");
-        _state = WRITING;
-        return;
-    }
-    else if (iequals(method, "POST") || iequals(method, "DELETE"))
-    {
-        DEBUG_PRINT(GREEN << "Handling " << method << " request (CGI)" << RESET);
         // CGI handling requires proper location and method checks
         const LocationConfig *loc = _server.getCurrentLocation();
         bool cgiEnabled = (loc && loc->cgiPass);
+        std::string method = _parser.getMethod();
         bool methodAllowed = _server.isMethodAllowed(method);
 
-        DEBUG_PRINT(CYAN << "CGI enabled: " << (cgiEnabled ? "YES" : "NO") << RESET);
-        DEBUG_PRINT(GREEN << "Method allowed: " << (methodAllowed ? "YES" : "NO") << RESET);
-
-        if (cgiEnabled && methodAllowed)
+        if (methodAllowed && (method == "POST" || method == "DELETE") && cgiEnabled)
         {
-            DEBUG_PRINT(CYAN << "Processing CGI request" << RESET);
-            // Provide the filesystem path for the script
-            _parser.setCurrentFilePath(filePath);
-            std::string cgiOut = _server.processCGI(_parser);
-            DEBUG_PRINT(CYAN << "CGI output size: " << cgiOut.size() << RESET);
-
-            // If CGI returned a full HTTP response, use it as-is; otherwise wrap as 200 OK
-            if (cgiOut.compare(0, 5, "HTTP/") == 0)
+            // Check if file extension matches CGI extension
+            bool isCgiScript = false;
+            if (!loc->cgiExtension.empty())
             {
-                DEBUG_PRINT(CYAN << "CGI returned full HTTP response" << RESET);
-                _response_buffer = cgiOut;
+                size_t ext_pos = filePath.rfind('.');
+                if (ext_pos != std::string::npos)
+                {
+                    std::string ext = filePath.substr(ext_pos);
+                    isCgiScript = (ext == loc->cgiExtension);
+                }
+            }
+            if (isCgiScript)
+            {
+                DEBUG_PRINT(CYAN << "Starting non-blocking CGI" << RESET);
+
+                // === If peer half-closed and body incomplete, DO NOT start CGI ===
+                std::string cl_hdr = _parser.getHeader("Content-Length");
+                if (_peer_half_closed && !cl_hdr.empty())
+                {
+                    size_t expected = 0;
+                    std::istringstream iss(cl_hdr);
+                    iss >> expected;
+                    if (_parser.getBody().size() < expected)
+                    {
+                        DEBUG_PRINT(RED << "Peer half-closed with incomplete body; aborting CGI" << RESET);
+                        _status_code = 400;
+                        if (_response)
+                            _response_buffer = _response->processResponse(_parser.getMethod(), _status_code, "");
+                        Logger::logResponse(_response_buffer);
+                        _response_offset = 0;
+                        DEBUG_PRINT("Transitioning to WRITING state");
+                        _state = WRITING;
+                        return;
+                    }
+                }
+
+                // Create CGI handler
+                _cgi_handler = CGI(_parser);
+
+                // Start CGI process (non-blocking)
+                if (_cgi_handler.execute() == 0)
+                {
+                    _cgi_pid = _cgi_handler.getPid();
+                    _cgi_pipe_in[1] = _cgi_handler.getInputFd();
+                    _cgi_pipe_out[0] = _cgi_handler.getOutputFd();
+                    _cgi_input_offset = 0;
+                    _cgi_output_buffer.clear();
+                    _cgi_started = true;
+
+                    // Transition to writing input state
+                    _state = CGI_WRITING_INPUT;
+                    DEBUG_PRINT("CGI forked successfully, PID: " << _cgi_pid);
+                }
+                else
+                {
+                    DEBUG_PRINT(RED << "CGI fork failed" << RESET);
+                    _status_code = 500;
+                }
+                return;
             }
             else
             {
-                DEBUG_PRINT(CYAN << "CGI returned body, wrapping as 200 OK" << RESET);
-                _response_buffer = _server.generatePostResponse(cgiOut, _keep_alive);
+                _status_code = 404;
+                DEBUG_PRINT(RED << "CGI script not found or extension mismatch" << RESET);
             }
-
-             Logger::logResponse(_response_buffer);
-             _response_offset = 0;
-             DEBUG_PRINT(CYAN << "CGI response generated, size: " << _response_buffer.size() << RESET);
-             DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
-             _state = WRITING;
-             return;
-         }
-         else
-         {
-             DEBUG_PRINT(CYAN << "CGI not available, generating METHOD NOT ALLOWED" << RESET);
-             _response_buffer = _server.generateMethodNotAllowedResponse(_keep_alive);
-             Logger::logResponse(_response_buffer);
-             _response_offset = 0;
-             DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
-             _state = WRITING;
-             return;
-         }
-     }
-     else
-     {
-         DEBUG_PRINT(CYAN << "Unknown method: " << RED << method << RESET);
-         DEBUG_PRINT(RED << "Generating METHOD NOT ALLOWED response" << RESET);
-         _response_buffer = _server.generateMethodNotAllowedResponse(_keep_alive);
-         Logger::logResponse(_response_buffer);
-         _response_offset = 0;
-         DEBUG_PRINT(YELLOW << "Transitioning to WRITING state" << RESET);
-         _state = WRITING;
-         return;
-     }*/
-
-    // Handle parsing failure - send 400 Bad Request and close
-    /*DEBUG_PRINT(RED << "Request parsing failed" << RESET);
-    if (!_parser.getErrorMessage().empty())
-    {
-        DEBUG_PRINT("Error: " << _parser.getErrorMessage());
+        }
     }
-
-    // Generate a simple 400 Bad Request response
-    std::ostringstream oss;
-    oss << "HTTP/1.1 400 Bad Request\r\n"
-        << "Content-Type: text/html\r\n"
-        << "Content-Length: 46\r\n"
-        << "Connection: close\r\n"
-        << "\r\n"
-        << "<html><body>400 Bad Request</body></html>";
-
-    _response_buffer = oss.str();
+    // If we reach here, either parsing failed, error occurred or we are not doing CGI
+    // If parsing failed, parser would have set error status code which will be checked inside processResponse
+    if (_response)
+        _response_buffer = _response->processResponse(_parser.getMethod(), _status_code, "");
     Logger::logResponse(_response_buffer);
     _response_offset = 0;
-    _keep_alive = false; // Always close on bad request
-    DEBUG_PRINT("Transitioning to WRITING state (will close after response)");
+    DEBUG_PRINT("Transitioning to WRITING state");
     _state = WRITING;
-}*/
-}
-
-void Client::startCgi()
-{
-    DEBUG_PRINT(BLUE << "=== STARTING CGI ===" << RESET);
-    DEBUG_PRINT("Transitioning from current state to AWAITING_CGI");
-
-    // In this project, CGI is handled synchronously via HttpServer::processCGI
-    // So we simply set the state to AWAITING_CGI and immediately handle it.
-    _state = AWAITING_CGI;
-}
-
-void Client::handleCgi()
-{
-    DEBUG_PRINT(BLUE << "=== HANDLING CGI ===" << RESET);
-    DEBUG_PRINT("Current state: " << (_state == AWAITING_CGI ? "AWAITING_CGI" : "UNKNOWN"));
-
-    // Synchronous CGI handled in generateResponse(); nothing to do here for now.
-    // Transition to WRITING if not already.
-    if (_state == AWAITING_CGI)
-    {
-        DEBUG_PRINT("CGI processing complete, transitioning to WRITING");
-        _state = WRITING;
-    }
-    else
-    {
-        DEBUG_PRINT("Unexpected state in handleCgi(), staying in current state");
-    }
+    return;
 }
 
 void Client::writeResponse()
@@ -558,4 +502,228 @@ size_t Client::checkContentLength(const std::string &request, size_t header_end)
         }
     }
     return contentLength;
+}
+
+// Return true if the header block contains Transfer-Encoding: chunked (case-insensitive)
+// This is a helper for determining if we need to look for chunked body while reading
+bool Client::hasChunked(const std::string &request, size_t header_end) const
+{
+    size_t pos = request.find("Transfer-Encoding:", 0);
+    if (pos == std::string::npos || pos >= header_end)
+        return false;
+    pos += strlen("Transfer-Encoding:");
+    while (pos < header_end && (request[pos] == ' ' || request[pos] == '\t'))
+        ++pos;
+    size_t end = pos;
+    while (end < header_end && request[end] != '\r' && request[end] != '\n')
+        ++end;
+    std::string val = request.substr(pos, end - pos);
+    // lowercase check for "chunked"
+    for (size_t i = 0; i < val.size(); ++i)
+        val[i] = static_cast<char>(::tolower(val[i]));
+    return (val.find("chunked") != std::string::npos);
+}
+
+// Quick heuristic: look for common final-zero-chunk patterns.
+// Returns true if it very likely contains the terminating 0-chunk (+ optional trailers).
+bool Client::checkEnd(const std::string &request, size_t header_end) const
+{
+    if (header_end == std::string::npos)
+        return false;
+    size_t body_start = header_end + 4; // after "\r\n\r\n"
+    if (body_start >= request.size())
+        return false;
+
+    // common full terminator: CRLF "0" CRLF CRLF
+    if (request.find("\r\n0\r\n\r\n", body_start) != std::string::npos)
+        return true;
+
+    // common terminator without trailing blank line (some clients)
+    if (request.find("\r\n0\r\n", body_start) != std::string::npos)
+        return true;
+
+    // zero chunk may be at body_start (no preceding CRLF)
+    if (request.compare(body_start, 4, "0\r\n\r\n") == 0 || request.compare(body_start, 3, "0\r\n") == 0)
+        return true;
+
+    // chunk extensions: look for "\r\n0;" then CRLF and final CRLFCRLF afterwards
+    size_t p = request.find("\r\n0;", body_start);
+    if (p != std::string::npos)
+    {
+        size_t afterSizeLine = request.find("\r\n", p + 3);
+        if (afterSizeLine != std::string::npos)
+        {
+            if (request.find("\r\n\r\n", afterSizeLine + 2) != std::string::npos)
+                return true;
+        }
+    }
+
+    return false;
+}
+
+// Write request body to CGI incrementally
+
+void Client::writeToCgi()
+{
+    DEBUG_PRINT(BLUE << "=== WRITING TO CGI ===" << RESET);
+
+    const std::string &body = _parser.getBody();
+    size_t body_size = body.size();
+
+    // Check if all data has been written
+    if (_cgi_input_offset >= body_size)
+    {
+        DEBUG_PRINT(GREEN << "Finished writing request body to CGI" << RESET);
+        close(_cgi_pipe_in[1]);
+        _cgi_pipe_in[1] = -1;
+        _state = CGI_READING_OUTPUT;
+        return;
+    }
+
+    // Attempt ONE write operation
+    ssize_t written = write(_cgi_pipe_in[1],
+                            body.c_str() + _cgi_input_offset,
+                            body_size - _cgi_input_offset);
+
+    if (written > 0)
+    {
+        // Successfully wrote some bytes
+        _cgi_input_offset += static_cast<size_t>(written);
+        DEBUG_PRINT("Wrote " << written << " bytes to CGI, offset: "
+                             << _cgi_input_offset << "/" << body_size);
+
+        // Check if we've now written everything
+        if (_cgi_input_offset >= body_size)
+        {
+            DEBUG_PRINT(GREEN << "Finished writing request body to CGI" << RESET);
+            close(_cgi_pipe_in[1]);
+            _cgi_pipe_in[1] = -1;
+            _state = CGI_READING_OUTPUT;
+        }
+        // Otherwise, stay in CGI_WRITING_INPUT and return to select()
+        return;
+    }
+    else if (written == 0)
+    {
+        // Unusual for write() but possible - treat as non-fatal
+        DEBUG_PRINT("CGI input pipe returned 0, waiting for next select() wake");
+        return; // Stay in CGI_WRITING_INPUT, select() will wake us when ready
+    }
+    else // written == -1
+    {
+        // Write failed - could be EAGAIN (pipe full) or real error
+        // Without checking errno, treat ALL errors as fatal
+        DEBUG_PRINT(RED << "Error writing to CGI, aborting" << RESET);
+        _status_code = 400;
+        if (_response)
+            _response_buffer = _response->processResponse(_parser.getMethod(), _status_code, "");
+        Logger::logResponse(_response_buffer);
+        _response_offset = 0;
+        DEBUG_PRINT("Transitioning to WRITING state");
+        _state = WRITING;
+        cleanup_cgi();
+        return;
+    }
+
+    // Finished writing input to CGI
+    DEBUG_PRINT(GREEN << "Finished writing request body to CGI" << RESET);
+    close(_cgi_pipe_in[1]);
+    _cgi_pipe_in[1] = -1;
+
+    // Transition to reading output from CGI
+    _state = CGI_READING_OUTPUT;
+}
+
+// Read CGI output incrementally
+void Client::readFromCgi()
+{
+    DEBUG_PRINT(BLUE << "=== READING FROM CGI ===" << RESET);
+
+    char buf[4096];
+    ssize_t n = read(_cgi_pipe_out[0], buf, sizeof(buf));
+    if (n > 0)
+    {
+        _cgi_output_buffer.append(buf, buf + n);
+        DEBUG_PRINT("Read " << n << " bytes from CGI, total output size: " << _cgi_output_buffer.size());
+        return; // Stay in CGI_READING_OUTPUT, select() will wake us when more data is available
+    }
+    else if (n == 0)
+    {
+        // EOF - CGI finished writing
+        DEBUG_PRINT(GREEN << "CGI output pipe closed, finished reading" << RESET);
+        close(_cgi_pipe_out[0]);
+        _cgi_pipe_out[0] = -1;
+
+        int status;
+        pid_t result = waitpid(_cgi_pid, &status, WNOHANG);
+
+        // If child exited successfully
+        if (result == _cgi_pid)
+        {
+            // Child exited
+            if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+            {
+                DEBUG_PRINT(GREEN << "CGI completed successfully" << RESET);
+            }
+            else
+            {
+                DEBUG_PRINT(RED << "CGI failed with exit status " << status << RESET);
+                _status_code = 500;
+                _keep_alive = false;
+            }
+        }
+        else if (result == 0)
+        {
+            // Child still running but pipe closed - build response anyway
+            DEBUG_PRINT("CGI pipe closed but process still running");
+
+            if (_cgi_output_buffer.empty())
+            {
+                _status_code = 400;
+            }
+        }
+        else // result == -1
+        {
+            // waitpid error
+            DEBUG_PRINT(RED << "waitpid failed" << RESET);
+            _status_code = 400;
+        }
+    }
+    else // n == -1
+    {
+        // Read error - abort CGI and generate error response
+        DEBUG_PRINT(RED << "Error reading from CGI, aborting" << RESET);
+        _status_code = 400;
+    }
+    if (_response)
+    {
+        _response_buffer = _response->processResponse(_parser.getMethod(), _status_code, _cgi_output_buffer);
+    }
+    Logger::logResponse(_response_buffer);
+    _response_offset = 0;
+    DEBUG_PRINT("Transitioning to WRITING state");
+    _state = WRITING;
+    cleanup_cgi();
+}
+
+void Client::cleanup_cgi()
+{
+    DEBUG_PRINT(BLUE << "=== CLEANING UP CGI ===" << RESET);
+
+    if (_cgi_pipe_in[1] != -1)
+    {
+        close(_cgi_pipe_in[1]);
+        _cgi_pipe_in[1] = -1;
+    }
+    if (_cgi_pipe_out[0] != -1)
+    {
+        close(_cgi_pipe_out[0]);
+        _cgi_pipe_out[0] = -1;
+    }
+    if (_cgi_pid != -1)
+    {
+        kill(_cgi_pid, SIGKILL);
+        waitpid(_cgi_pid, NULL, WNOHANG);
+        _cgi_pid = -1;
+    }
 }

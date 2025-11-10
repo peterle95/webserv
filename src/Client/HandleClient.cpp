@@ -35,21 +35,3 @@ bool HttpServer::isMethodAllowed(const std::string &method)
 
     return _currentLocation->allowedMethods.find(method) != _currentLocation->allowedMethods.end();
 }
-
-std::string HttpServer::processCGI(HTTPparser &parser)
-{
-    CGI cgi(parser);
-    int status = cgi.execute();
-    if (status != 0)
-    {
-        DEBUG_PRINT(RED << "CGI execution failed with status: " << status << RESET);
-        return generateBadRequestResponse(determineKeepAlive(parser));
-    }
-    else
-    {
-        std::string cgiResponse = cgi.readResponse();
-        cgi.cleanup();
-        DEBUG_PRINT("CGI response received, length: " << cgiResponse.size());
-        return cgiResponse;
-    }
-}

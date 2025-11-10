@@ -130,6 +130,27 @@ char **CGI::createArgsArray() const
 	args[3] = NULL;
 	return args;
 }
+// TODO:: need to create a common util for non blocking setting for Server and CGI
+static bool setNonBlocking(int fd)
+{
+	// Query the current file status flags for this file descriptor (fd).
+	// These are not filesystem permissions, but runtime flags that control how
+	// the kernel handles I/O on this fd (e.g., append mode, blocking/non-blocking).
+	int flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0)
+		return false; // Failed to retrieve flags
+
+	// Add the O_NONBLOCK flag to the existing set of flags.
+	// O_NONBLOCK means:
+	//   - read() will return immediately if no data is available (instead of blocking)
+	//   - write() will return immediately if it cannot accept more data
+	// The bitwise OR ensures we *preserve* existing flags (e.g., O_APPEND).
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+		return false; // Failed to update flags
+
+	// Success: the socket is now in non-blocking mode.
+	return true;
+}
 
 // Setup pipes
 void CGI::setupPipes()
@@ -137,12 +158,22 @@ void CGI::setupPipes()
 	if (pipe(pipe_in_) == -1)
 	{
 		std::cerr << "Error: Input pipe creation failed: " << strerror(errno) << std::endl;
+		return;
 	}
 	if (pipe(pipe_out_) == -1)
 	{
 		std::cerr << "Error: Output pipe creation failed: " << strerror(errno) << std::endl;
 		close(pipe_in_[0]);
 		close(pipe_in_[1]);
+		pipe_in_[0] = pipe_in_[1] = -1;
+		pipe_out_[0] = pipe_out_[1] = -1;
+		return;
+	}
+	// Set pipes to non-blocking mode
+	if (!setNonBlocking(pipe_in_[1]) || !setNonBlocking(pipe_out_[0]))
+	{
+		closePipes();
+		return;
 	}
 }
 
@@ -167,6 +198,13 @@ int CGI::execute()
 	if (interpreter_path_.empty())
 	{
 		std::cerr << "Error: No interpreter found for script: " << script_path_ << std::endl;
+		return -1;
+	}
+
+	// Validate file extension is .py
+	if (script_path_.size() < 3 || script_path_.substr(script_path_.size() - 3) != ".py")
+	{
+		std::cerr << "Error: Not a Python script: " << script_path_ << std::endl;
 		return -1;
 	}
 
@@ -240,88 +278,15 @@ int CGI::execute()
 		close(pipe_in_[0]);	 // Close read end of input pipe
 		close(pipe_out_[1]); // Close write end of output pipe
 
-		// Write entire request body to CGI stdin (handle partial writes)
-		if (!request_body_.empty())
-		{
-			const char *data = request_body_.data();
-			size_t to_write = request_body_.size();
-			while (to_write > 0)
-			{
-				ssize_t n = write(pipe_in_[1], data, to_write);
-				if (n > 0)
-				{
-					data += n;
-					to_write -= static_cast<size_t>(n);
-				}
-				else if (n == -1) // errno after write not allowed
-				{
-					continue; // Retry if interrupted by signal
-				}
-				else
-				{
-					std::cerr << "Warning: Failed to write request body to CGI" << std::endl;
-					break;
-				}
-			}
-		}
-		close(pipe_in_[1]); // Close write end after writing
-
 		return 0;
 	}
 }
 
-// Read CGI response
-std::string CGI::readResponse()
-{
-	if (cgi_pid_ == -1 || pipe_out_[0] == -1)
-	{
-		return "HTTP/1.1 500 Internal Server Error\r\n\r\nCGI not executed properly";
-	}
-
-	std::string response;
-	char buffer[CGI_BUFFER_SIZE];
-	ssize_t bytes_read;
-
-	// Read until EOF (handles cases without Content-Length)
-	while ((bytes_read = read(pipe_out_[0], buffer, sizeof(buffer))) > 0)
-	{
-		response.append(buffer, bytes_read);
-	}
-
-	close(pipe_out_[0]);
-	pipe_out_[0] = -1;
-
-	// Wait for CGI process to finish
-	int status;
-	pid_t result = waitpid(cgi_pid_, &status, 0);
-	cgi_pid_ = -1;
-
-	if (result == -1)
-	{
-		std::cerr << "Error: waitpid failed: " << strerror(errno) << std::endl;
-		return "HTTP/1.1 500 Internal Server Error\r\n\r\nCGI process error";
-	}
-
-	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-	{
-		DEBUG_PRINT("CGI executed successfully.");
-		return response;
-	}
-	else
-	{
-		std::cerr << "Error: CGI execution failed with status: " << status << std::endl;
-		return "HTTP/1.1 500 Internal Server Error\r\n\r\nCGI execution failed";
-	}
-}
-
-// Cleanup resources
+// The cleanup only close pipes — do NOT kill/reap child unconditionally.
+// The Client calls waitpid/kill when it decides the CGI lifecycle ended.
 void CGI::cleanup()
 {
-	if (cgi_pid_ != -1)
-	{
-		kill(cgi_pid_, SIGKILL);
-		waitpid(cgi_pid_, NULL, 0);
-		cgi_pid_ = -1;
-	}
+	// Ensure pipes are closed.
 	closePipes();
+	cgi_pid_ = -1;
 }
