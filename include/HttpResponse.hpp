@@ -45,7 +45,7 @@ class Response
     std::string _path;
     int _ServerIndex;
     HttpServer &_HttpServer;
-    HTTPparser _HttpParser;
+    HTTPparser &_HttpParser;
 
 public:
     // Response();
@@ -53,8 +53,7 @@ public:
     // HTTPparser _HTTPParser;
     // ConfigParser _ConfigParser;
 
-    Response(int ServerIndex, HttpServer &server, HTTPparser &HttpParser, ConfigParser &ConfigParser);
-    //Response();
+    Response(HttpServer &server, HTTPparser &HttpParser, ConfigParser &ConfigParser);
     void setRequest(std::string request);
     ~Response();
     HTTPparser request;
@@ -62,8 +61,8 @@ public:
     void appDate();
     void appContentType();
     void appContentLen();
-    int appBody();
-    void buildResponse();
+    int appBody(const std::string &cgiOutput);
+    void buildResponse(const std::string &cgiOutput);
     void setHeaders();
     void connection();
     //void server();
@@ -83,9 +82,13 @@ public:
     //void appBody();
     int stringToInt(const std::string &str);
     void buildErrorPage(int code);
-    std::string getResponse();
+    // std::string getResponse();
+    std::string processResponse(std::string request, int code, const std::string &cgiOutput);
     std::string redirecUtil();
-    const Response &operator=(const Response& other);
+    const Response &operator=(const Response &other);
+    void setStatusCode(int code) { _code = code; }
+    int getStatusCode() const { return _code; }
+    int setServerIndex(int index) { return _ServerIndex = index; }
 };
 
 #endif

@@ -17,8 +17,6 @@
 #include <algorithm>
 #include <cerrno>
 
-// #include "HttpRequest.hpp"
-// #include "Location.hpp" // location configuration class
 #include "HttpServer.hpp"
 
 #define CGI_BUFFER_SIZE 4096
@@ -41,7 +39,6 @@ private:
 	char **createArgsArray() const;
 	void setupPipes();
 	void closePipes();
-	void handleChunkedBody();
 	static std::string numberToString(int number);
 
 public:
@@ -53,8 +50,10 @@ public:
 	std::string readResponse();
 	void cleanup();
 
-	// Utility functions
-	static std::string decodeChunkedBody(const std::string &body);
+	// getters
+	int getInputFd() const { return pipe_in_[1]; }
+	int getOutputFd() const { return pipe_out_[0]; }
+	pid_t getPid() const { return cgi_pid_; }
 };
 
 #endif

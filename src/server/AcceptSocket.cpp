@@ -47,6 +47,26 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                 if (cfd > max_fd)
                     max_fd = cfd;
             }
+            else if (st == CGI_WRITING_INPUT)
+            {
+                int cgi_in = cl->getCgiInputFd();
+                if (cgi_in != -1)
+                {
+                    FD_SET(cgi_in, &write_fds);
+                    if (cgi_in > max_fd)
+                        max_fd = cgi_in;
+                }
+            }
+            else if (st == CGI_READING_OUTPUT)
+            {
+                int cgi_out = cl->getCgiOutputFd();
+                if (cgi_out != -1)
+                {
+                    FD_SET(cgi_out, &read_fds);
+                    if (cgi_out > max_fd)
+                        max_fd = cgi_out;
+                }
+            }
         }
 
         struct timeval tv;
@@ -125,9 +145,17 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
             {
                 cl->handleConnection();
             }
-            else if (st == AWAITING_CGI)
+            else if (st == CGI_WRITING_INPUT)
             {
-                cl->handleConnection();
+                int cgi_in = cl->getCgiInputFd();
+                if (cgi_in != -1 && FD_ISSET(cgi_in, &write_fds))
+                    cl->handleConnection();
+            }
+            else if (st == CGI_READING_OUTPUT)
+            {
+                int cgi_out = cl->getCgiOutputFd();
+                if (cgi_out != -1 && FD_ISSET(cgi_out, &read_fds))
+                    cl->handleConnection();
             }
 
             if (cl->getState() == CLOSING)

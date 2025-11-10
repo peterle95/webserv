@@ -14,10 +14,6 @@
 #define HTTPSERVER_HPP
 
 #include "Common.hpp"
-#include "HttpResponse.hpp"
-#include "ConfigParser.hpp"
-#include "ServerConfig.hpp"
-#include "HTTPparser.hpp"
 
 class Client; // forward declaration
 // class ConfigParser;
@@ -45,7 +41,6 @@ private:
     // Active clients keyed by socket fd
     std::map<int, Client *> _clients;
     std::vector<ServerSocketInfo> _serverSockets;
-   // Response _response;
     const LocationConfig *_currentLocation;
     // Config parser reference
     // Response &_response;
@@ -71,7 +66,6 @@ public:
     std::string getFilePath(const std::string &path, const int serverIndex); // changed from private for response.cpp
     bool determineKeepAlive(const HTTPparser &parser);                       // changed from private to public for access in response.cpp
     const LocationConfig *getCurrentLocation();
-    std::string processCGI(HTTPparser &parser); // changed from private to public for access in response.cpp
 
     // Helper: map location for path and return resolved file path
     std::string resolveFilePathFor(const std::string &path, const int serverIndex);
