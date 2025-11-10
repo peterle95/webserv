@@ -130,6 +130,27 @@ char **CGI::createArgsArray() const
 	args[3] = NULL;
 	return args;
 }
+// TODO:: need to create a common util for non blocking setting for Server and CGI
+static bool setNonBlocking(int fd)
+{
+	// Query the current file status flags for this file descriptor (fd).
+	// These are not filesystem permissions, but runtime flags that control how
+	// the kernel handles I/O on this fd (e.g., append mode, blocking/non-blocking).
+	int flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0)
+		return false; // Failed to retrieve flags
+
+	// Add the O_NONBLOCK flag to the existing set of flags.
+	// O_NONBLOCK means:
+	//   - read() will return immediately if no data is available (instead of blocking)
+	//   - write() will return immediately if it cannot accept more data
+	// The bitwise OR ensures we *preserve* existing flags (e.g., O_APPEND).
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+		return false; // Failed to update flags
+
+	// Success: the socket is now in non-blocking mode.
+	return true;
+}
 
 // Setup pipes
 void CGI::setupPipes()
@@ -149,8 +170,11 @@ void CGI::setupPipes()
 		return;
 	}
 	// Set pipes to non-blocking mode
-	fcntl(pipe_in_[1], F_SETFL, O_NONBLOCK);  // Write end
-	fcntl(pipe_out_[0], F_SETFL, O_NONBLOCK); // Read end
+	if (!setNonBlocking(pipe_in_[1]) || !setNonBlocking(pipe_out_[0]))
+	{
+		closePipes();
+		return;
+	}
 }
 
 // Close pipes
@@ -257,7 +281,6 @@ int CGI::execute()
 		return 0;
 	}
 }
-
 
 // The cleanup only close pipes — do NOT kill/reap child unconditionally.
 // The Client calls waitpid/kill when it decides the CGI lifecycle ended.

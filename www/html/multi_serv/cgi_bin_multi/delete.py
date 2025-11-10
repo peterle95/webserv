@@ -64,4 +64,4 @@ else:
     # Method not allowed
     print("Error: Method not allowed<br>")
 
-print('<p><a href="/index_multi.html">Back to CGI Home</a></p>')
+print('<p><a href="/index_multi.html">Back to Home</a></p>')
