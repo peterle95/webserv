@@ -56,6 +56,14 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                     if (cgi_in > max_fd)
                         max_fd = cgi_in;
                 }
+                // Also monitor CGI stdout so we can drain it while feeding stdin.
+                int cgi_out = cl->getCgiOutputFd();
+                if (cgi_out != -1)
+                {
+                    FD_SET(cgi_out, &read_fds);
+                    if (cgi_out > max_fd)
+                        max_fd = cgi_out;
+                }
             }
             else if (st == CGI_READING_OUTPUT)
             {
@@ -148,8 +156,13 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
             else if (st == CGI_WRITING_INPUT)
             {
                 int cgi_in = cl->getCgiInputFd();
-                if (cgi_in != -1 && FD_ISSET(cgi_in, &write_fds))
+                int cgi_out = cl->getCgiOutputFd();
+                // Handle client if we can write more input OR there is output to drain.
+                if ((cgi_in != -1 && FD_ISSET(cgi_in, &write_fds)) ||
+                    (cgi_out != -1 && FD_ISSET(cgi_out, &read_fds)))
+                {
                     cl->handleConnection();
+                }
             }
             else if (st == CGI_READING_OUTPUT)
             {

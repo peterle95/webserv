@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import warnings
-import sys
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 import os # For file operations and environment variables	
 import sys # For reading stdin and exiting
@@ -31,26 +30,25 @@ if os.environ.get("REQUEST_METHOD", "") == "POST":
     # Validate filename
     if not filename_to_delete:
         print("Error: Filename not provided.<br>")
-        print('<p><a href="/index_multi.html">Back to Home</a></p>')
+        print('<p><a href="/index.html">Back to Home</a></p>')
         sys.exit(0)
 
     if '..' in filename_to_delete or '/' in filename_to_delete or '\\' in filename_to_delete:
         print("Error: Invalid filename.<br>")
-        print('<p><a href="/index_multi.html">Back to Home</a></p>')
+        print('<p><a href="/index.html">Back to Home</a></p>')
         sys.exit(0)   
 
     file_path = os.path.join(upload_dir, filename_to_delete)
 
     if not os.path.abspath(file_path).startswith(os.path.abspath(upload_dir)):
         print("Error: Invalid filename path.<br>")
-        print('<p><a href="/index_multi.html">Back to Home</a></p>')
+        print('<p><a href="/index.html">Back to Home</a></p>')
         sys.exit(0)
 
-    print(f"File path: {file_path}<br>")
     # Check if file exists
     if not os.path.exists(file_path):
         print(f"Error: File '{filename_to_delete}' does not exist.<br>")
-        print('<p><a href="/index_multi.html">Back to Home</a></p>')
+        print('<p><a href="/index.html">Back to Home</a></p>')
         sys.exit(0)
 
     # Attempt to delete the file
@@ -64,4 +62,4 @@ else:
     # Method not allowed
     print("Error: Method not allowed<br>")
 
-print('<p><a href="/index_multi.html">Back to CGI Home</a></p>')
+print('<p><a href="/index.html">Back to CGI Home</a></p>')
