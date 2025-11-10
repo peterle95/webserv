@@ -19,10 +19,8 @@ if os.environ.get("REQUEST_METHOD", "") == "POST":
     params = urllib.parse.parse_qs(post_data, keep_blank_values=True)
     filename_to_delete = params.get("filename", [""])[0].strip()
 
-    # Ensure percent-encoded sequences are decoded
-    if filename_to_delete:
-        filename_to_delete = urllib.parse.unquote(filename_to_delete)
-    else:
+    # Values from parse_qs are already percent-decoded.
+    if not filename_to_delete:
         filename_to_delete = ""
 
     print(f"Filename to delete: {filename_to_delete}<br>")
