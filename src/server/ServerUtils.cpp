@@ -48,22 +48,30 @@ void HttpServer::printStartupMessage()
 
         const ServerConfig &server = _servers[serverIdx];
 
-        std::cout << BLUE << "Server: " << server.getServerName() << RESET << std::endl;
+        // Resolve host (IP) string from configured host address
+        char hostStr[INET_ADDRSTRLEN];
+        struct in_addr host_addr;
+        host_addr.s_addr = server.getHost();
+        inet_ntop(AF_INET, &host_addr, hostStr, INET_ADDRSTRLEN);
+
+
+        std::string serverName = server.getServerName();
+
+        // Handle empty server names or use localhost as fallback
+        if (serverName.empty() || serverName == "_")
+        {
+            serverName = "localhost";
+        }
+        std::cout << BLUE << "Server name: " << serverName << RESET << std::endl;
+        
+
         std::cout << "  Root: " << server.getRoot() << "/" << server.getIndex() << std::endl;
         std::cout << "  Available at: ";
 
-        // Use the configured server name, not hardcoded localhost
+        // Display URLs using the bound host address and ports
         for (size_t j = 0; j < ports.size(); ++j)
         {
-            std::string serverName = server.getServerName();
-
-            // Handle empty server names or use localhost as fallback
-            if (serverName.empty() || serverName == "_")
-            {
-                serverName = "localhost";
-            }
-
-            std::cout << GREEN << "http://" << serverName << ":" << ports[j] << "/" << RESET;
+            std::cout << MAGENTA << "http://" << hostStr << ":" << ports[j] << "/" << RESET;
             if (j < ports.size() - 1)
                 std::cout << ", ";
         }
