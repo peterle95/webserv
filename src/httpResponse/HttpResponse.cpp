@@ -239,13 +239,7 @@ int Response::appBody(const std::string &cgiOutput)
     const LocationConfig *currentLocation = _HttpServer.getCurrentLocation();
     _targetfile = _HttpParser.getCurrentFilePath();
 
-    // Handle autoindex (directory listing) if enabled
-    if(currentLocation->redirect.size() > 0)
-    {
-        _response_headers = redirecUtil();
-        return 0;
-    }
-    else if (isDirectory(_targetfile) && currentLocation->autoindex)
+    if (isDirectory(_targetfile) && currentLocation->autoindex)
     {
         _response_body = generateDirectoryListing(_targetfile, _HttpParser.getPath());
         if(_response_body.empty())
@@ -361,6 +355,7 @@ std::string Response::redirecUtil()
     std::map<int, std::string>::iterator it = redirec.begin();
     if (it != redirec.end())
     {
+        _code = it->first;
         // Build redirect response headers
         _response_headers.append("HTTP/1.1 ");
         // Create an output string stream to build the status code string
@@ -379,62 +374,36 @@ std::string Response::redirecUtil()
 
 void Response::buildResponse(const std::string &cgiOutput)
 {
-    // Handle error responses or body generation
-    if (reqErr() || appBody(cgiOutput))
+    const LocationConfig *loc = _HttpServer.getCurrentLocation();
+
+    // 1) If parser/request-level error exists, respond with error immediately.
+    //    reqErr() consults parser error status and _code.
+    if (reqErr())
     {
         builderror_responses(_code);
         setHeaders();
         _response_final = _response_headers + _response_body;
-        /*         std::stringstream ss;
-                ss << _response_body.size();
+        return;
+    }
 
-        // Build error body based on the response code
-        
-        _response_headers.append("HTTP/1.1 ");
-        builderror_body(_code);
-        std::string statusMsg = statusMessage(_code);
-        _response_headers.append(" " + statusMsg + "\r\n");
-        _response_headers.append("Content-Length: ");
-        _response_headers.append(ss.str() + "\r\n");
-        _response_headers.append("Connection: close\r\n");
-        _response_headers.append("\r\n");
-        _response_final = _response_headers + _response_body;*/
-    }
-    /*else if (!_HttpServer->getCurrentLocation()->redirect.empty()) // Handle HTTP redirects if configured
+    // 2) No parser error — redirects may be applied next (they are policy-level and
+    //    should not override a parser-detected error).
+    if (loc && !loc->redirect.empty())
     {
-        std::string _response_headers;
-        std::map<int, std::string> redirec = _HttpServer->getCurrentLocation()->redirect;
-        std::map<int, std::string>::iterator it = redirec.begin();
-        if (it != redirec.end())
-        {
-            // Build redirect response headers
-            _response_headers.append(" HTTP/1.1 ");
-            std::ostringstream oss;
-            oss << it->first;
-            _response_headers.append(oss.str());
-            std::string statusMsg = statusMessage(it->first);
-            _response_headers.append(" " + statusMsg + "\r\n");
-            _response_headers.append(" Content-Length: 0\r\n");
-            _response_headers.append("Location: " + it->second + "\r\n");
-            // Set the final response string
-            _response_final = _response_headers;
-        }
-    }*/
-    // Handle successful GET requests
-    else if ((_request == "GET" || _request == "POST" || _request == "DELETE") && _code == 200)
-    {
-        // Set the final response string for successful GET
-        setHeaders();
-        _response_final = _response_headers + _response_body;
+        _response_final = redirecUtil(); // redirecUtil sets _code and builds full headers
+        DEBUG_PRINT("Redirect response built:\n"
+                    << _response_final);
+        return;
     }
-    else
+
+    // 3) Generate body (may set _code). If appBody fails, build error response.
+    if (appBody(cgiOutput))
     {
-        // For other methods or status codes, build error responses
-        setHeaders();
-        _response_final = _response_headers + _response_body;
-        std::cout << "Final Response:\n"
-                  << _response_body.size() << std::endl;
+        builderror_responses(_code);
     }
+    // Set the final response string
+    setHeaders();
+    _response_final = _response_headers + _response_body;
 }
 
 void Response::setHeaders()
