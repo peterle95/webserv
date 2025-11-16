@@ -53,8 +53,6 @@ void ServerConfig::handleDirective(const std::string &key, const std::string &va
         parseErrorPage(val, lineNo);
     else
     {
-        // Unknown directive: ignore non-fatally for now
         DEBUG_PRINT("Unknown directive '" << key << "' (ignored)");
     }
-    // TODO: implement more directives
 }

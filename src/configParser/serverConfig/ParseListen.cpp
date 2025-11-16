@@ -29,7 +29,6 @@ void ServerConfig::parseListen(const std::string &val, size_t lineNo)
     // this->_listenAddresses.push_back(std::make_pair(host, port));
 
     // Avoid adding duplicate port entries. If the port is already present, skip it.
-	// Might need to be updated if multiple IP is supported
     if (std::find(this->_ports.begin(), this->_ports.end(), port) != this->_ports.end())
     {
         DEBUG_PRINT("Port " << port << " already present; skipping duplicate listen entry");
@@ -40,5 +39,4 @@ void ServerConfig::parseListen(const std::string &val, size_t lineNo)
     this->_ports.push_back(port);
 
     DEBUG_PRINT("Applied listen -> " << host << ":" << port);
-    // DEBUG_PRINT("Total listen addresses: " << this->_listenAddresses.size());
 }

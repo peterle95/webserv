@@ -18,10 +18,7 @@ SRCS = src/main.cpp \
 		src/configParser/directives/ParseClientMaxBodySize.cpp \
 		src/configParser/serverConfig/ServerConfig.cpp \
 		src/configParser/serverConfig/ParseListen.cpp \
-		src/configParser/serverConfig/ParseRoot.cpp \
-		src/configParser/serverConfig/ParseIndex.cpp \
 		src/configParser/serverConfig/ParseServerName.cpp \
-		src/configParser/serverConfig/ParseClientMaxBodySize.cpp \
 		src/configParser/serverConfig/ParseAllowedMethods.cpp \
 		src/configParser/serverConfig/ParseErrorPage.cpp \
 		src/configParser/serverConfig/ParserHelpers.cpp \

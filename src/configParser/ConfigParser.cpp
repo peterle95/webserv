@@ -50,15 +50,10 @@ void ConfigParser::parseLines(const std::vector<std::string> &lines)
     for (size_t i = 0; i < lines.size(); ++i)
     {
         const std::string raw = lines[i];
-        // DEBUG_PRINT("Line " << i << " raw: '" << raw << "'");
         std::string line = preprocessLine(raw);
-        // DEBUG_PRINT("Line " << i << " preprocessed: '" << line << "'");
 
         if (line.empty())
-        {
-            // DEBUG_PRINT("Line " << i << " skipped: empty after trim/comment");
             continue;
-        }
 
         // Detect server block
         if ((line.find("server") == 0) && (line.find("{") != std::string::npos))
@@ -111,10 +106,7 @@ void ConfigParser::parseLines(const std::vector<std::string> &lines)
         }
 
         if (isBlockMarker(line))
-        {
-            // DEBUG_PRINT("Line " << i << " skipped: brace/block marker");
             continue;
-        }
 
         requireSemicolon(line, i + 1);
         line = stripTrailingSemicolon(line);
@@ -122,7 +114,6 @@ void ConfigParser::parseLines(const std::vector<std::string> &lines)
         std::string key, val;
         if (!splitKeyVal(line, key, val))
             continue;
-        // DEBUG_PRINT("Directive key='" << key << "' val='" << val << "'");
         handleDirective(key, val, i + 1);
     }
 }
@@ -131,7 +122,6 @@ void ConfigParser::parseLines(const std::vector<std::string> &lines)
 bool ConfigParser::parse(const std::string &path)
 {
     this->_configFile = path;
-    // DEBUG_PRINT("Opening config file: '" << path << "'");
 
     try
     {
@@ -146,10 +136,8 @@ bool ConfigParser::parse(const std::string &path)
         std::string line;
         while (std::getline(in, line))
             rawLines.push_back(line);
-        // DEBUG_PRINT("Read " << rawLines.size() << " lines from file");
 
         parseLines(rawLines);
-        // DEBUG_PRINT("Finished parsing file: '" << path << "'");
         return true;
     }
     catch (const ErrorHandler::Exception &e)

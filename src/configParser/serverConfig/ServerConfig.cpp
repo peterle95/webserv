@@ -2,7 +2,7 @@
 
 #include "Common.hpp"
 #include <arpa/inet.h> // For inet_pton
-#include <sstream>     // For std::stringstream (C++98 compatible)
+#include <sstream>     // For std::stringstream
 
 // constructor
 ServerConfig::ServerConfig(const std::string &root, const std::string &index, size_t clientMaxBodySize)
@@ -162,8 +162,3 @@ void ServerConfig::parseHost(const std::string &val, size_t lineNo)
         throw std::runtime_error(ss.str());
     }
 }
-// Get all host:port pairs (recommended method)
-/* const std::vector<std::pair<std::string, int>> &ServerConfig::getListenAddresses() const
-{
-    return _listenAddresses;
-} */

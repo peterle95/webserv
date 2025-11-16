@@ -45,9 +45,4 @@ void ServerConfig::parseErrorPage(const std::string &val, size_t lineNo)
       throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE, (int)lineNo, this->_configFile);
     }
   }
-  // Create for loop over each code in parts except the last part (which is the target):
-  //     Parse the code
-  //     If invalid, throw an exception for CONFIG_INVALID_DIRECTIVE
-  //     Otherwise, set _errorPage to the raget
-  // Example: error_page 404 /404.html;
 }

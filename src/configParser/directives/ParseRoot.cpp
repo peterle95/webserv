@@ -12,8 +12,8 @@
 
 #include "Common.hpp"
 
-void ConfigParser::parseRoot(const std::string &val, size_t /*lineNo*/, std::string *root)
+void ServerConfig::parseRoot(const std::string &val, size_t /*lineNo*/, std::string *root)
 {
     *root = val;
-   // DEBUG_PRINT("Applied root -> '" << *root << "'");
+    DEBUG_PRINT("Applied root -> '" << *root << "'");
 }

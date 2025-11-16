@@ -14,7 +14,6 @@ void ServerConfig::applyAutoindex(LocationConfig *loc, const std::string &val, s
 		throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE,
 									  (int)lineNumber, this->_configFile);
 	}
-	// DEBUG_PRINT("Set location autoindex -> " << (loc->autoindex ? "on" : "off"));
 }
 
 void ServerConfig::applyCgiPass(LocationConfig *loc, const std::string &val, size_t lineNumber)
@@ -31,7 +30,6 @@ void ServerConfig::applyCgiPass(LocationConfig *loc, const std::string &val, siz
 		throw ErrorHandler::Exception(msg, ErrorHandler::CONFIG_INVALID_DIRECTIVE,
 									  (int)lineNumber, this->_configFile);
 	}
-	// DEBUG_PRINT("Set location cgi_pass -> " << (loc->cgiPass ? "on" : "off"));
 }
 
 void ServerConfig::applyCgiExtension(LocationConfig *loc, const std::string &val, size_t lineNumber)
@@ -45,7 +43,6 @@ void ServerConfig::applyCgiExtension(LocationConfig *loc, const std::string &val
 									  (int)lineNumber, this->_configFile);
 	}
 	loc->cgiExtension = val;
-	// DEBUG_PRINT("Set location cgi_extension -> '" << loc->cgiExtension << "'");
 }
 
 void ServerConfig::applyRedirect(LocationConfig *loc, const std::string &val, size_t lineNumber)
