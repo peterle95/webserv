@@ -1,5 +1,6 @@
 #include "Client.hpp"
 #include "Logger.hpp"
+#include <ctime> // NEW
 
 /*
 Client::readRequest()
@@ -43,6 +44,7 @@ Client::Client(int fd, HttpServer &server, size_t serverIndex, int serverPort)
       _cgi_handler(),
       _cgi_pid(-1),
       _cgi_started(false),
+      _cgi_start_time(0), // NEW
       _serverIndex(serverIndex),
       _serverPort(serverPort),
       _status_code(200)
@@ -311,7 +313,7 @@ void Client::generateResponse()
         std::string method = _parser.getMethod();
         bool methodAllowed = _server.isMethodAllowed(method);
 
-        if (methodAllowed && (method == "POST" || method == "DELETE") && cgiEnabled)
+        if (methodAllowed && (method == "GET" || method == "POST" || method == "DELETE") && cgiEnabled)
         {
             // Check if file extension matches CGI extension
             bool isCgiScript = false;
@@ -361,6 +363,7 @@ void Client::generateResponse()
                     _cgi_input_offset = 0;
                     _cgi_output_buffer.clear();
                     _cgi_started = true;
+                    _cgi_start_time = time(NULL); // NEW
 
                     // Transition to writing input state
                     _state = CGI_WRITING_INPUT;
@@ -725,5 +728,27 @@ void Client::cleanup_cgi()
         kill(_cgi_pid, SIGKILL);
         waitpid(_cgi_pid, NULL, WNOHANG);
         _cgi_pid = -1;
+    }
+}
+
+void Client::checkCgiTimeout() // NEW
+{
+    // Guard clause: Return immediately if no CGI process is running
+    if (_cgi_pid == -1 || (_state != CGI_WRITING_INPUT && _state != CGI_READING_OUTPUT))
+        return;
+
+    // Check timeout
+    if (difftime(time(NULL), _cgi_start_time) > CGI_TIMEOUT)
+    {
+        DEBUG_PRINT(RED << "CGI timed out after " << CGI_TIMEOUT << " seconds" << RESET);
+        cleanup_cgi();
+        _status_code = 504; // Gateway Timeout
+        
+        if (_response)
+            _response_buffer = _response->processResponse(_parser.getMethod(), _status_code, "");
+            
+        Logger::logResponse(_response_buffer);
+        _response_offset = 0;
+        _state = WRITING;
     }
 }

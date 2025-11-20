@@ -97,7 +97,6 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
 
             if (FD_ISSET(server_fd, &read_fds))
             {
-                // Accept as many pending connections as possible on this server socket
                 while (true)
                 {
                     struct sockaddr_in cli;
@@ -169,6 +168,12 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                 int cgi_out = cl->getCgiOutputFd();
                 if (cgi_out != -1 && FD_ISSET(cgi_out, &read_fds))
                     cl->handleConnection();
+            }
+            // NEW
+            // Check for CGI timeout
+            if (st == CGI_WRITING_INPUT || st == CGI_READING_OUTPUT)
+            {
+                cl->checkCgiTimeout();
             }
 
             if (cl->getState() == CLOSING)
