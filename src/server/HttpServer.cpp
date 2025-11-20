@@ -67,6 +67,8 @@ std::string HttpServer::getFilePath(const std::string &path, const int serverInd
             {
                 filePath = _currentLocation->root + path + _currentLocation->index;
             }
+            else if (_currentLocation->autoindex)
+                filePath = _currentLocation->root + path;
             else
             {
                 filePath = _currentLocation->root + path + _servers[serverIndex].getIndex(); // fallback to server index

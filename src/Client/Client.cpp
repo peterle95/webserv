@@ -100,7 +100,7 @@ void Client::handleConnection()
                                                                   : _state == CGI_READING_OUTPUT    ? "CGI_READING_OUTPUT"
                                                                   : _state == CGI_WRITING_INPUT     ? "CGI_WRITING_INPUT"
                                                                                                     : "UNKNOWN"));
-
+    checkCgiTimeout();
     switch (_state)
     {
     case READING:
@@ -736,6 +736,8 @@ void Client::checkCgiTimeout() // NEW
     // Guard clause: Return immediately if no CGI process is running
     if (_cgi_pid == -1 || (_state != CGI_WRITING_INPUT && _state != CGI_READING_OUTPUT))
         return;
+
+    DEBUG_PRINT("Checking CGI timeout - elapsed: " << difftime(time(NULL), _cgi_start_time) << "s / " << CGI_TIMEOUT << "s"); // NEW DEBUG
 
     // Check timeout
     if (difftime(time(NULL), _cgi_start_time) > CGI_TIMEOUT)
