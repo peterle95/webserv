@@ -1,6 +1,6 @@
 #include "Common.hpp"
 
-Response::Response(HttpServer &HttpServer, HTTPparser &HTTPParser, ConfigParser &ConfigParser) : _HttpServer(HttpServer), _HttpParser(HTTPParser), _ConfigParser(ConfigParser)
+Response::Response(HttpServer &HttpServer, HTTPparser &HTTPParser, ConfigParser &ConfigParser, int serverIndex) :  _ServerIndex(serverIndex), _HttpServer(HttpServer), _HttpParser(HTTPParser), _ConfigParser(ConfigParser)
 {
     _request = "";
     _targetfile = "";
