@@ -61,9 +61,20 @@ static bool bindSocket(int server_fd, int port, in_addr_t host)
 
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
+        // Create a character buffer to hold the human-readable string version of the IP address.
+        // INET_ADDRSTRLEN is a constant (usually 16) defining the max length of an IPv4 string (e.g. "255.255.255.255\0").
         char host_str[INET_ADDRSTRLEN];
+
+        // Create a temporary struct specifically to hold the binary IP address.
+        // This is required as an argument for the conversion function below.
         struct in_addr addr_struct;
+
+        // Assign the input binary IP (host) to the struct's parameter.
         addr_struct.s_addr = host;
+
+        // inet_ntop (Network TO Presentation): Converts the binary IP address into a readable string.
+        // AF_INET specifies we are working with IPv4.
+        // writes the result into 'host_str'.
         inet_ntop(AF_INET, &addr_struct, host_str, INET_ADDRSTRLEN);
         std::cerr << "bind() failed on port " << port << " host " << host_str << std::endl;
         return false;

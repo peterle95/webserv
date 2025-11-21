@@ -1,6 +1,6 @@
 #include "Common.hpp"
 
-Response::Response(HttpServer &HttpServer, HTTPparser &HTTPParser, ConfigParser &ConfigParser) : _HttpServer(HttpServer), _HttpParser(HTTPParser), _ConfigParser(ConfigParser)
+Response::Response(HttpServer &HttpServer, HTTPparser &HTTPParser, ConfigParser &ConfigParser, int serverIndex) :  _ServerIndex(serverIndex), _HttpServer(HttpServer), _HttpParser(HTTPParser), _ConfigParser(ConfigParser)
 {
     _request = "";
     _targetfile = "";
@@ -169,6 +169,8 @@ std::string Response::statusMessage(int code)
         return "Method Not Allowed";
     else if (code == 413)
         return "Payload Too Large";
+    else if (code == 504)
+        return "Gateway Timeout";
     else
         return "Unknown Status";
 }

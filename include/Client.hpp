@@ -27,6 +27,11 @@ public:
 
     // Main handler method called by the server
     void handleConnection();
+    void checkCgiTimeout(); 
+
+    // Timeout handling
+    void updateLastActivityTime();
+    bool hasTimedOut() const;
 
     // Getters for the server to manage select()
     int getSocket() const;
@@ -80,6 +85,8 @@ private:
 
     size_t _cgi_input_offset;       // Bytes of request body sent to CGI so far
     std::string _cgi_output_buffer; // Buffer to store output read from CGI
+    time_t _cgi_start_time;         // NEW
+    time_t _last_activity_time;     // Last time the client was active
 
     size_t _serverIndex; // Which server block this client belongs to
     int _serverPort;     // Which port client connected to

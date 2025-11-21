@@ -82,7 +82,6 @@ public:
     std::string generateMethodNotAllowedResponse(bool keepAlive);
     std::string generatePostResponse(const std::string &body, bool keepAlive);
     bool isMethodAllowed(const std::string &method);
-    size_t selectServerForRequest(const HTTPparser &parser, const int serverPort);
 
     void handleClient(int client_fd);
     size_t checkContentLength(const std::string &request, size_t header_end);

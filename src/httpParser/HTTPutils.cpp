@@ -1,4 +1,4 @@
-
+ 
 #include "Common.hpp"
 
 // Reset the parser to initial state
@@ -15,6 +15,9 @@ void HTTPparser::reset()
     _errorStatusCode.clear();
     _isValid = false;
     _errorMessage.clear();
+    _currentFilePath.clear();
+    _serverName.clear();
+    _serverPort.clear();
 }
 
 /*Set error state with message and status code

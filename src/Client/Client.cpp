@@ -1,5 +1,6 @@
 #include "Client.hpp"
 #include "Logger.hpp"
+#include <ctime> // NEW
 
 /*
 Client::readRequest()
@@ -43,6 +44,8 @@ Client::Client(int fd, HttpServer &server, size_t serverIndex, int serverPort)
       _cgi_handler(),
       _cgi_pid(-1),
       _cgi_started(false),
+      _cgi_start_time(0), 
+      _last_activity_time(time(NULL)), // Initialize with current time
       _serverIndex(serverIndex),
       _serverPort(serverPort),
       _status_code(200)
@@ -98,7 +101,7 @@ void Client::handleConnection()
                                                                   : _state == CGI_READING_OUTPUT    ? "CGI_READING_OUTPUT"
                                                                   : _state == CGI_WRITING_INPUT     ? "CGI_WRITING_INPUT"
                                                                                                     : "UNKNOWN"));
-
+    checkCgiTimeout();
     switch (_state)
     {
     case READING:
@@ -131,6 +134,7 @@ void Client::readRequest()
     ssize_t n = recv(_socket, buf, sizeof(buf), 0);
     if (n > 0)
     {
+        updateLastActivityTime(); // Update activity on successful read
         _request_buffer.append(buf, buf + n);
         DEBUG_PRINT("Received " << n << " bytes, total buffer: " << _request_buffer.size());
         size_t header_end = _request_buffer.find("\r\n\r\n");
@@ -274,34 +278,15 @@ void Client::generateResponse()
         _response = NULL;
     }
     // Response object must be created regardless of whether parsing is successful or not, to handle error responses
-    _response = new Response(_server, _parser, _server._configParser);
+    _response = new Response(_server, _parser, _server._configParser, _serverIndex);
     if (ok && _parser.isValid())
     {
         DEBUG_PRINT(GREEN << "Request parsed successfully" << RESET);
 
-        // Select correct server based on Host header
-        size_t selectedServerIndex = _server.selectServerForRequest(_parser, _serverPort);
-        if (_response)
-            _response->setServerIndex(selectedServerIndex);
-        if (selectedServerIndex == static_cast<size_t>(-1))
-        {
-            DEBUG_PRINT(RED << "No matching server block for Host/Port" << RESET);
-            _status_code = 400;
-            if (_response)
-                _response_buffer = _response->processResponse(_parser.getMethod(), _status_code, "");
-            Logger::logResponse(_response_buffer);
-            _response_offset = 0;
-            DEBUG_PRINT("Transitioning to WRITING state");
-            _state = WRITING;
-            return;
-        }
-
-        DEBUG_PRINT(CYAN << "Selected server index: " << selectedServerIndex
-                         << " for Host: '" << _parser.getHeader("Host") << "'" << RESET);
         const std::string path = _parser.getPath();
 
         // Map location and resolve filesystem path for this request
-        std::string filePath = _server.resolveFilePathFor(path, selectedServerIndex);
+        std::string filePath = _server.resolveFilePathFor(path, _serverIndex);
         _parser.setCurrentFilePath(filePath);
         DEBUG_PRINT("Resolved file path: '" << filePath << "'");
 
@@ -361,6 +346,7 @@ void Client::generateResponse()
                     _cgi_input_offset = 0;
                     _cgi_output_buffer.clear();
                     _cgi_started = true;
+                    _cgi_start_time = time(NULL); // NEW
 
                     // Transition to writing input state
                     _state = CGI_WRITING_INPUT;
@@ -435,6 +421,7 @@ void Client::writeResponse()
 
     if (sent > 0)
     {
+        updateLastActivityTime(); // Update activity on successful write
         _response_offset += static_cast<size_t>(sent);
         DEBUG_PRINT("Sent " << sent << " bytes, progress: " << _response_offset << "/" << _response_buffer.size());
 
@@ -703,6 +690,7 @@ void Client::readFromCgi()
     _response_offset = 0;
     DEBUG_PRINT("Transitioning to WRITING state");
     _state = WRITING;
+    updateLastActivityTime(); // Reset timeout timer after CGI finishes
     cleanup_cgi();
 }
 
@@ -726,4 +714,41 @@ void Client::cleanup_cgi()
         waitpid(_cgi_pid, NULL, WNOHANG);
         _cgi_pid = -1;
     }
+}
+
+void Client::checkCgiTimeout() // NEW
+{
+    // Guard clause: Return immediately if no CGI process is running
+    if (_cgi_pid == -1 || (_state != CGI_WRITING_INPUT && _state != CGI_READING_OUTPUT))
+        return;
+
+    // Check timeout
+    if (difftime(time(NULL), _cgi_start_time) > CGI_TIMEOUT)
+    {
+        DEBUG_PRINT(RED << "CGI timed out after " << CGI_TIMEOUT << " seconds" << RESET);
+        cleanup_cgi();
+        _status_code = 504; // Gateway Timeout
+        
+        if (_response)
+            _response_buffer = _response->processResponse(_parser.getMethod(), _status_code, "");
+            
+        Logger::logResponse(_response_buffer);
+        _response_offset = 0;
+        _state = WRITING;
+        updateLastActivityTime(); // Reset timeout timer after CGI timeout
+    }
+}
+
+void Client::updateLastActivityTime()
+{
+    _last_activity_time = time(NULL);
+}
+
+bool Client::hasTimedOut() const
+{
+    // Do not timeout if we are waiting for CGI or generating response
+    if (_state == CGI_WRITING_INPUT || _state == CGI_READING_OUTPUT || _state == GENERATING_RESPONSE)
+        return false;
+        
+    return (difftime(time(NULL), _last_activity_time) > CLIENT_TIMEOUT);
 }

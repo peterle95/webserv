@@ -12,12 +12,13 @@
 
 #include "Common.hpp"
 
-HttpServer::HttpServer(ConfigParser &configParser) : _configParser(configParser)
+HttpServer::HttpServer(ConfigParser &configParser) : _currentLocation(NULL), _configParser(configParser)
 {
     _servers = configParser.getServers();
     _root = configParser.getRoot();
     _index = configParser.getIndex();
-    mapCurrentLocationConfig("/", 0); // default location
+    if (!_servers.empty()) 
+        mapCurrentLocationConfig("/", 0); // default location
 }
 
 HttpServer::~HttpServer() {}
@@ -25,6 +26,14 @@ HttpServer::~HttpServer() {}
 // Map the current location config based on the request path
 void HttpServer::mapCurrentLocationConfig(const std::string &path, const int serverIndex)
 {
+    // Check if the server index is valid
+    if (serverIndex < 0 || static_cast<size_t>(serverIndex) >= _servers.size())
+    {
+        DEBUG_PRINT(RED << "mapCurrentLocationConfig: invalid server index " << serverIndex << RESET);
+        _currentLocation = NULL;
+        return;
+    }
+
     const std::map<std::string, LocationConfig> &locations = _servers[serverIndex].getLocations();
 
     size_t longestMatchLength = 0;
@@ -45,13 +54,12 @@ void HttpServer::mapCurrentLocationConfig(const std::string &path, const int ser
             longestMatchLength = locationPath.size();
             bestLocation = &it->second;
         }
-        // Set the best matching location, or keep current if no match found
-        /*if (locationPath.size() > longestMatchLength )
-        {
-            _currentLocation = bestLocation;
-        }*/
     }
-    _currentLocation = bestLocation;
+    // Set the best matching location, or keep current if no match found
+    if (bestLocation != NULL)
+    {
+        _currentLocation = bestLocation;
+    }
 }
 
 // Get the full file path based on the request path and
@@ -67,6 +75,8 @@ std::string HttpServer::getFilePath(const std::string &path, const int serverInd
             {
                 filePath = _currentLocation->root + path + _currentLocation->index;
             }
+            else if (_currentLocation->autoindex)
+                filePath = _currentLocation->root + path;
             else
             {
                 filePath = _currentLocation->root + path + _servers[serverIndex].getIndex(); // fallback to server index
@@ -287,70 +297,6 @@ bool HttpServer::validateConfiguration()
     return allValid;
 }
 
-// Case-insensitive string equality for ASCII
-static inline bool iequals(const std::string &a, const std::string &b)
-{
-    if (a.size() != b.size())
-        return false;
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        unsigned char ca = static_cast<unsigned char>(a[i]);
-        unsigned char cb = static_cast<unsigned char>(b[i]);
-        if (std::tolower(ca) != std::tolower(cb))
-            return false;
-    }
-    return true;
-}
-
-size_t HttpServer::selectServerForRequest(const HTTPparser &parser, const int serverPort)
-{
-    std::string host;
-
-    host = parser.getServerName();
-
-    std::vector<size_t> candidates;
-    for (size_t i = 0; i < _servers.size(); ++i)
-    {
-        const ServerConfig &serverConfig = _servers[i];
-        const std::vector<int> &listenPorts = serverConfig.getListenPorts();
-        for (size_t j = 0; j < listenPorts.size(); ++j)
-        {
-            if (listenPorts[j] == serverPort)
-            {
-                candidates.push_back(i);
-                break; // a server only needs to match the port once
-            }
-        }
-    }
-
-    if (candidates.empty())
-    {
-        return static_cast<size_t>(-1);
-    }
-
-    // If exactly one server listens on the port, return it.
-    if (candidates.size() == 1)
-    {
-        return candidates[0];
-    }
-
-    // TODO: Since we already check if there is any duplicate port during validation, we could remove this check, or update it to consider multiple hosts (IP) per port.
-    // Multiple servers listen on the same port — prefer server_name match if Host header provided
-
-    if (!host.empty())
-    {
-        for (size_t idx = 0; idx < candidates.size(); ++idx)
-        {
-            size_t srvIdx = candidates[idx];
-            const std::string &serverName = _servers[srvIdx].getServerName();
-            if (iequals(serverName, host))
-                return srvIdx;
-        }
-    }
-
-    // Fallback: return the first candidate (configuration order decides default)
-    return candidates[0];
-}
 
 size_t HttpServer::getServerMaxBodySize(size_t serverIndex)
 {
