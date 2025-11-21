@@ -278,34 +278,15 @@ void Client::generateResponse()
         _response = NULL;
     }
     // Response object must be created regardless of whether parsing is successful or not, to handle error responses
-    _response = new Response(_server, _parser, _server._configParser);
-        // Select correct server based on Host header
-        size_t selectedServerIndex = _server.selectServerForRequest(_parser, _serverPort);
-        if (_response)
-            _response->setServerIndex(selectedServerIndex);
-
+    _response = new Response(_server, _parser, _server._configParser, _serverIndex);
     if (ok && _parser.isValid())
     {
-            DEBUG_PRINT(GREEN << "Request parsed successfully" << RESET);
-        if (selectedServerIndex == static_cast<size_t>(-1))
-        {
-            DEBUG_PRINT(RED << "No matching server block for Host/Port" << RESET);
-            _status_code = 400;
-            if (_response)
-                _response_buffer = _response->processResponse(_parser.getMethod(), _status_code, "");
-            Logger::logResponse(_response_buffer);
-            _response_offset = 0;
-            DEBUG_PRINT("Transitioning to WRITING state");
-            _state = WRITING;
-            return;
-        }
+        DEBUG_PRINT(GREEN << "Request parsed successfully" << RESET);
 
-        DEBUG_PRINT(CYAN << "Selected server index: " << selectedServerIndex
-                         << " for Host: '" << _parser.getHeader("Host") << "'" << RESET);
         const std::string path = _parser.getPath();
 
         // Map location and resolve filesystem path for this request
-        std::string filePath = _server.resolveFilePathFor(path, selectedServerIndex);
+        std::string filePath = _server.resolveFilePathFor(path, _serverIndex);
         _parser.setCurrentFilePath(filePath);
         DEBUG_PRINT("Resolved file path: '" << filePath << "'");
 
@@ -315,7 +296,7 @@ void Client::generateResponse()
         std::string method = _parser.getMethod();
         bool methodAllowed = _server.isMethodAllowed(method);
 
-        if (methodAllowed && (method == "GET" || method == "POST" || method == "DELETE") && cgiEnabled)
+        if (methodAllowed && (method == "POST" || method == "DELETE") && cgiEnabled)
         {
             // Check if file extension matches CGI extension
             bool isCgiScript = false;
@@ -709,6 +690,7 @@ void Client::readFromCgi()
     _response_offset = 0;
     DEBUG_PRINT("Transitioning to WRITING state");
     _state = WRITING;
+    updateLastActivityTime(); // Reset timeout timer after CGI finishes
     cleanup_cgi();
 }
 
@@ -740,8 +722,6 @@ void Client::checkCgiTimeout() // NEW
     if (_cgi_pid == -1 || (_state != CGI_WRITING_INPUT && _state != CGI_READING_OUTPUT))
         return;
 
-    DEBUG_PRINT("Checking CGI timeout - elapsed: " << difftime(time(NULL), _cgi_start_time) << "s / " << CGI_TIMEOUT << "s"); // NEW DEBUG
-
     // Check timeout
     if (difftime(time(NULL), _cgi_start_time) > CGI_TIMEOUT)
     {
@@ -755,6 +735,7 @@ void Client::checkCgiTimeout() // NEW
         Logger::logResponse(_response_buffer);
         _response_offset = 0;
         _state = WRITING;
+        updateLastActivityTime(); // Reset timeout timer after CGI timeout
     }
 }
 
@@ -765,5 +746,9 @@ void Client::updateLastActivityTime()
 
 bool Client::hasTimedOut() const
 {
+    // Do not timeout if we are waiting for CGI or generating response
+    if (_state == CGI_WRITING_INPUT || _state == CGI_READING_OUTPUT || _state == GENERATING_RESPONSE)
+        return false;
+        
     return (difftime(time(NULL), _last_activity_time) > CLIENT_TIMEOUT);
 }

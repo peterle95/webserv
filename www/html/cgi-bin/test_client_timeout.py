@@ -15,12 +15,12 @@ def test_timeout():
         print(f"Failed to connect: {e}")
         return
 
-    print("Sleeping for 10 seconds to test timeout...")
+    print("Sleeping for 12 seconds to test timeout...")
     try:
         # Wait to see if server closes connection
-        s.settimeout(10)
+        s.settimeout(12)
         start = time.time()
-        while time.time() - start < 10:
+        while time.time() - start < 12:
             data = s.recv(1024)
             if not data:
                 print("Server closed connection.")
