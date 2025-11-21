@@ -26,6 +26,13 @@ HttpServer::~HttpServer() {}
 // Map the current location config based on the request path
 void HttpServer::mapCurrentLocationConfig(const std::string &path, const int serverIndex)
 {
+    if (serverIndex < 0 || static_cast<size_t>(serverIndex) >= _servers.size())
+    {
+        DEBUG_PRINT(RED << "mapCurrentLocationConfig: invalid server index " << serverIndex << RESET);
+        _currentLocation = NULL;
+        return;
+    }
+
     const std::map<std::string, LocationConfig> &locations = _servers[serverIndex].getLocations();
 
     size_t longestMatchLength = 0;
@@ -46,13 +53,11 @@ void HttpServer::mapCurrentLocationConfig(const std::string &path, const int ser
             longestMatchLength = locationPath.size();
             bestLocation = &it->second;
         }
-        // Set the best matching location, or keep current if no match found
-        /*if (locationPath.size() > longestMatchLength )
-        {
-            _currentLocation = bestLocation;
-        }*/
     }
-    _currentLocation = bestLocation;
+    if (bestLocation != NULL)
+    {
+        _currentLocation = bestLocation;
+    }
 }
 
 // Get the full file path based on the request path and
