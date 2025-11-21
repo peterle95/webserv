@@ -276,34 +276,15 @@ void Client::generateResponse()
         _response = NULL;
     }
     // Response object must be created regardless of whether parsing is successful or not, to handle error responses
-    _response = new Response(_server, _parser, _server._configParser);
+    _response = new Response(_server, _parser, _server._configParser, _serverIndex);
     if (ok && _parser.isValid())
     {
         DEBUG_PRINT(GREEN << "Request parsed successfully" << RESET);
 
-        // Select correct server based on Host header
-        size_t selectedServerIndex = _server.selectServerForRequest(_parser, _serverPort);
-        if (_response)
-            _response->setServerIndex(selectedServerIndex);
-        if (selectedServerIndex == static_cast<size_t>(-1))
-        {
-            DEBUG_PRINT(RED << "No matching server block for Host/Port" << RESET);
-            _status_code = 400;
-            if (_response)
-                _response_buffer = _response->processResponse(_parser.getMethod(), _status_code, "");
-            Logger::logResponse(_response_buffer);
-            _response_offset = 0;
-            DEBUG_PRINT("Transitioning to WRITING state");
-            _state = WRITING;
-            return;
-        }
-
-        DEBUG_PRINT(CYAN << "Selected server index: " << selectedServerIndex
-                         << " for Host: '" << _parser.getHeader("Host") << "'" << RESET);
         const std::string path = _parser.getPath();
 
         // Map location and resolve filesystem path for this request
-        std::string filePath = _server.resolveFilePathFor(path, selectedServerIndex);
+        std::string filePath = _server.resolveFilePathFor(path, _serverIndex);
         _parser.setCurrentFilePath(filePath);
         DEBUG_PRINT("Resolved file path: '" << filePath << "'");
 
@@ -313,7 +294,7 @@ void Client::generateResponse()
         std::string method = _parser.getMethod();
         bool methodAllowed = _server.isMethodAllowed(method);
 
-        if (methodAllowed && (method == "GET" || method == "POST" || method == "DELETE") && cgiEnabled)
+        if (methodAllowed && (method == "POST" || method == "DELETE") && cgiEnabled)
         {
             // Check if file extension matches CGI extension
             bool isCgiScript = false;

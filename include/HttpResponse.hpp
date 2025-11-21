@@ -53,7 +53,7 @@ public:
     // HTTPparser _HTTPParser;
     // ConfigParser _ConfigParser;
 
-    Response(HttpServer &server, HTTPparser &HttpParser, ConfigParser &ConfigParser);
+    Response(HttpServer &server, HTTPparser &HttpParser, ConfigParser &ConfigParser, int serverIndex);
     void setRequest(std::string request);
     ~Response();
     HTTPparser request;
