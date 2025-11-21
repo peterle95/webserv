@@ -72,4 +72,6 @@ macros used throughout the project.*/
 // Global stop flag set by signal handlers
 extern volatile sig_atomic_t g_stop;
 
+#define CLIENT_TIMEOUT 10
+
 #endif

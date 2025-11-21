@@ -169,11 +169,20 @@ int HttpServer::runMultiServerAcceptLoop(const std::vector<ServerSocketInfo> &se
                 if (cgi_out != -1 && FD_ISSET(cgi_out, &read_fds))
                     cl->handleConnection();
             }
-            // NEW
             // Check for CGI timeout
             if (st == CGI_WRITING_INPUT || st == CGI_READING_OUTPUT)
             {
                 cl->checkCgiTimeout();
+            }
+
+            // Check for Client timeout (idle connection)
+            if (cl->hasTimedOut())
+            {
+                DEBUG_PRINT(RED << "Client timed out (idle for " << CLIENT_TIMEOUT << "s)" << RESET);
+                // If we are in the middle of something important, we might want to send a 408 Request Timeout
+                // But for simplicity and safety, we'll just close the connection for now.
+                // Ideally, if we are READING, we could send 408.
+                toClose.push_back(cfd);
             }
 
             if (cl->getState() == CLOSING)

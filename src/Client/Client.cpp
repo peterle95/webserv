@@ -44,7 +44,8 @@ Client::Client(int fd, HttpServer &server, size_t serverIndex, int serverPort)
       _cgi_handler(),
       _cgi_pid(-1),
       _cgi_started(false),
-      _cgi_start_time(0), // NEW
+      _cgi_start_time(0), 
+      _last_activity_time(time(NULL)), // Initialize with current time
       _serverIndex(serverIndex),
       _serverPort(serverPort),
       _status_code(200)
@@ -133,6 +134,7 @@ void Client::readRequest()
     ssize_t n = recv(_socket, buf, sizeof(buf), 0);
     if (n > 0)
     {
+        updateLastActivityTime(); // Update activity on successful read
         _request_buffer.append(buf, buf + n);
         DEBUG_PRINT("Received " << n << " bytes, total buffer: " << _request_buffer.size());
         size_t header_end = _request_buffer.find("\r\n\r\n");
@@ -277,14 +279,14 @@ void Client::generateResponse()
     }
     // Response object must be created regardless of whether parsing is successful or not, to handle error responses
     _response = new Response(_server, _parser, _server._configParser);
-    if (ok && _parser.isValid())
-    {
-        DEBUG_PRINT(GREEN << "Request parsed successfully" << RESET);
-
         // Select correct server based on Host header
         size_t selectedServerIndex = _server.selectServerForRequest(_parser, _serverPort);
         if (_response)
             _response->setServerIndex(selectedServerIndex);
+
+    if (ok && _parser.isValid())
+    {
+            DEBUG_PRINT(GREEN << "Request parsed successfully" << RESET);
         if (selectedServerIndex == static_cast<size_t>(-1))
         {
             DEBUG_PRINT(RED << "No matching server block for Host/Port" << RESET);
@@ -438,6 +440,7 @@ void Client::writeResponse()
 
     if (sent > 0)
     {
+        updateLastActivityTime(); // Update activity on successful write
         _response_offset += static_cast<size_t>(sent);
         DEBUG_PRINT("Sent " << sent << " bytes, progress: " << _response_offset << "/" << _response_buffer.size());
 
@@ -753,4 +756,14 @@ void Client::checkCgiTimeout() // NEW
         _response_offset = 0;
         _state = WRITING;
     }
+}
+
+void Client::updateLastActivityTime()
+{
+    _last_activity_time = time(NULL);
+}
+
+bool Client::hasTimedOut() const
+{
+    return (difftime(time(NULL), _last_activity_time) > CLIENT_TIMEOUT);
 }

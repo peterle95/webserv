@@ -12,12 +12,13 @@
 
 #include "Common.hpp"
 
-HttpServer::HttpServer(ConfigParser &configParser) : _configParser(configParser)
+HttpServer::HttpServer(ConfigParser &configParser) : _currentLocation(NULL), _configParser(configParser)
 {
     _servers = configParser.getServers();
     _root = configParser.getRoot();
     _index = configParser.getIndex();
-    mapCurrentLocationConfig("/", 0); // default location
+    if (!_servers.empty()) 
+        mapCurrentLocationConfig("/", 0); // default location
 }
 
 HttpServer::~HttpServer() {}
