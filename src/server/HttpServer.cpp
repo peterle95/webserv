@@ -67,35 +67,57 @@ void HttpServer::mapCurrentLocationConfig(const std::string &path, const int ser
 std::string HttpServer::getFilePath(const std::string &path, const int serverIndex)
 {
     std::string filePath;
-    if (_currentLocation->path == path)
-    {
-        if (!_currentLocation->root.empty())
-        {
-            if (!_currentLocation->index.empty())
+    std::string rootDir;
+    std::string indexFile;
+    
+    // Determine which root and index to use (location or server)
+    if (_currentLocation && !_currentLocation->root.empty())
             {
-                filePath = _currentLocation->root + path + _currentLocation->index;
-            }
-            else if (_currentLocation->autoindex)
-                filePath = _currentLocation->root + path;
+        rootDir = _currentLocation->root;
+        indexFile = !_currentLocation->index.empty() ? _currentLocation->index : _servers[serverIndex].getIndex();
+    }
             else
             {
-                filePath = _currentLocation->root + path + _servers[serverIndex].getIndex(); // fallback to server index
-            }
+        rootDir = _servers[serverIndex].getRoot();
+        indexFile = _servers[serverIndex].getIndex();
+    }
+    
+    // Ensure root directory ends with '/'
+    if (!rootDir.empty() && rootDir[rootDir.length() - 1] != '/')
+    {
+        rootDir += "/";
+    }
+    
+    // Remove leading '/' from path to avoid double slashes
+    std::string cleanPath = path;
+    if (!cleanPath.empty() && cleanPath[0] == '/')
+    {
+        cleanPath = cleanPath.substr(1);
+    }
+    
+    // Construct the base file path
+    filePath = rootDir + cleanPath;
+    
+    // Handle directory requests
+    if (path.empty() || path[path.length() - 1] == '/')
+    {
+        if (_currentLocation && _currentLocation->autoindex)
+        {
+            // For autoindex, return the directory path
+            return filePath;
         }
         else
         {
-            if (!_currentLocation->index.empty())
-                filePath = _servers[serverIndex].getRoot() + path + _currentLocation->index;
-            else if (_currentLocation->autoindex)
-                filePath = _servers[serverIndex].getRoot() + path;
-            else
-                filePath = _servers[serverIndex].getRoot() + path + _servers[serverIndex].getIndex(); // fallback to server index
+            // Append index file for directory requests
+            if (!indexFile.empty())
+            {
+                if (filePath[filePath.length() - 1] != '/')
+                {
+                    filePath += "/";
+                }
+                filePath += indexFile;
+            }
         }
-    }
-    else
-    {
-        (!_currentLocation->root.empty()) ? filePath = _currentLocation->root + path
-                                          : filePath = _servers[serverIndex].getRoot() + path;
     }
 
     return filePath;
