@@ -9,7 +9,6 @@ Response::Response(HttpServer &HttpServer, HTTPparser &HTTPParser, ConfigParser 
     _code = 0;
     _response_final = " ";
     _loc = "";
-    _ServerIndex = 0; // default server index for safety even if not set
 }
 
 const Response& Response::operator=(const Response& other) {

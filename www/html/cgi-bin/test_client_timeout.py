@@ -3,7 +3,7 @@ import time
 import sys
 
 HOST = '127.0.0.1'
-PORT = 8091
+PORT = 8080
 
 def test_timeout():
     print(f"Connecting to {HOST}:{PORT}...")
