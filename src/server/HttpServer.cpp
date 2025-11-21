@@ -72,12 +72,12 @@ std::string HttpServer::getFilePath(const std::string &path, const int serverInd
     
     // Determine which root and index to use (location or server)
     if (_currentLocation && !_currentLocation->root.empty())
-            {
+    {
         rootDir = _currentLocation->root;
         indexFile = !_currentLocation->index.empty() ? _currentLocation->index : _servers[serverIndex].getIndex();
     }
-            else
-            {
+    else
+    {
         rootDir = _servers[serverIndex].getRoot();
         indexFile = _servers[serverIndex].getIndex();
     }
